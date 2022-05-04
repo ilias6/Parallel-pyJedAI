@@ -1,1 +1,1 @@
-# JEDAI-Python
+# JedAI-Python
