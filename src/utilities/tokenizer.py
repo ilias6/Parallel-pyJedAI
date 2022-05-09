@@ -1,16 +1,15 @@
 import logging
-import numpy as np
-import nltk
-# nltk.download('punkt')
-import tqdm
 import string
-
-from tqdm import tqdm
+from logging import error as error
+from logging import exception as exception
 from logging import info as info
 from logging import warning as warning
-from logging import exception as exception
-from logging import error as error
 
+import nltk
+import numpy as np
+# nltk.download('punkt')
+import tqdm
+from tqdm import tqdm
 
 logging.basicConfig(filename='tokenization.log', level=logging.INFO)
 info = print

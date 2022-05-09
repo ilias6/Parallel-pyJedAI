@@ -2,14 +2,14 @@
  Main workflow for Dirty ER
 '''
 
+import os
+import sys
+
 # --- Libs import --- #
 import pandas as pd
-import sys
-import os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from src.utilities.tokenizer import Tokenizer
-
 
 # --- 1. Read the dataset -- #
 '''
