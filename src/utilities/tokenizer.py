@@ -19,17 +19,19 @@ class Tokenizer:
     
     def __init__(
         self,
-        qgrams = None, 
+        ngrams = None, 
         is_char_tokenization = None, 
-        clean = None
+        clean = None,
+        return_type = 'list'  
     ):
         
-        self.qgrams = qgrams
+        self.ngrams = ngrams
         self.is_char_tokenization = is_char_tokenization
         self.clean = clean
+        self.return_type = return_type
         
         info("Tokenization initialized with.. ")
-        info("- Q-gramms: ", self.qgrams)
+        info("- Q-gramms: ", self.ngrams)
         info("- Char-Tokenization: ", self.is_char_tokenization)
         info("- Text cleanning process: ", self.clean)
         
@@ -55,13 +57,16 @@ class Tokenizer:
                 string = self.data[i]
             # info(string)
             if self.is_char_tokenization:
-                self.tokenized_data[i] = set(nltk.ngrams(string, n = self.qgrams))
+                self.tokenized_data[i] = set(nltk.ngrams(string, n = self.ngrams))
             else:
-                if len(nltk.word_tokenize(string)) > self.qgrams:
-                    self.tokenized_data[i] = set(nltk.ngrams(nltk.word_tokenize(string), n = self.qgrams))
+                if len(nltk.word_tokenize(string)) > self.ngrams:
+                    self.tokenized_data[i] = set(nltk.ngrams(nltk.word_tokenize(string), n = self.ngrams))
                 else:
                     self.tokenized_data[i] = set(nltk.ngrams(nltk.word_tokenize(string), n = len(nltk.word_tokenize(string))))
             # info(self.tokenized_data[i])
+
+        if self.return_type == 'list':
+            return self.tokenized_data.tolist()
 
         return self.tokenized_data
 
@@ -88,10 +93,10 @@ class Tokenizer:
     #                 string = self.data[i]
     #             # info(string)
     #             if self.is_char_tokenization:
-    #                 self.tokenized_data[i] = set(nltk.ngrams(string, n = self.qgrams))
+    #                 self.tokenized_data[i] = set(nltk.ngrams(string, n = self.ngrams))
     #             else:
-    #                 if len(nltk.word_tokenize(string)) > self.qgrams:
-    #                     self.tokenized_data[i] = set(nltk.ngrams(nltk.word_tokenize(string), n = self.qgrams))
+    #                 if len(nltk.word_tokenize(string)) > self.ngrams:
+    #                     self.tokenized_data[i] = set(nltk.ngrams(nltk.word_tokenize(string), n = self.ngrams))
     #                 else:
     #                     self.tokenized_data[i] = set(nltk.ngrams(nltk.word_tokenize(string), n = len(nltk.word_tokenize(string))))
     #             # info(self.tokenized_data[i])
