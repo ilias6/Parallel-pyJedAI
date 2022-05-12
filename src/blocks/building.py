@@ -28,7 +28,7 @@ class AbstractBlockBuilding:
 
     schema_clusters: List[AttributeClusters]
 
-    def __init__(self):
+    def __init__(self) -> any:
         self.is_using_cross_entropy: bool = False
 
     def build_blocks(self):
