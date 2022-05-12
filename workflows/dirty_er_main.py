@@ -9,8 +9,8 @@ import sys
 import pandas as pd
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from src.utilities.tokenizer import Tokenizer
-from src.block_building.standard_blocking import StandardBlocking
+from src.utils.tokenizer import Tokenizer
+from src.blocks.building import StandardBlocking
 
 # --- 1. Read the dataset --- #
 '''
