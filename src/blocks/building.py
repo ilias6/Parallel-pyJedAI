@@ -1,19 +1,19 @@
 import logging
 import os
 import sys
-from data_model.entities import AttributeClusters
 from typing import List
-
 
 info = logging.info
 error = logging.error
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from src.utilities.tokenizer import Tokenizer
-
+from src.utils.tokenizer import Tokenizer
+from src.model.entities import AttributeClusters
 
 class AbstractBlockBuilding:
-
+    '''
+    Abstract class for the block building method
+    '''
 
     num_of_entities_d1: int
     num_of_entities_d2: int
@@ -43,7 +43,7 @@ class AbstractBlockBuilding:
             else:
                 self.index_entities(self.inverted_index_d1, self.entity_profiles_d1)
 
-    def get_blocks(self, profiles_d1, profiles_d2 = None, schema_clusters = None):
+    def get_blocks(self, profiles_d1, profiles_d2=None, schema_clusters=None):
 
         info("Applying -- with the following configuration : --")
 
@@ -66,16 +66,9 @@ class AbstractBlockBuilding:
         for profile in entities:
             all_keys = set()
             for attr in profile.attributes:
-                if schema_clusters:
+                if schema_clusters != None:
+                    self.is_using_cross_entropy = True
                     cluster_id = schema_clusters.get_cluster_id(attr.name)
-                
-                
-                
-
-
-                
-
-
 
     def __str__(self) -> str:
         pass
@@ -84,17 +77,25 @@ class AbstractBlockBuilding:
 class StandardBlocking(AbstractBlockBuilding):
 
     _method_name = "Standard Blocking"
-    _method_info = _method_name + ": it creates one block for every token in the attribute values of at least two entities."
+    _method_info = _method_name + ": it creates one block for every token in the attribute \
+                                    values of at least two entities."
 
     def __init__(self) -> any:
         super().__init__()
-
 
     def get_blocking_keys(self, attribute_value) -> list:
         tok = Tokenizer(ngrams=1, is_char_tokenization=False, return_type='list')
         return tok.process(attribute_value)
 
-    
+        
+
+class LSHSuperBitBlocking(AbstractBlockBuilding):
+    pass
+
+
+class LSHMinHashBlocking(LSHSuperBitBlocking):
+    pass
+
 
     
 

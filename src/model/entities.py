@@ -39,3 +39,14 @@ class AttributeClusters:
 
     def get_cluster_id(self, attribute_name: str) -> int:
         return self.attribute_to_cluster_id.get(attribute_name)
+
+
+class AbstractBlock:
+
+    _block_index = -1
+    _comparisons = 0
+    _entropy = 1.0
+    _utility_measure = -1
+
+    def __init__(self):
+        pass
