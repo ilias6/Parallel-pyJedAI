@@ -31,7 +31,7 @@ class AbstractBlockBuilding:
     def __init__(self) -> any:
         self.is_using_cross_entropy: bool = False
 
-    def build_blocks(self):
+    def build_blocks(self) -> None:
         if self.schema_clusters:
             self.index_entities(self.inverted_index_d1, self.entity_profiles_d1, self.schema_clusters[0])
         else:
@@ -87,7 +87,6 @@ class StandardBlocking(AbstractBlockBuilding):
         tok = Tokenizer(ngrams=1, is_char_tokenization=False, return_type='list')
         return tok.process(attribute_value)
 
-        
 
 class LSHSuperBitBlocking(AbstractBlockBuilding):
     pass

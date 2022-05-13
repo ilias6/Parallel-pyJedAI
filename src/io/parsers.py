@@ -8,8 +8,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from src.utils.constants import (
     COMMA_SEPARATOR
-) 
-
+)
 
 class Parser:
 
@@ -23,14 +22,12 @@ class Parser:
         self.separator = separator
         self.names_in_first_row = names_in_first_row
         self.attribute_names = attribute_names
-        self.text_clean_method = text_clean_method      
-
+        self.text_clean_method = text_clean_method
 
     def process(
             self,
             file_path
     ) -> pd.DataFrame:
-
 
         if _is_csv(file_path) and self.separator is None:
             self.dataset = pd.read_csv(os.path.abspath(file_path), sep=self.separator)
