@@ -8,34 +8,34 @@ import pandas as pd
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from src.utils.tokenizer import Tokenizer, cora_text_cleaning_method
-from src.blocks.building import StandardBlocking
+from src.blocks.building import StandardBlocking, QGramsBlocking
 
 # --- 1. Read the dataset --- #
 
-dataset = pd.read_csv("../data/cora/cora.csv", sep='|')
+dataset = pd.read_csv(
+    "../data/cora/cora.csv",
+    usecols=['title'],
+    sep='|'
+)
+
 ground_truth = pd.read_csv("../data/cora/cora_gt.csv", sep='|')
-
-# --- 2. Tokenize techniques --- #
-'''
- - Tokens/n-grams
-'''
-
-tok = Tokenizer(
-    ngrams=2,
-    is_char_tokenization=False,
-    text_cleaning_method=cora_text_cleaning_method,
-    return_type='np.array')
-# tok = Tokenizer(text_cleaning_method=cora_text_cleaning_method)
-tokens = tok.process(dataset, columns=['title'])
 
 # print(tokens)
 
-# --- 3. Block Building techniques --- #
+# --- 2. Block Building techniques --- #
 
 standard_blocking = StandardBlocking()
-blocks = standard_blocking.build_blocks(tokens)
+blocks = standard_blocking.build_blocks(dataset)
 
-print(blocks)
+
+qgrams_blocking = QGramsBlocking(
+    qgrams=2,
+    is_char_tokenization=True,
+    text_cleaning_method=cora_text_cleaning_method
+)
+blocks = qgrams_blocking.build_blocks(dataset)
+
+# print(blocks)
 
 # --- 4. Block Filtering --- #
 

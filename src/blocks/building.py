@@ -1,7 +1,11 @@
 import logging
 import os
 import sys
+
+import pandas as pd
+import nltk
 import numpy as np
+# nltk.download('punkt')
 import tqdm
 from tqdm import tqdm
 
@@ -28,6 +32,8 @@ class AbstractBlockBuilding:
     num_of_blocks_1 = 0
     num_of_blocks_2 = 0
 
+    is_dirty_er: bool = False
+
     def __init__(self) -> any:
         pass
 
@@ -44,22 +50,41 @@ class StandardBlocking(AbstractBlockBuilding):
     _method_info = _method_name + ": it creates one block for every token in the attribute \
                                     values of at least two entities."
 
-    def __init__(self) -> any:
+    def __init__(self, text_cleaning_method=None) -> any:
         super().__init__()
+        self.text_cleaning_method = text_cleaning_method
 
-    def build_blocks(self, data_1: np.array, data_2: np.array = None) -> any:
+    def build_blocks(self, df_1: pd.DataFrame, df_2: pd.DataFrame = None) -> any:
+
+        data_1 = df_1.apply(" ".join, axis=1)
+
+        if df_2 is not None:
+            data_2 = df_2.apply(" ".join, axis=1)
+            tqdm_desc_1 = self._method_name + " - Clean-Clean ER (1)"
+            tqdm_desc_2 = self._method_name + " - Clean-Clean ER (2)"
+        else:
+            tqdm_desc_1 = self._method_name + " - Dirty ER"
+            self.is_dirty_er = True
         
-        for i in tqdm(range(0, len(data_1), 1), desc="Standard block building"):
-            for token in data_1[i]:
-                # TODO: maybe move split to the initial stage /
-                # build a list of lists as the input
+        for i in tqdm(range(0, len(data_1), 1), desc=tqdm_desc_1):
+            if self.text_cleaning_method is not None:
+                record = self.text_cleaning_method(data_1[i])
+            else:
+                record = data_1[i]
+
+            for token in nltk.word_tokenize(record):
                 if token not in self.blocks_dict_1.keys():
                     self.blocks_dict_1[token] = set()
                 self.blocks_dict_1[token].add(i)
 
-        if data_2 is not None:
-            for i in range(0, data_2.shape[0], 1):
-                for token in data_2[i]:
+        if df_2 is not None:
+            for i in tqdm(range(0, len(data_2), 1), desc=tqdm_desc_2):
+                if self.text_cleaning_method is not None:
+                    record = self.text_cleaning_method(data_2[i])
+                else:
+                    record = data_2[i]
+
+                for token in nltk.word_tokenize(record):
                     if token not in self.blocks_dict_2.keys():
                         self.blocks_dict_2[token] = set()
                     self.blocks_dict_2[token].add(i)
@@ -69,39 +94,83 @@ class StandardBlocking(AbstractBlockBuilding):
         return (self.blocks_dict_1, self.blocks_dict_2)
 
 class QGramsBlocking(AbstractBlockBuilding):
-    
+
+    _method_name = "Q-Grams Blocking"
+    _method_info = _method_name + ": it creates one block for every q-gram that is extracted from any token in the attribute values of any entity.\n" + \
+                "The q-gram must be shared by at least two entities."
+
     def __init__(
         self,
-        ngrams=None,
+        qgrams=None,
         is_char_tokenization=None,
         text_cleaning_method=None
     ) -> any:
         super().__init__()
 
-        self.ngrams = ngrams
+        self.qgrams = qgrams
         self.is_char_tokenization = is_char_tokenization
         self.text_cleaning_method = text_cleaning_method
 
-    def build_blocks(self, data_1: np.array, data_2: np.array = None) -> any:
+    def build_blocks(self, df_1: pd.DataFrame, df_2: pd.DataFrame = None) -> any:
 
-            for i in range(0, data_1.shape[0], 1):
-                for token in data_1[i].split():
-                    # TODO: maybe move split to the initial stage /
-                    # build a list of lists as the input
-                    if token not in self.blocks_dict_1.keys():
-                        self.blocks_dict_1[token] = set()
-                    self.blocks_dict_1[token].add(i)
+        data_1 = df_1.apply(" ".join, axis=1)
 
-            if data_2 is not None:
-                for i in range(0, data_2.shape[0], 1):
-                    for token in data_2[i]:
-                        if token not in self.blocks_dict_2.keys():
-                            self.blocks_dict_2[token] = set()
-                        self.blocks_dict_2[token].add(i)
+        if df_2 is not None:
+            data_2 = df_2.apply(" ".join, axis=1)
+            tqdm_desc_1 = self._method_name + " - Clean-Clean ER (1)"
+            tqdm_desc_2 = self._method_name + " - Clean-Clean ER (2)"
+        else:
+            tqdm_desc_1 = self._method_name + " - Dirty ER"
+            self.is_dirty_er = True
+        
+        for i in tqdm(range(0, len(data_1), 1), desc=tqdm_desc_1):
+            if self.text_cleaning_method is not None:
+                record = self.text_cleaning_method(data_1[i])
             else:
-                return self.blocks_dict_1
+                record = data_1[i]
 
-            return (self.blocks_dict_1, self.blocks_dict_2)        
+            if self.is_char_tokenization:
+                record = [' '.join(grams) for grams in nltk.ngrams(record, n=self.qgrams)]
+            else:
+                word_tokenized_record = nltk.word_tokenize(record)
+                word_tokenized_record_size = len(word_tokenized_record)
+
+                if word_tokenized_record_size > self.qgrams:
+                    record = [' '.join(grams) for grams in nltk.ngrams(word_tokenized_record, n=self.qgrams)]
+                else:
+                    record = [' '.join(grams) for grams in  nltk.ngrams(word_tokenized_record, n=word_tokenized_record_size)]
+
+            for token in record:
+                if token not in self.blocks_dict_1.keys():
+                    self.blocks_dict_1[token] = set()
+                self.blocks_dict_1[token].add(i)
+
+        if df_2 is not None:
+            for i in tqdm(range(0, len(data_2), 1), desc=tqdm_desc_2):
+                if self.text_cleaning_method is not None:
+                    record = self.text_cleaning_method(data_2[i])
+                else:
+                    record = data_2[i]
+
+                if self.is_char_tokenization:
+                    record = [' '.join(grams) for grams in nltk.ngrams(record, n=self.qgrams)]
+                else:
+                    word_tokenized_record = nltk.word_tokenize(record)
+                    word_tokenized_record_size = len(word_tokenized_record)
+
+                    if word_tokenized_record_size > self.qgrams:
+                        record = [' '.join(grams) for grams in nltk.ngrams(word_tokenized_record, n=self.qgrams)]
+                    else:
+                        record = [' '.join(grams) for grams in  nltk.ngrams(word_tokenized_record, n=word_tokenized_record_size)]
+
+                for token in record:
+                    if token not in self.blocks_dict_2.keys():
+                        self.blocks_dict_2[token] = set()
+                    self.blocks_dict_2[token].add(i)
+        else:
+            return self.blocks_dict_1
+
+        return (self.blocks_dict_1, self.blocks_dict_2)
 
 class SuffixArraysBlocking(AbstractBlockBuilding):
     pass
