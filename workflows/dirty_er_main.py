@@ -20,18 +20,26 @@ ground_truth = pd.read_csv("../data/cora/cora_gt.csv", sep='|')
  - Tokens/n-grams
 '''
 
-# tok = Tokenizer(ngrams=2, is_char_tokenization=False, return_type='list')
-tok = Tokenizer(text_cleaning_method=cora_text_cleaning_method)
+tok = Tokenizer(
+    ngrams=2,
+    is_char_tokenization=False,
+    text_cleaning_method=cora_text_cleaning_method,
+    return_type='np.array')
+# tok = Tokenizer(text_cleaning_method=cora_text_cleaning_method)
 tokens = tok.process(dataset, columns=['title'])
 
 # print(tokens)
 
 # --- 3. Block Building techniques --- #
 
-# standard_blocking = StandardBlocking()
-# standard_blocking.build_blocks(tokens)
+standard_blocking = StandardBlocking()
+blocks = standard_blocking.build_blocks(tokens)
+
+print(blocks)
 
 # --- 4. Block Filtering --- #
+
+
 # --- 5. Comparison Propagation --- #
 # --- 6. Jaccard Similarity --- #
 # --- 7. Connected Components --- #
