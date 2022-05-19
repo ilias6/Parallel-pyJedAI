@@ -9,6 +9,7 @@ import pandas as pd
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from src.utils.tokenizer import Tokenizer, cora_text_cleaning_method
 from src.blocks.building import StandardBlocking, QGramsBlocking
+from src.blocks.cleaning import BlockFiltering
 
 # --- 1. Read the dataset --- #
 
@@ -38,7 +39,8 @@ blocks = qgrams_blocking.build_blocks(dataset)
 # print(blocks)
 
 # --- 4. Block Filtering --- #
-
+block_filtering = BlockFiltering()
+blocks = block_filtering.process(blocks)
 
 # --- 5. Comparison Propagation --- #
 # --- 6. Jaccard Similarity --- #

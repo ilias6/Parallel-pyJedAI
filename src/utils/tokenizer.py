@@ -11,6 +11,7 @@ import nltk
 import numpy as np
 # nltk.download('punkt')
 import tqdm
+import re
 from tqdm import tqdm
 
 # logging.basicConfig(filename='tokenization.log', level=logging.INFO)
@@ -83,15 +84,17 @@ class Tokenizer:
 
 def cora_text_cleaning_method(s):
 
+    tokenizer = nltk.RegexpTokenizer(r"\w+")
+
     new_s = s
 
     # Lower letters
     new_s = new_s.lower()
 
     # # Remove special chars
-    # new_s = new_s.replace("\n", "").replace("/z", " ")
+    new_s = new_s.replace("'", "").replace("/z", " ")
 
     # Remove pancutation
-    new_s = new_s.translate(str.maketrans('', '', string.punctuation))
+    new_s =  re.sub(r"[^a-zA-Z]","",new_s)
 
     return str(new_s)

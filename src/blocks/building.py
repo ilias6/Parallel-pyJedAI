@@ -32,12 +32,15 @@ class AbstractBlockBuilding:
     num_of_blocks_1 = 0
     num_of_blocks_2 = 0
 
+    cardinality_1: List[int]
+    cardinality_2: List[int] = None
+
     is_dirty_er: bool = False
 
     def __init__(self) -> any:
         pass
 
-    def build_blocks(self, data: list) -> dict:
+    def build_blocks(self, df_1: pd.DataFrame, df_2: pd.DataFrame = None) -> dict:
         pass
 
     def __str__(self) -> str:
@@ -45,6 +48,11 @@ class AbstractBlockBuilding:
 
 
 class StandardBlocking(AbstractBlockBuilding):
+    '''
+    Standard Blocking
+    ---
+    Creates one block for every token in the attribute values of at least two entities.
+    '''
 
     _method_name = "Standard Blocking"
     _method_info = _method_name + ": it creates one block for every token in the attribute \
@@ -75,8 +83,10 @@ class StandardBlocking(AbstractBlockBuilding):
             for token in nltk.word_tokenize(record):
                 if token not in self.blocks_dict_1.keys():
                     self.blocks_dict_1[token] = set()
-                self.blocks_dict_1[token].add(i)
+                    self.num_of_blocks_1 += 1
 
+                self.blocks_dict_1[token].add(i)
+                
         if df_2 is not None:
             for i in tqdm(range(0, len(data_2), 1), desc=tqdm_desc_2):
                 if self.text_cleaning_method is not None:
@@ -87,6 +97,7 @@ class StandardBlocking(AbstractBlockBuilding):
                 for token in nltk.word_tokenize(record):
                     if token not in self.blocks_dict_2.keys():
                         self.blocks_dict_2[token] = set()
+                        self.num_of_blocks_2 += 1
                     self.blocks_dict_2[token].add(i)
         else:
             return self.blocks_dict_1
@@ -94,6 +105,12 @@ class StandardBlocking(AbstractBlockBuilding):
         return (self.blocks_dict_1, self.blocks_dict_2)
 
 class QGramsBlocking(AbstractBlockBuilding):
+    '''
+    Q-Grams Blocking
+    ---
+    Creates one block for every q-gram that is extracted from any token in the attribute values of any entity.
+    The q-gram must be shared by at least two entities.
+    '''
 
     _method_name = "Q-Grams Blocking"
     _method_info = _method_name + ": it creates one block for every q-gram that is extracted from any token in the attribute values of any entity.\n" + \
@@ -173,6 +190,12 @@ class QGramsBlocking(AbstractBlockBuilding):
         return (self.blocks_dict_1, self.blocks_dict_2)
 
 class SuffixArraysBlocking(AbstractBlockBuilding):
+    pass
+
+class ExtendedSuffixArraysBlocking(AbstractBlockBuilding):
+    pass
+
+class ExtendedQGramsBlocking(AbstractBlockBuilding):
     pass
 
 class LSHSuperBitBlocking(AbstractBlockBuilding):
