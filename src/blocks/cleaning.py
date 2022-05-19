@@ -40,6 +40,7 @@ class BlockFiltering(AbstractBlockCleaning):
         
 
     def find_blocks_cardinality(self, blocks: dict) -> dict:
+        
         return dict(sorted(blocks.items(), key=lambda x: len(x[1])))
 
 

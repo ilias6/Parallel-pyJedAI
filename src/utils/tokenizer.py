@@ -85,7 +85,7 @@ class Tokenizer:
 def cora_text_cleaning_method(s):
 
     tokenizer = nltk.RegexpTokenizer(r"\w+")
-
+    # print("Initial: ", s)
     new_s = s
 
     # Lower letters
@@ -94,7 +94,9 @@ def cora_text_cleaning_method(s):
     # # Remove special chars
     new_s = new_s.replace("'", "").replace("/z", " ")
 
-    # Remove pancutation
-    new_s =  re.sub(r"[^a-zA-Z]","",new_s)
+    # # Remove panctuation
+    # new_s = re.sub(r"[^a-zA-Z]","",new_s)
 
+    new_s = new_s.translate(str.maketrans(' ', ' ', string.punctuation))
+    # print("Final: ", str(new_s))
     return str(new_s)
