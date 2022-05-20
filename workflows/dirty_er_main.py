@@ -15,7 +15,8 @@ from src.blocks.cleaning import BlockFiltering
 
 dataset = pd.read_csv(
     "../data/cora/cora.csv",
-    usecols=['title', 'author'],
+    usecols=['author'],
+    # nrows=10,
     sep='|'
 )
 
@@ -28,7 +29,7 @@ ground_truth = pd.read_csv("../data/cora/cora_gt.csv", sep='|')
 standard_blocking = StandardBlocking(text_cleaning_method=cora_text_cleaning_method)
 blocks = standard_blocking.build_blocks(dataset)
 
-print(blocks)
+# print(blocks)
 
 # qgrams_blocking = QGramsBlocking(
 #     qgrams=2,

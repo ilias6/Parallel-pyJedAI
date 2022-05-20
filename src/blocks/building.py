@@ -49,23 +49,19 @@ class AbstractBlockBuilding:
             tqdm_desc_2 = self._method_name + " - Clean-Clean ER (2)"
         else:
             tqdm_desc_1 = self._method_name + " - Dirty ER"
-            self.is_dirty_er = True
+            self._is_dirty_er = True
 
         for i in tqdm(range(0, len(entities_D1), 1), desc=tqdm_desc_1):
             record = self.text_cleaning_method(entities_D1[i]) if self.text_cleaning_method is not None else entities_D1[i]
-            print("> ", record)
             for token in self.tokenize_entity(record):
                 if token not in self.blocks_dict.keys():
-                    print(token)
                     self.blocks_dict[token] = Block(token)
                 self.blocks_dict[token].entities_D1.add(i)
 
         if entities_df_2 is not None:
             for i in tqdm(range(0, len(entities_D2), 1), desc=tqdm_desc_2):
                 record = self.text_cleaning_method(entities_D2[i]) if self.text_cleaning_method is not None else entities_D2[i]
-                print(record)
                 for token in self.tokenize_entity(record):
-                    print(token)
                     if token not in self.blocks_dict.keys():
                         self.blocks_dict[token] = Block(token)
                     self.blocks_dict[token].entities_D2.add(i)
@@ -75,22 +71,19 @@ class AbstractBlockBuilding:
         return self.blocks_dict
 
     def drop_single_entity_blocks(self):
-        
+
         all_keys = list(self.blocks_dict.keys())
-        print(all_keys)
-        print("All keys before: ", len(all_keys))
+        # print("All keys before: ", len(all_keys))
         for key in all_keys:
-            print(key, ' : ', len(self.blocks_dict[key].entities_D1))
             if self._is_dirty_er:
                 if len(self.blocks_dict[key].entities_D1) == 1:
-                    print("here")
                     self.blocks_dict.pop(key)
             else:
                 if (len(self.blocks_dict[key].entities_D1) == 0 and len(self.blocks_dict[key].entities_D2) != 0) or \
                     (len(self.blocks_dict[key].entities_D1) != 0 and len(self.blocks_dict[key].entities_D2) == 0):
                     self.blocks_dict.pop(key)
 
-        print("All keys after: ", len(self.blocks_dict.keys()))
+        # print("All keys after: ", len(self.blocks_dict.keys()))
 
         
     def tokenize_entity(self, entity: str) -> list:
@@ -123,8 +116,8 @@ class QGramsBlocking(AbstractBlockBuilding):
     '''
     Q-Grams Blocking
     ---
-    Creates one block for every q-gram that is extracted from any token in the attribute values of any entity.
-    The q-gram must be shared by at least two entities.
+    Creates one block for every q-gram that is extracted from any token in the attribute \
+    values of any entity. The q-gram must be shared by at least two entities.
     '''
 
     _method_name = "Q-Grams Blocking"

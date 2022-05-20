@@ -10,8 +10,10 @@ class Block:
     _entropy: float = 1.0
     _cardinality: int = 0
 
-    entities_D1: set = set()
-    entities_D2: set = set()
-
-    def __init__(self, key):
+    def __init__(self, key, is_dirty_er: bool = True):
         self.key = key
+        self.entities_D1: set = set()
+
+        if not is_dirty_er:
+            self._is_dirty_er = False
+            self.entities_D2: set = set()
