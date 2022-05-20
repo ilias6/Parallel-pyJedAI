@@ -21,8 +21,8 @@ class BlockFiltering(AbstractBlockCleaning):
     Returns:
     '''
 
-    _method_name = "Block Filtering"
-    _method_info = ": it retains every entity in a subset of its smallest blocks."
+    __method_name = "Block Filtering"
+    __method_info = ": it retains every entity in a subset of its smallest blocks."
 
     def __init__(self, ratio: float = 0.8) -> None:
         super().__init__()

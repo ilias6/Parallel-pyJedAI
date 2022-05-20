@@ -47,6 +47,7 @@ class AbstractBlockBuilding:
             entities_D2 = entities_df_2.apply(" ".join, axis=1)
             tqdm_desc_1 = self._method_name + " - Clean-Clean ER (1)"
             tqdm_desc_2 = self._method_name + " - Clean-Clean ER (2)"
+            self._is_dirty_er = False
         else:
             tqdm_desc_1 = self._method_name + " - Dirty ER"
             self._is_dirty_er = True
@@ -55,7 +56,7 @@ class AbstractBlockBuilding:
             record = self.text_cleaning_method(entities_D1[i]) if self.text_cleaning_method is not None else entities_D1[i]
             for token in self.tokenize_entity(record):
                 if token not in self.blocks_dict.keys():
-                    self.blocks_dict[token] = Block(token)
+                    self.blocks_dict[token] = Block(token, self._is_dirty_er)
                 self.blocks_dict[token].entities_D1.add(i)
 
         if entities_df_2 is not None:
@@ -63,7 +64,7 @@ class AbstractBlockBuilding:
                 record = self.text_cleaning_method(entities_D2[i]) if self.text_cleaning_method is not None else entities_D2[i]
                 for token in self.tokenize_entity(record):
                     if token not in self.blocks_dict.keys():
-                        self.blocks_dict[token] = Block(token)
+                        self.blocks_dict[token] = Block(token, self._is_dirty_er)
                     self.blocks_dict[token].entities_D2.add(i)
 
         self.drop_single_entity_blocks()
@@ -73,7 +74,7 @@ class AbstractBlockBuilding:
     def drop_single_entity_blocks(self):
 
         all_keys = list(self.blocks_dict.keys())
-        # print("All keys before: ", len(all_keys))
+        print("All keys before: ", len(all_keys))
         for key in all_keys:
             if self._is_dirty_er:
                 if len(self.blocks_dict[key].entities_D1) == 1:
@@ -83,7 +84,7 @@ class AbstractBlockBuilding:
                     (len(self.blocks_dict[key].entities_D1) != 0 and len(self.blocks_dict[key].entities_D2) == 0):
                     self.blocks_dict.pop(key)
 
-        # print("All keys after: ", len(self.blocks_dict.keys()))
+        print("All keys after: ", len(self.blocks_dict.keys()))
 
         
     def tokenize_entity(self, entity: str) -> list:

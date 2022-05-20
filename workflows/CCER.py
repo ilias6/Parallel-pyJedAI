@@ -1,5 +1,5 @@
 '''
- Main workflow for Dirty ER
+ Main workflow for Clean-Clean ER
 '''
 # --- Libs import --- #
 import os
@@ -13,10 +13,17 @@ from src.blocks.cleaning import BlockFiltering
 
 # --- 1. Read the dataset --- #
 
-dataset = pd.read_csv(
+dataset_1 = pd.read_csv(
+    "../data/cora/cora.csv",
+    usecols=['title'],
+    # nrows=10,
+    sep='|'
+)
+
+dataset_2 = pd.read_csv(
     "../data/cora/cora.csv",
     usecols=['author'],
-    # nrows=10,
+    nrows=100,
     sep='|'
 )
 
@@ -27,15 +34,15 @@ ground_truth = pd.read_csv("../data/cora/cora_gt.csv", sep='|')
 # --- 2. Block Building techniques --- #
 
 standard_blocking = StandardBlocking(text_cleaning_method=cora_text_cleaning_method)
-blocks = standard_blocking.build_blocks(dataset)
+blocks = standard_blocking.build_blocks(dataset_1, dataset_2)
 
 # print(blocks)
 
-# qgrams_blocking = QGramsBlocking(
-#     qgrams=2,
-#     text_cleaning_method=cora_text_cleaning_method
-# )
-# blocks = qgrams_blocking.build_blocks(dataset)
+qgrams_blocking = QGramsBlocking(
+    qgrams=2,
+    text_cleaning_method=cora_text_cleaning_method
+)
+blocks = qgrams_blocking.build_blocks(dataset_1, dataset_2)
 
 # print(blocks)
 
