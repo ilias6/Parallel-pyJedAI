@@ -17,3 +17,13 @@ class Block:
             self.entities_D2: set = set()
         
         self._is_dirty_er = is_dirty_er
+
+    def get_cardinality(self) -> int:
+
+        if self._is_dirty_er:
+            return len(self.entities_D1)
+
+        return len(self.entities_D1) + len(self.entities_D2)
+
+    def is_dirty_er(self):
+        return self._is_dirty_er

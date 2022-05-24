@@ -1,3 +1,11 @@
+'''
+Blocking methods
+---
+
+One block is consisted of 1 set if Dirty ER and 
+2 sets if Clean-Clean ER.
+'''
+
 from html import entities
 import logging
 from operator import methodcaller
