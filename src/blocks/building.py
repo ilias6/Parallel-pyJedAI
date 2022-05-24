@@ -6,7 +6,6 @@ One block is consisted of 1 set if Dirty ER and
 2 sets if Clean-Clean ER.
 '''
 
-from html import entities
 import logging
 from operator import methodcaller
 import os
@@ -48,8 +47,15 @@ class AbstractBlockBuilding:
         pass
 
     def build_blocks(self, entities_df_1: pd.DataFrame, entities_df_2: pd.DataFrame = None) -> any:
+        '''
+        Main method of Standard Blocking
+        ---
+        Input: Dirty/Clean-1 dataframe, Clean-2 dataframe
+        Returns: dict of token -> Block
+        '''
 
         entities_D1 = entities_df_1.apply(" ".join, axis=1)
+        entities_D1_size = len(entities_D1)
 
         if entities_df_2 is not None:
             entities_D2 = entities_df_2.apply(" ".join, axis=1)
@@ -60,7 +66,7 @@ class AbstractBlockBuilding:
             tqdm_desc_1 = self._method_name + " - Dirty ER"
             self._is_dirty_er = True
 
-        for i in tqdm(range(0, len(entities_D1), 1), desc=tqdm_desc_1):
+        for i in tqdm(range(0, entities_D1_size, 1), desc=tqdm_desc_1):
             record = self.text_cleaning_method(entities_D1[i]) if self.text_cleaning_method is not None else entities_D1[i]
             for token in self.tokenize_entity(record):
                 if token not in self.blocks_dict.keys():
@@ -73,16 +79,18 @@ class AbstractBlockBuilding:
                 for token in self.tokenize_entity(record):
                     if token not in self.blocks_dict.keys():
                         self.blocks_dict[token] = Block(token, self._is_dirty_er)
-                    self.blocks_dict[token].entities_D2.add(i)
+                    self.blocks_dict[token].entities_D2.add(entities_D1_size+i)
 
         self.drop_single_entity_blocks()
 
         return self.blocks_dict
 
     def drop_single_entity_blocks(self):
-
+        '''
+        Removes one-size blocks for DER and empty for CCER
+        '''
         all_keys = list(self.blocks_dict.keys())
-        print("All keys before: ", len(all_keys))
+        # print("All keys before: ", len(all_keys))
         for key in all_keys:
             if self._is_dirty_er:
                 if len(self.blocks_dict[key].entities_D1) == 1:
@@ -91,16 +99,13 @@ class AbstractBlockBuilding:
                 if (len(self.blocks_dict[key].entities_D1) == 0 and len(self.blocks_dict[key].entities_D2) != 0) or \
                     (len(self.blocks_dict[key].entities_D1) != 0 and len(self.blocks_dict[key].entities_D2) == 0):
                     self.blocks_dict.pop(key)
-
-        print("All keys after: ", len(self.blocks_dict.keys()))
-
-        
+        # print("All keys after: ", len(self.blocks_dict.keys()))
+  
     def tokenize_entity(self, entity: str) -> list:
         pass
 
     def __str__(self) -> str:
         pass
-
 
 class StandardBlocking(AbstractBlockBuilding):
     '''
@@ -163,8 +168,3 @@ class LSHSuperBitBlocking(AbstractBlockBuilding):
 
 class LSHMinHashBlocking(LSHSuperBitBlocking):
     pass
-
-
-    
-
-    

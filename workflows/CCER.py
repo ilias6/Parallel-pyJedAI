@@ -47,8 +47,14 @@ blocks = qgrams_blocking.build_blocks(dataset_1, dataset_2)
 # print(blocks)
 
 # --- 4. Block Filtering --- #
-# block_filtering = BlockFiltering()
-# blocks = block_filtering.process(blocks)
+block_filtering = BlockFiltering(len(dataset_1))
+blocks = block_filtering.process(blocks)
+
+
+for k,b in blocks.items():
+    b.verbose()
+
+# --- META-Blocking -- #
 
 # --- 5. Comparison Propagation --- #
 # --- 6. Jaccard Similarity --- #

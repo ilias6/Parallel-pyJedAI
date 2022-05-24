@@ -1,11 +1,13 @@
 import logging
 import os
+from pydoc import describe
 import sys
 
 import pandas as pd
 import nltk
 import numpy as np
 
+from tqdm import tqdm
 from sortedcontainers import SortedList, SortedSet
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -23,16 +25,20 @@ class BlockFiltering(AbstractBlockCleaning):
     ---
     Retains every entity in a subset of its smallest blocks
 
-    Input:
-    Returns:
+    Filtering consists of 3 steps:
+    - Blocks sort in ascending cardinality
+    - Creation of Entity Index: inversed block dictionary
+    - Retain every entity in ratio % of its smallest blocks
+    - Blocks reconstruction
     '''
 
     __method_name = "Block Filtering"
     __method_info = ": it retains every entity in a subset of its smallest blocks."
 
-    def __init__(self, ratio: float = 0.8) -> None:
+    def __init__(self, entities_size_D1, ratio: float = 0.8) -> None:
         super().__init__()
         self.ratio = ratio
+        self.entities_size_D1 = entities_size_D1
 
     def __str__(self) -> str:
         print(self.__method_name + self.__method_info)
@@ -40,34 +46,40 @@ class BlockFiltering(AbstractBlockCleaning):
         return super().__str__()
 
     def process(self, blocks: dict) -> dict:
+        '''
+        Main function of Block Filtering
+        ---
+        Input: dict of keys -> Block
+        Returns: dict of keys -> Block
+        '''
+        pbar = tqdm(total=3, desc="Block Filtering")
 
         sorted_blocks = self.sort_blocks_cardinality(blocks)
-        entity_index = dict()
-
-        for key, block in sorted_blocks.items():
-            print(block.get_cardinality())
-
+        pbar.update(1)
         entity_index: dict = self.create_entity_index(sorted_blocks)
-
+        pbar.update(1)
+        
         filtered_blocks = {}
         for entity_id, block_keys in entity_index.items():
-
-            # Sort each based on ascending cardinality and keep omly the ratio
-            final_block_keys = sorted(block_keys, key=lambda x: x[1])[:int(self.ratio*len(block_keys))]
-            
+            # print(entity_id, " : ", block_keys, " or ", [blocks[n].get_cardinality() for n in block_keys])
             # Create new blocks from the entity index
-            for key, _ in final_block_keys:
-                if self._is_dirty_er:
-                    if key not in filtered_blocks.keys():
-                        filtered_blocks[key] = Block(key, self._is_dirty_er)
-                    filtered_blocks[key].entities_D1.add(entity_id)
-                # else:
-                    
+            for key in block_keys[:int(self.ratio*len(block_keys))]:
+                if key not in filtered_blocks.keys():
+                    filtered_blocks[key] = Block(key, self._is_dirty_er)
 
+                # Entities ids start to 0 ... n-1 for 1st dataset
+                # and n ... m for 2nd dataset
+                if entity_id < self.entities_size_D1:
+                    filtered_blocks[key].entities_D1.add(entity_id)
+                else:
+                    filtered_blocks[key].entities_D2.add(entity_id)
+        pbar.update(1)
         return self.drop_single_entity_blocks(filtered_blocks)
 
     def create_entity_index(self, blocks_dict) -> dict:
-
+        '''
+        Creates a dict of entity ids -> block ids that this entity belongs
+        '''
         entity_index = {}
 
         for key, block in blocks_dict.items():
@@ -76,20 +88,23 @@ class BlockFiltering(AbstractBlockCleaning):
 
             for entity_id in block.entities_D1:
                 if entity_id not in entity_index.keys():
-                    entity_index[entity_id] = set()
-                entity_index[entity_id].add((key, blocks_dict[key].get_cardinality()))
+                    entity_index[entity_id] = []
+                entity_index[entity_id].append(key)
 
             if not self._is_dirty_er:
                 for entity_id in block.entities_D2:
                     if entity_id not in entity_index.keys():
-                        entity_index[entity_id] = set()
-                    entity_index[entity_id].add((key, blocks_dict[key].get_cardinality()))
+                        entity_index[entity_id] = []
+                    entity_index[entity_id].append(key)
 
         return entity_index
 
     def drop_single_entity_blocks(self, blocks):
+        '''
+        Removes one-size blocks for DER and empty for CCER
+        '''
         all_keys = list(blocks.keys())
-        print("All keys before: ", len(all_keys))
+        # print("All keys before: ", len(all_keys))
         for key in all_keys:
             if self._is_dirty_er:
                 if len(blocks[key].entities_D1) == 1:
@@ -98,8 +113,8 @@ class BlockFiltering(AbstractBlockCleaning):
                 if (len(blocks[key].entities_D1) == 0 and len(blocks[key].entities_D2) != 0) or \
                     (len(blocks[key].entities_D1) != 0 and len(blocks[key].entities_D2) == 0):
                     blocks.pop(key)
+        # print("All keys after: ", len(blocks))
 
-        print("All keys after: ", len(blocks.keys()))
         return blocks
 
     def sort_blocks_cardinality(self, blocks: dict) -> dict:

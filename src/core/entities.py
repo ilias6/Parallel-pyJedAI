@@ -1,13 +1,10 @@
-from html import entities
+import colorama
+from colorama import Fore
 import logging
 from typing import Dict
 
 class Block:
 
-    _key: any
-    _comparisons: int = 0
-    _entropy: float = 1.0
-    _cardinality: int = 0
 
     def __init__(self, key, is_dirty_er: bool = True):
         self.key = key
@@ -23,7 +20,18 @@ class Block:
         if self._is_dirty_er:
             return len(self.entities_D1)
 
-        return len(self.entities_D1) + len(self.entities_D2)
+        return len(self.entities_D1) * len(self.entities_D2)
 
     def is_dirty_er(self):
         return self._is_dirty_er
+
+    def verbose(self):
+        print("\nBlock ", "\033[1;32m"+self.key+"\033[0m", " contains entities with ids: ")
+        if self._is_dirty_er:
+            print("Dirty dataset: " + "[\033[1;34m"+str(len(self.entities_D1)) + " entities\033[0m]")
+            print(self.entities_D1)
+        else:
+            print("Clean dataset 1: " + "[\033[1;34m"+str(len(self.entities_D1)) + " entities\033[0m]")
+            print(self.entities_D1)
+            print("Clean dataset 2: " + "[\033[1;34m" + str(len(self.entities_D2)) + " entities\033[0m]")
+            print(self.entities_D2)
