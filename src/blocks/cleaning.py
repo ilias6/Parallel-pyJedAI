@@ -13,11 +13,12 @@ from sortedcontainers import SortedList, SortedSet
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from src.core.entities import Block
 from src.utils.utils import insert_to_dict
+from src.utils.constants import LIST, SET
+
 
 class AbstractBlockCleaning:
     def __init__(self) -> None:
         pass
-
 
 class BlockFiltering(AbstractBlockCleaning):
     '''
@@ -58,14 +59,13 @@ class BlockFiltering(AbstractBlockCleaning):
         pbar.update(1)
         entity_index: dict = self.create_entity_index(sorted_blocks)
         pbar.update(1)
-        
+
         filtered_blocks = {}
         for entity_id, block_keys in entity_index.items():
             # print(entity_id, " : ", block_keys, " or ", [blocks[n].get_cardinality() for n in block_keys])
             # Create new blocks from the entity index
             for key in block_keys[:int(self.ratio*len(block_keys))]:
-                if key not in filtered_blocks.keys():
-                    filtered_blocks[key] = Block(key, self._is_dirty_er)
+                filtered_blocks.setdefault(key, Block(key, self._is_dirty_er))
 
                 # Entities ids start to 0 ... n-1 for 1st dataset
                 # and n ... m for 2nd dataset
@@ -78,23 +78,19 @@ class BlockFiltering(AbstractBlockCleaning):
 
     def create_entity_index(self, blocks_dict) -> dict:
         '''
-        Creates a dict of entity ids -> block ids that this entity belongs
+        Creates a dict of entity ids -> block ids
         '''
         entity_index = {}
-
         for key, block in blocks_dict.items():
-            
             self._is_dirty_er = block.is_dirty_er()
 
             for entity_id in block.entities_D1:
-                if entity_id not in entity_index.keys():
-                    entity_index[entity_id] = []
+                entity_index.setdefault(entity_id, [])
                 entity_index[entity_id].append(key)
 
             if not self._is_dirty_er:
                 for entity_id in block.entities_D2:
-                    if entity_id not in entity_index.keys():
-                        entity_index[entity_id] = []
+                    entity_index.setdefault(entity_id, [])
                     entity_index[entity_id].append(key)
 
         return entity_index
@@ -105,16 +101,14 @@ class BlockFiltering(AbstractBlockCleaning):
         '''
         all_keys = list(blocks.keys())
         # print("All keys before: ", len(all_keys))
-        for key in all_keys:
-            if self._is_dirty_er:
+        if self._is_dirty_er:
+            for key in all_keys:
                 if len(blocks[key].entities_D1) == 1:
                     blocks.pop(key)
-            else:
-                if (len(blocks[key].entities_D1) == 0 and len(blocks[key].entities_D2) != 0) or \
-                    (len(blocks[key].entities_D1) != 0 and len(blocks[key].entities_D2) == 0):
+        else:
+            for key in all_keys:
+                if len(blocks[key].entities_D1) == 0 or len(blocks[key].entities_D2) == 0:
                     blocks.pop(key)
-        # print("All keys after: ", len(blocks))
-
         return blocks
 
     def sort_blocks_cardinality(self, blocks: dict) -> dict:

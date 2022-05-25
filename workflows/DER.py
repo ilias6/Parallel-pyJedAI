@@ -43,8 +43,8 @@ blocks = standard_blocking.build_blocks(dataset)
 block_filtering = BlockFiltering(len(dataset), ratio=0.6)
 blocks = block_filtering.process(blocks)
 
-for k,b in blocks.items():
-    b.verbose()
+# for k,b in blocks.items():
+#     b.verbose()
 
 # --- 5. Comparison Propagation --- #
 # --- 6. Jaccard Similarity --- #

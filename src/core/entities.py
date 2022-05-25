@@ -4,22 +4,22 @@ import logging
 from typing import Dict
 
 class Block:
-
+    '''
+    Block entity
+    ---
+    Consists of 2 sets of profile entities (1 for Dirty ER and 2 for Clean-Clean ER)
+    '''
 
     def __init__(self, key, is_dirty_er: bool = True):
         self.key = key
         self.entities_D1: set = set()
-        
         if not is_dirty_er:
             self.entities_D2: set = set()
-        
         self._is_dirty_er = is_dirty_er
 
     def get_cardinality(self) -> int:
-
         if self._is_dirty_er:
             return len(self.entities_D1)
-
         return len(self.entities_D1) * len(self.entities_D2)
 
     def is_dirty_er(self):
