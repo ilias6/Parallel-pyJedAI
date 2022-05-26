@@ -27,8 +27,7 @@ info = logging.info
 error = logging.error
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from src.utils.tokenizer import Tokenizer
-from src.core.entities import Block
+from src.core.entities import Block, WorkFlow
 
 
 class AbstractBlockBuilding:
@@ -36,8 +35,8 @@ class AbstractBlockBuilding:
     Abstract class for the block building method
     '''
 
-    _method_name = None
-    _method_info = None
+    _method_name: str
+    _method_info: str
 
     blocks_dict: dict = dict()
 
@@ -49,13 +48,16 @@ class AbstractBlockBuilding:
     def __init__(self) -> any:
         pass
 
-    def build_blocks(self, entities_df_1: pd.DataFrame, entities_df_2: pd.DataFrame = None) -> any:
+    def build_blocks(self, workflow: WorkFlow) -> any:
         '''
         Main method of Standard Blocking
         ---
         Input: Dirty/Clean-1 dataframe, Clean-2 dataframe
         Returns: dict of token -> Block
         '''
+        entities_df_1 = workflow.dataset_1
+        if workflow.is_dirty_er:
+            entities_df_2 = workflow.dataset_2
 
         entities_D1 = entities_df_1.apply(" ".join, axis=1)
         entities_D1_size = len(entities_D1)
@@ -86,7 +88,13 @@ class AbstractBlockBuilding:
 
         self.drop_single_entity_blocks()
 
-        return self.blocks_dict
+        workflow.num_of_entities_1 = len(entities_D1)
+        if not workflow.is_dirty_er:
+            workflow.num_of_entities_2 = len(entities_D2)
+        workflow.blocks = self.blocks_dict
+        workflow.block_building = self
+
+        return workflow
 
     def drop_single_entity_blocks(self):
         '''
@@ -99,8 +107,7 @@ class AbstractBlockBuilding:
                 if len(self.blocks_dict[key].entities_D1) == 1:
                     self.blocks_dict.pop(key)
             else:
-                if (len(self.blocks_dict[key].entities_D1) == 0 and len(self.blocks_dict[key].entities_D2) != 0) or \
-                    (len(self.blocks_dict[key].entities_D1) != 0 and len(self.blocks_dict[key].entities_D2) == 0):
+                if len(self.blocks_dict[key].entities_D1) == 0 or len(self.blocks_dict[key].entities_D2):
                     self.blocks_dict.pop(key)
         # print("All keys after: ", len(self.blocks_dict.keys()))
   

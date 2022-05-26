@@ -11,7 +11,7 @@ from tqdm import tqdm
 from sortedcontainers import SortedList, SortedSet
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from src.core.entities import Block
+from src.core.entities import Block, WorkFlow
 from src.utils.utils import insert_to_dict
 from src.utils.constants import LIST, SET
 
@@ -36,32 +36,32 @@ class BlockFiltering(AbstractBlockCleaning):
     __method_name = "Block Filtering"
     __method_info = ": it retains every entity in a subset of its smallest blocks."
 
-    def __init__(self, entities_size_D1, ratio: float = 0.8) -> None:
+    def __init__(self, ratio: float = 0.8) -> None:
         super().__init__()
         self.ratio = ratio
-        self.entities_size_D1 = entities_size_D1
 
     def __str__(self) -> str:
         print(self.__method_name + self.__method_info)
         print("Ratio: ", self.ratio)
         return super().__str__()
 
-    def process(self, blocks: dict) -> dict:
+    def process(self, workflow: WorkFlow) -> dict:
         '''
         Main function of Block Filtering
         ---
         Input: dict of keys -> Block
         Returns: dict of keys -> Block
         '''
+        self.entities_size_D1 = workflow.num_of_entities_1
         pbar = tqdm(total=3, desc="Block Filtering")
 
-        sorted_blocks = self.sort_blocks_cardinality(blocks)
+        sorted_blocks = self.sort_blocks_cardinality(workflow.blocks)
         pbar.update(1)
-        entity_index: dict = self.create_entity_index(sorted_blocks)
+        workflow.entity_index = self.create_entity_index(sorted_blocks)
         pbar.update(1)
 
         filtered_blocks = {}
-        for entity_id, block_keys in entity_index.items():
+        for entity_id, block_keys in workflow.entity_index.items():
             # print(entity_id, " : ", block_keys, " or ", [blocks[n].get_cardinality() for n in block_keys])
             # Create new blocks from the entity index
             for key in block_keys[:int(self.ratio*len(block_keys))]:
@@ -74,7 +74,10 @@ class BlockFiltering(AbstractBlockCleaning):
                 else:
                     filtered_blocks[key].entities_D2.add(entity_id)
         pbar.update(1)
-        return self.drop_single_entity_blocks(filtered_blocks)
+
+        workflow.blocks = self.drop_single_entity_blocks(filtered_blocks)
+        
+        return workflow
 
     def create_entity_index(self, blocks_dict) -> dict:
         '''
