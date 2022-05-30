@@ -5,5 +5,5 @@ WEIGHTING_SCHEME = [
     "ECBS",
     "JS",
     "EJS",
-    "PEARSON_X2"    
+    "PEARSON_X2"
 ]

@@ -12,30 +12,22 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 class WorkFlow:
 
+    __is_dirty_er: bool
+    __dataset_1: pd.DataFrame
+    __dataset_2: pd.DataFrame
+
+    __blocks: dict
+    __num_of_blocks: int
+    __entity_index: dict
+    __dataset_lim: int
+    __num_of_entities_1: int
+    __num_of_entities_2: int
+    __ground_truth: pd.DataFrame
+
     def __init__(
-            self,
-            is_dirty_er: bool,
-            dataset_1: pd.DataFrame,
-            dataset_2: pd.DataFrame = None,
-            ground_truth: pd.DataFrame = None
+            self
         ) -> None:
-
-        self.is_dirty_er: bool = is_dirty_er
-        self.dataset_1: pd.DataFrame = dataset_1
-        self.dataset_2: pd.DataFrame = dataset_2
-
-        self.blocks: dict
-        self.num_of_blocks: int
-        self.entity_index: dict
-        self.num_of_entities: int
-        self.dataset_lim: int
-        self.num_of_entities_1: int
-        if not is_dirty_er:
-            self.num_of_entities_2: int
-        self.ground_truth = ground_truth
-        # self.block_building: AbstractBlockBuilding = None
-        # self.block_filtering: AbstractBlockCleaning = None
-
+        pass
 
 class Block:
     '''
@@ -44,15 +36,13 @@ class Block:
     Consists of 2 sets of profile entities (1 for Dirty ER and 2 for Clean-Clean ER)
     '''
 
-    def __init__(self, key, is_dirty_er: bool = True) -> None:
+    def __init__(self, key) -> None:
         self.key = key
         self.entities_D1: set = set()
-        if not is_dirty_er:
-            self.entities_D2: set = set()
-        self._is_dirty_er = is_dirty_er
+        self.entities_D2: set = set()
 
-    def get_cardinality(self) -> int:
-        if self._is_dirty_er:
+    def get_cardinality(self, is_dirty_er) -> int:
+        if is_dirty_er:
             return len(self.entities_D1)
         return len(self.entities_D1) * len(self.entities_D2)
 

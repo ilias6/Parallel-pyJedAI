@@ -1,3 +1,4 @@
+from core.entities import WorkFlow
 import numpy as np
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -26,15 +27,16 @@ class AbstractMetablocking(AbstractComparisonCleaning):
         self.counters: np.array
         self.comparisons_per_entity: np.array
 
-        # All dicts will be {int -> np.array} 
+        # All dicts will be {int -> np.array}
         self.neighbors: dict = dict()
         self.retained_neighbors: dict = dict()
         self.retained_neighbors_weights: dict = dict()
 
         self.weighting_scheme: str
 
-    def process(self, blocks) -> dict:
+    def process(self, workflow: WorkFlow) -> dict:
 
+        blocks = workflow.blocks
         block_assignments = 0
         counters = np.array([self._num_of_entities])
 
@@ -73,7 +75,7 @@ class WeightedEdgePruning(AbstractMetablocking, WEIGHTING_SCHEME):
         self.valid_entities.clear()
         flags = np.empty((self._num_of_entities))
         flags[:] = EMPTY
-
+        associated_blocks = workflow.
 
 
     def set_threshold(self):

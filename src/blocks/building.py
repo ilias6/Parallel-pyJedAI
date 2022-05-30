@@ -30,7 +30,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from src.core.entities import Block, WorkFlow
 
 
-class AbstractBlockBuilding:
+class AbstractBlockBuilding(WorkFlow):
     '''
     Abstract class for the block building method
     '''
@@ -38,26 +38,23 @@ class AbstractBlockBuilding:
     _method_name: str
     _method_info: str
 
-    blocks_dict: dict = dict()
+    # blocks_dict: dict = dict()
 
-    _num_of_blocks = 0
-    _is_dirty_er: bool = False
+    # _num_of_blocks = 0
+    # _is_dirty_er: bool = False
 
     text_cleaning_method: Callable = None
 
     def __init__(self) -> any:
-        pass
+        super().__init__()
 
-    def build_blocks(self, workflow: WorkFlow) -> any:
+    def build_blocks(self, entities_df_1: pd.DataFrame, entities_df_2: pd.DataFrame = None) -> any:
         '''
         Main method of Standard Blocking
         ---
         Input: Dirty/Clean-1 dataframe, Clean-2 dataframe
         Returns: dict of token -> Block
         '''
-        entities_df_1 = workflow.dataset_1
-        if workflow.is_dirty_er:
-            entities_df_2 = workflow.dataset_2
 
         entities_D1 = entities_df_1.apply(" ".join, axis=1)
         entities_D1_size = len(entities_D1)
@@ -66,50 +63,45 @@ class AbstractBlockBuilding:
             entities_D2 = entities_df_2.apply(" ".join, axis=1)
             tqdm_desc_1 = self._method_name + " - Clean-Clean ER (1)"
             tqdm_desc_2 = self._method_name + " - Clean-Clean ER (2)"
-            self._is_dirty_er = False
+            WorkFlow.__is_dirty_er = False
         else:
             tqdm_desc_1 = self._method_name + " - Dirty ER"
-            self._is_dirty_er = True
+            WorkFlow.__is_dirty_er = True
 
         for i in tqdm(range(0, entities_D1_size, 1), desc=tqdm_desc_1):
             record = self.text_cleaning_method(entities_D1[i]) if self.text_cleaning_method is not None else entities_D1[i]
             for token in self.tokenize_entity(record):
-                if token not in self.blocks_dict.keys():
-                    self.blocks_dict[token] = Block(token, self._is_dirty_er)
-                self.blocks_dict[token].entities_D1.add(i)
+                    WorkFlow.__blocks[token].setdefault(i, Block(token))
+
 
         if entities_df_2 is not None:
             for i in tqdm(range(0, len(entities_D2), 1), desc=tqdm_desc_2):
                 record = self.text_cleaning_method(entities_D2[i]) if self.text_cleaning_method is not None else entities_D2[i]
                 for token in self.tokenize_entity(record):
-                    if token not in self.blocks_dict.keys():
-                        self.blocks_dict[token] = Block(token, self._is_dirty_er)
-                    self.blocks_dict[token].entities_D2.add(entities_D1_size+i)
+                    WorkFlow.__blocks[token].setdefault(entities_D1_size+i, Block(token))
 
         self.drop_single_entity_blocks()
 
-        workflow.num_of_entities_1 = len(entities_D1)
-        if not workflow.is_dirty_er:
-            workflow.num_of_entities_2 = len(entities_D2)
-        workflow.blocks = self.blocks_dict
-        workflow.block_building = self
+        WorkFlow.__num_of_entities_1 = len(entities_D1)
+        if not WorkFlow.__is_dirty_er:
+            WorkFlow.__num_of_entities_2 = len(entities_D2)
 
-        return workflow
+        return WorkFlow.__blocks
 
     def drop_single_entity_blocks(self):
         '''
         Removes one-size blocks for DER and empty for CCER
         '''
-        all_keys = list(self.blocks_dict.keys())
+        all_keys = list(super().__blocks.keys())
         # print("All keys before: ", len(all_keys))
         for key in all_keys:
-            if self._is_dirty_er:
-                if len(self.blocks_dict[key].entities_D1) == 1:
-                    self.blocks_dict.pop(key)
+            if super().__is_dirty_er:
+                if len(super().__blocks[key].entities_D1) == 1:
+                    super().__blocks.pop(key)
             else:
-                if len(self.blocks_dict[key].entities_D1) == 0 or len(self.blocks_dict[key].entities_D2):
-                    self.blocks_dict.pop(key)
-        # print("All keys after: ", len(self.blocks_dict.keys()))
+                if len(super().__blocks[key].entities_D1) == 0 or len(super().__blocks[key].entities_D2):
+                    super().__blocks.pop(key)
+        # print("All keys after: ", len(super().blocks_dict.keys()))
   
     def tokenize_entity(self, entity: str) -> list:
         pass
