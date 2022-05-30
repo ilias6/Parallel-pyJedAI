@@ -15,3 +15,4 @@ def insert_to_dict(dictionary: dict, key: any, value: any, value_type: any = 'st
         dictionary[key].add(value)
     else:
         print("Not supported Value Type")
+

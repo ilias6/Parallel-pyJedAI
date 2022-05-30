@@ -27,26 +27,23 @@ info = logging.info
 error = logging.error
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from src.core.entities import Block, WorkFlow
+from src.core.entities import Block
+from src.blocks.utils import drop_single_entity_blocks
 
 
-class AbstractBlockBuilding(WorkFlow):
+class AbstractBlockBuilding:
     '''
     Abstract class for the block building method
     '''
 
     _method_name: str
     _method_info: str
-
-    # blocks_dict: dict = dict()
-
-    # _num_of_blocks = 0
-    # _is_dirty_er: bool = False
-
+    _is_dirty_er: bool
     text_cleaning_method: Callable = None
+    blocks: dict = dict()
 
     def __init__(self) -> any:
-        super().__init__()
+        pass
 
     def build_blocks(self, entities_df_1: pd.DataFrame, entities_df_2: pd.DataFrame = None) -> any:
         '''
@@ -63,47 +60,27 @@ class AbstractBlockBuilding(WorkFlow):
             entities_D2 = entities_df_2.apply(" ".join, axis=1)
             tqdm_desc_1 = self._method_name + " - Clean-Clean ER (1)"
             tqdm_desc_2 = self._method_name + " - Clean-Clean ER (2)"
-            WorkFlow.__is_dirty_er = False
+            self._is_dirty_er = False
         else:
             tqdm_desc_1 = self._method_name + " - Dirty ER"
-            WorkFlow.__is_dirty_er = True
+            self._is_dirty_er = True
 
         for i in tqdm(range(0, entities_D1_size, 1), desc=tqdm_desc_1):
             record = self.text_cleaning_method(entities_D1[i]) if self.text_cleaning_method is not None else entities_D1[i]
-            for token in self.tokenize_entity(record):
-                    WorkFlow.__blocks[token].setdefault(i, Block(token))
+            for token in self._tokenize_entity(record):
+                self.blocks.setdefault(token, Block(token))
+                self.blocks[token].entities_D1.add(i)
 
-
-        if entities_df_2 is not None:
+        if not self._is_dirty_er:
             for i in tqdm(range(0, len(entities_D2), 1), desc=tqdm_desc_2):
                 record = self.text_cleaning_method(entities_D2[i]) if self.text_cleaning_method is not None else entities_D2[i]
-                for token in self.tokenize_entity(record):
-                    WorkFlow.__blocks[token].setdefault(entities_D1_size+i, Block(token))
+                for token in self._tokenize_entity(record):
+                    self.blocks.setdefault(token, Block(token))
+                    self.blocks[token].entities_D2.add(entities_D1_size+i)
 
-        self.drop_single_entity_blocks()
+        return drop_single_entity_blocks(self.blocks, self._is_dirty_er)
 
-        WorkFlow.__num_of_entities_1 = len(entities_D1)
-        if not WorkFlow.__is_dirty_er:
-            WorkFlow.__num_of_entities_2 = len(entities_D2)
-
-        return WorkFlow.__blocks
-
-    def drop_single_entity_blocks(self):
-        '''
-        Removes one-size blocks for DER and empty for CCER
-        '''
-        all_keys = list(super().__blocks.keys())
-        # print("All keys before: ", len(all_keys))
-        for key in all_keys:
-            if super().__is_dirty_er:
-                if len(super().__blocks[key].entities_D1) == 1:
-                    super().__blocks.pop(key)
-            else:
-                if len(super().__blocks[key].entities_D1) == 0 or len(super().__blocks[key].entities_D2):
-                    super().__blocks.pop(key)
-        # print("All keys after: ", len(super().blocks_dict.keys()))
-  
-    def tokenize_entity(self, entity: str) -> list:
+    def _tokenize_entity(self, entity: str) -> list:
         pass
 
     def __str__(self) -> str:
@@ -124,7 +101,7 @@ class StandardBlocking(AbstractBlockBuilding):
         super().__init__()
         self.text_cleaning_method = text_cleaning_method
 
-    def tokenize_entity(self, entity) -> list:
+    def _tokenize_entity(self, entity) -> list:
         return nltk.word_tokenize(entity)
 
 
@@ -151,7 +128,7 @@ class QGramsBlocking(AbstractBlockBuilding):
         self.qgrams = qgrams
         self.text_cleaning_method = text_cleaning_method
 
-    def tokenize_entity(self, entity) -> list:
+    def _tokenize_entity(self, entity) -> list:
         return [' '.join(grams) for grams in nltk.ngrams(entity, n=self.qgrams)]
 
 

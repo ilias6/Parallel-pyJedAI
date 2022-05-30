@@ -33,14 +33,16 @@ ground_truth = pd.read_csv("../data/cora/cora_gt.csv", sep='|')
 #     dataset_1=dataset,
 #     ground_truth=ground_truth
 # )
-
+is_dirty_er = True
 # --- 2. Block Building techniques --- #
 
-StandardBlocking(text_cleaning_method=cora_text_cleaning_method).build_blocks(dataset)
+blocks = StandardBlocking(
+    text_cleaning_method=cora_text_cleaning_method
+).build_blocks(dataset)
 
 # print(blocks)
 
-QGramsBlocking(
+blocks = QGramsBlocking(
     qgrams=2,
     text_cleaning_method=cora_text_cleaning_method
 ).build_blocks(dataset)
@@ -49,7 +51,7 @@ QGramsBlocking(
 
 # --- 4. Block Filtering --- #
 
-# BlockFiltering(ratio=0.6).process(workflow)
+blocks = BlockFiltering(is_dirty_er, ratio=0.6).process(blocks, len(dataset))
 
 
 # --- META-Blocking -- #
@@ -57,8 +59,8 @@ QGramsBlocking(
 # WeightedEdgePruning(workflow).process(workflow)
 
 
-# for k,b in blocks.items():
-#     b.verbose()
+for k, b in blocks.items():
+    b.verbose(is_dirty_er)
 
 # --- 5. Comparison Propagation --- #
 # --- 6. Jaccard Similarity --- #

@@ -46,12 +46,9 @@ class Block:
             return len(self.entities_D1)
         return len(self.entities_D1) * len(self.entities_D2)
 
-    def is_dirty_er(self):
-        return self._is_dirty_er
-
-    def verbose(self):
+    def verbose(self, is_dirty_er):
         print("\nBlock ", "\033[1;32m"+self.key+"\033[0m", " contains entities with ids: ")
-        if self._is_dirty_er:
+        if is_dirty_er:
             print("Dirty dataset: " + "[\033[1;34m" + \
              str(len(self.entities_D1)) + " entities\033[0m]")
             print(self.entities_D1)
