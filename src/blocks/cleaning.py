@@ -57,9 +57,9 @@ class BlockFiltering(AbstractBlockCleaning):
         '''
         pbar = tqdm(total=3, desc="Block Filtering")
 
-        sorted_blocks = self.sort_blocks_cardinality(blocks)
+        sorted_blocks = self._sort_blocks_cardinality(blocks)
         pbar.update(1)
-        entity_index = create_entity_index(sorted_blocks, self._is_dirty_er)
+        entity_index, _ = create_entity_index(sorted_blocks, self._is_dirty_er)
         pbar.update(1)
 
         filtered_blocks = {}
@@ -76,10 +76,10 @@ class BlockFiltering(AbstractBlockCleaning):
                 else:
                     filtered_blocks[key].entities_D2.add(entity_id)
         pbar.update(1)
-        
+
         return drop_single_entity_blocks(filtered_blocks, self._is_dirty_er)
 
-    def sort_blocks_cardinality(self, blocks: dict) -> dict:
+    def _sort_blocks_cardinality(self, blocks: dict) -> dict:
         return dict(sorted(blocks.items(), key=lambda x: x[1].get_cardinality(self._is_dirty_er)))
 
 class BlockClustering(AbstractBlockCleaning):

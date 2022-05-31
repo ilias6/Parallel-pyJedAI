@@ -46,6 +46,11 @@ class Block:
             return len(self.entities_D1)
         return len(self.entities_D1) * len(self.entities_D2)
 
+    def get_total_block_assignments(self, is_dirty_er: bool) -> int:
+        if is_dirty_er:
+            return len(self.entities_D1)
+        return len(self.entities_D1) + len(self.entities_D2)
+
     def verbose(self, is_dirty_er):
         print("\nBlock ", "\033[1;32m"+self.key+"\033[0m", " contains entities with ids: ")
         if is_dirty_er:
