@@ -63,12 +63,11 @@ class BlockFiltering(AbstractBlockCleaning):
 
         sorted_blocks = self._sort_blocks_cardinality(blocks)
         pbar.update(1)
-        entity_index, _ = create_entity_index(sorted_blocks, self._is_dirty_er)
+        entity_index = create_entity_index(sorted_blocks, self._is_dirty_er)
         pbar.update(1)
 
         filtered_blocks = {}
         for entity_id, block_keys in entity_index.items():
-            # print(entity_id, " : ", block_keys, " or ", [blocks[n].get_cardinality() for n in block_keys])
             # Create new blocks from the entity index
             for key in block_keys[:int(self.ratio*len(block_keys))]:
                 filtered_blocks.setdefault(key, Block(key))
@@ -80,8 +79,13 @@ class BlockFiltering(AbstractBlockCleaning):
                 else:
                     filtered_blocks[key].entities_D2.add(entity_id)
         pbar.update(1)
+        new_blocks = drop_single_entity_blocks(filtered_blocks, self._is_dirty_er)
 
-        return drop_single_entity_blocks(filtered_blocks, self._is_dirty_er)
+        if workflow:
+            workflow.blocks = new_blocks
+            workflow.num_of_blocks = len(new_blocks)
+
+        return new_blocks
 
     def _sort_blocks_cardinality(self, blocks: dict) -> dict:
         return dict(sorted(blocks.items(), key=lambda x: x[1].get_cardinality(self._is_dirty_er)))

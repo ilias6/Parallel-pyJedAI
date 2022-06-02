@@ -92,10 +92,12 @@ class AbstractBlockBuilding:
 
         if workflow:
             workflow.num_of_entities_1 = workflow.dataset_lim = len(entities_D1)
+            workflow.num_of_blocks = len(blocks)
+            workflow.num_of_entities = workflow.num_of_entities_1
             if not self._is_dirty_er:
                 workflow.num_of_entities_2 = len(entities_D2)
-            workflow.num_of_blocks = len(blocks)
-            workflow.num_of_entities = workflow.num_of_entities_1 + workflow.num_of_entities_2
+                workflow.num_of_entities += workflow.num_of_entities_2
+            workflow.blocks = blocks
 
         return blocks
 
