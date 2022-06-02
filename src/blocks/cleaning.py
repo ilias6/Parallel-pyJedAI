@@ -38,7 +38,7 @@ class BlockFiltering(AbstractBlockCleaning):
     _method_name = "Block Filtering"
     _method_info = ": it retains every entity in a subset of its smallest blocks."
 
-    def __init__(self, is_dirty_er: bool, ratio: float = 0.8) -> None:
+    def __init__(self, is_dirty_er: bool = None, ratio: float = 0.8) -> None:
         super().__init__()
         self.ratio = ratio
         self._is_dirty_er = is_dirty_er
@@ -48,13 +48,17 @@ class BlockFiltering(AbstractBlockCleaning):
         print("Ratio: ", self.ratio)
         return super().__str__()
 
-    def process(self, blocks: dict, dataset_lim: int) -> dict:
+    def process(self, blocks: dict = None, dataset_lim: int = None, workflow: WorkFlow = None) -> dict:
         '''
         Main function of Block Filtering
         ---
         Input: dict of keys -> Block
         Returns: dict of keys -> Block
         '''
+        if workflow:
+            blocks = workflow.blocks
+            dataset_lim = workflow.dataset_lim
+
         pbar = tqdm(total=3, desc="Block Filtering")
 
         sorted_blocks = self._sort_blocks_cardinality(blocks)

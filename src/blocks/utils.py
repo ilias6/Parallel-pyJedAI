@@ -2,6 +2,7 @@ def create_entity_index(blocks: dict, is_dirty_er: bool):
     '''
      Creates a dict of entity ids -> block ids
     '''
+    # TODO remove entities
     num_of_entities_1 = 0
     num_of_entities_2 = 0
     num_of_blocks = 0

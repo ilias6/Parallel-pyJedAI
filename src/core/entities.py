@@ -12,22 +12,31 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 class WorkFlow:
 
-    __is_dirty_er: bool
-    __dataset_1: pd.DataFrame
-    __dataset_2: pd.DataFrame
+    is_dirty_er: bool
+    dataset_1: pd.DataFrame
+    dataset_2: pd.DataFrame = None
+    ground_truth: pd.DataFrame
 
-    __blocks: dict
-    __num_of_blocks: int
-    __entity_index: dict
-    __dataset_lim: int
-    __num_of_entities_1: int
-    __num_of_entities_2: int
-    __ground_truth: pd.DataFrame
+    blocks: dict = None
+    num_of_blocks: int = None
+    entity_index: dict = None
+    dataset_lim: int = None
+    num_of_entities_1: int = None
+    num_of_entities_2: int = None
+    num_of_entities: int = None
 
     def __init__(
-            self
+            self, dataset_1,
+            dataset_2=None,
+            ground_truth=None
         ) -> None:
-        pass
+        self.dataset_1 = dataset_1
+        self.dataset_2 = dataset_2
+        self.ground_truth = ground_truth
+        if dataset_2 is None:
+            self.is_dirty_er = True
+        else:
+            self.is_dirty_er = False
 
 class Block:
     '''

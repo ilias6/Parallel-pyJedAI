@@ -27,7 +27,7 @@ info = logging.info
 error = logging.error
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from src.core.entities import Block
+from src.core.entities import Block, WorkFlow
 from src.blocks.utils import drop_single_entity_blocks
 
 
@@ -45,13 +45,23 @@ class AbstractBlockBuilding:
     def __init__(self) -> any:
         pass
 
-    def build_blocks(self, entities_df_1: pd.DataFrame, entities_df_2: pd.DataFrame = None) -> any:
+    def build_blocks(
+        self, entities_df_1: pd.DataFrame = None,
+        entities_df_2: pd.DataFrame = None,
+        workflow: WorkFlow = None
+    ) -> any:
         '''
         Main method of Standard Blocking
         ---
         Input: Dirty/Clean-1 dataframe, Clean-2 dataframe
         Returns: dict of token -> Block
         '''
+        if workflow:
+            entities_df_1 = workflow.dataset_1
+            entities_df_2 = workflow.dataset_2
+        elif entities_df_1 == None:
+            # TODO 
+            print("ERROR")
 
         entities_D1 = entities_df_1.apply(" ".join, axis=1)
         entities_D1_size = len(entities_D1)
@@ -78,7 +88,16 @@ class AbstractBlockBuilding:
                     self.blocks.setdefault(token, Block(token))
                     self.blocks[token].entities_D2.add(entities_D1_size+i)
 
-        return drop_single_entity_blocks(self.blocks, self._is_dirty_er)
+        blocks = drop_single_entity_blocks(self.blocks, self._is_dirty_er)
+
+        if workflow:
+            workflow.num_of_entities_1 = workflow.dataset_lim = len(entities_D1)
+            if not self._is_dirty_er:
+                workflow.num_of_entities_2 = len(entities_D2)
+            workflow.num_of_blocks = len(blocks)
+            workflow.num_of_entities = workflow.num_of_entities_1 + workflow.num_of_entities_2
+
+        return blocks
 
     def _tokenize_entity(self, entity: str) -> list:
         pass

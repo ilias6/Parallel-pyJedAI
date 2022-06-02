@@ -24,34 +24,32 @@ dataset = pd.read_csv(
 
 ground_truth = pd.read_csv("../data/cora/cora_gt.csv", sep='|')
 
-# print(tokens)
-
 # Create WorkFlow
 
-# workflow = WorkFlow(
-#     is_dirty_er=True,
-#     dataset_1=dataset,
-#     ground_truth=ground_truth
-# )
-is_dirty_er = True
+workflow = WorkFlow(
+    dataset_1=dataset,
+    ground_truth=ground_truth
+)
+
+# is_dirty_er = True
 # --- 2. Block Building techniques --- #
 
 blocks = StandardBlocking(
     text_cleaning_method=cora_text_cleaning_method
-).build_blocks(dataset)
+).build_blocks(workflow)
 
 # print(blocks)
 
 blocks = QGramsBlocking(
     qgrams=2,
     text_cleaning_method=cora_text_cleaning_method
-).build_blocks(dataset)
+).build_blocks(workflow)
 
 # print(blocks)
 
 # --- 4. Block Filtering --- #
 
-blocks = BlockFiltering(is_dirty_er, ratio=0.6).process(blocks, len(dataset))
+blocks = BlockFiltering(ratio=0.6).process(blocks, len(dataset))
 
 
 # --- META-Blocking -- #
