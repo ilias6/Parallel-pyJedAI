@@ -11,6 +11,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from src.utils.tokenizer import Tokenizer, cora_text_cleaning_method
 from src.blocks.building import StandardBlocking, QGramsBlocking
 from src.blocks.cleaning import BlockFiltering
+from src.blocks.comparison_cleaning import WeightedEdgePruning
 from src.core.entities import WorkFlow
 
 # --- 1. Read the dataset --- #
@@ -54,7 +55,7 @@ blocks = BlockFiltering(ratio=0.6).process(workflow=w)
 
 # --- META-Blocking -- #
 
-# blocks = WeightedEdgePruning().process(workflow)
+blocks = WeightedEdgePruning().process(w)
 
 
 for k, b in blocks.items():

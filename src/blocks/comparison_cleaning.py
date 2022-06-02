@@ -3,7 +3,8 @@ import os, sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from src.core.entities import WorkFlow
-from src.utils.enums import WEIGHTING_SCHEME, EMPTY
+from src.utils.enums import WEIGHTING_SCHEME
+from src.utils.constants import EMPTY
 from src.blocks.utils import create_entity_index
 from src.utils.constants import  DISCRETIZATION_FACTOR
 
@@ -16,13 +17,17 @@ class AbstractComparisonCleaning:
         self._num_of_entities_2: int = None
         self._num_of_blocks: int
         self._dataset_limit: int # for CC-ER
-        self._valid_entities: set()
+        self._valid_entities: set() = set()
         self._entity_index: dict
         self._weighting_scheme: str
 
-    def process(self, workflow: WorkFlow = None, blocks: dict = None, num_of_entities_1: int = None, num_of_entities_2: int = None) -> dict:
+    def process(
+        self, workflow: WorkFlow = None, blocks: dict = None, 
+        num_of_entities_1: int = None, num_of_entities_2: int = None, is_dirty_er: bool=None
+    ) -> dict:
 
         if workflow and blocks is None:
+            self._is_dirty_er = workflow.is_dirty_er
             blocks = workflow.blocks
             if workflow.entity_index:
                 self._entity_index = workflow.entity_index
@@ -47,9 +52,9 @@ class AbstractComparisonCleaning:
             self._num_of_blocks = len(blocks)
             self.blocks: dict = blocks
 
-        return self._apply_main_processing()
+        return self._apply_main_processing(blocks)
 
-    def _apply_main_processing(self) -> dict:
+    def _apply_main_processing(self, blocks: dict) -> dict:
         pass
 
     def _add_decomposed_block(self, entity_id: int, neighbors: set, neighbors_weights: set, new_blocks: dict) -> None:
@@ -139,7 +144,7 @@ class AbstractMetablocking(AbstractComparisonCleaning):
                     self._neighbors.add(original_id)
 
     def _discretize_comparison_weight(self, weight: float) -> int:
-        return (int) weight * DISCRETIZATION_FACTOR
+        return int(weight * DISCRETIZATION_FACTOR)
 
     def _prune_edges(self) -> dict:
         pass
@@ -153,9 +158,8 @@ class WeightedEdgePruning(AbstractMetablocking):
     _method_info = ": a Meta-blocking method that retains all comparisons \
                 that have a weight higher than the average edge weight in the blocking graph."
 
-    def __init__(self, weighting_scheme: str, is_dirty_er: bool) -> None:
+    def __init__(self, weighting_scheme: str = 'CBS') -> None:
         super().__init__()
-        self._is_dirty_er = is_dirty_er
         self._weighting_scheme = weighting_scheme
         self._node_centric = False
         self._num_of_edges: float = 0.0
@@ -173,7 +177,7 @@ class WeightedEdgePruning(AbstractMetablocking):
         self._valid_entities.clear()
         flags = np.empty([self._num_of_entities], dtype=int)
         flags[:] = EMPTY
-
+        print(entity_id)
         associated_blocks = self._entity_index[entity_id]
 
         if len(associated_blocks) == 0:
