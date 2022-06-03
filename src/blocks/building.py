@@ -43,7 +43,7 @@ class AbstractBlockBuilding:
     blocks: dict = dict()
 
     def __init__(self) -> any:
-        pass
+        self._num_of_entities_2 = None
 
     def build_blocks(
         self, entities_df_1: pd.DataFrame = None,
@@ -68,6 +68,7 @@ class AbstractBlockBuilding:
 
         if entities_df_2 is not None:
             entities_D2 = entities_df_2.apply(" ".join, axis=1)
+            entities_D2_size = len(entities_D2)
             tqdm_desc_1 = self._method_name + " - Clean-Clean ER (1)"
             tqdm_desc_2 = self._method_name + " - Clean-Clean ER (2)"
             self._is_dirty_er = False
@@ -88,18 +89,16 @@ class AbstractBlockBuilding:
                     self.blocks.setdefault(token, Block(token))
                     self.blocks[token].entities_D2.add(entities_D1_size+i)
 
-        blocks = drop_single_entity_blocks(self.blocks, self._is_dirty_er)
+        self.blocks = drop_single_entity_blocks(self.blocks, self._is_dirty_er)
 
-        if workflow:
-            workflow.num_of_entities_1 = workflow.dataset_lim = len(entities_D1)
-            workflow.num_of_blocks = len(blocks)
-            workflow.num_of_entities = workflow.num_of_entities_1
-            if not self._is_dirty_er:
-                workflow.num_of_entities_2 = len(entities_D2)
-                workflow.num_of_entities += workflow.num_of_entities_2
-            workflow.blocks = blocks
+        self._num_of_entities_1 = self._dataset_lim = entities_D1_size
+        self._num_of_blocks = len(self.blocks)
+        self._num_of_entities = self._num_of_entities_1
+        if not self._is_dirty_er:
+            self._num_of_entities_2 = entities_D2_size
+            self._num_of_entities += self._num_of_entities_2
 
-        return blocks
+        return self.blocks
 
     def _tokenize_entity(self, entity: str) -> list:
         pass

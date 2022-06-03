@@ -12,24 +12,12 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 class WorkFlow:
 
-    is_dirty_er: bool
-    dataset_1: pd.DataFrame
-    dataset_2: pd.DataFrame = None
-    ground_truth: pd.DataFrame
-
-    blocks: dict = None
-    num_of_blocks: int = None
-    entity_index: dict = None
-    dataset_lim: int = None
-    num_of_entities_1: int = None
-    num_of_entities_2: int = None
-    num_of_entities: int = None
-
     def __init__(
             self, dataset_1,
             dataset_2=None,
             ground_truth=None
         ) -> None:
+
         self.dataset_1 = dataset_1
         self.dataset_2 = dataset_2
         self.ground_truth = ground_truth
@@ -37,6 +25,19 @@ class WorkFlow:
             self.is_dirty_er = True
         else:
             self.is_dirty_er = False
+
+        is_dirty_er: bool
+        dataset_1: pd.DataFrame
+        dataset_2: pd.DataFrame = None
+        ground_truth: pd.DataFrame
+
+        self.blocks: dict = None
+        self.num_of_blocks: int = None
+        self.entity_index: dict = None
+        self.dataset_lim: int = None
+        self.num_of_entities_1: int = None
+        self.num_of_entities_2: int = None
+        self.num_of_entities: int = None
 
 class Block:
     '''

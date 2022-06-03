@@ -1,5 +1,12 @@
+'''
+Comparison cleaning methods
+'''
+
 import numpy as np
 import os, sys
+
+import tqdm
+from tqdm import tqdm
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from src.core.entities import WorkFlow
@@ -9,6 +16,9 @@ from src.blocks.utils import create_entity_index
 from src.utils.constants import  DISCRETIZATION_FACTOR
 
 class AbstractComparisonCleaning:
+    '''
+    '''
+    _progress_bar = None
 
     def __init__(self) -> None:
 
@@ -22,17 +32,22 @@ class AbstractComparisonCleaning:
         self._weighting_scheme: str
 
     def process(
-        self, workflow: WorkFlow = None, blocks: dict = None, 
-        num_of_entities_1: int = None, num_of_entities_2: int = None, is_dirty_er: bool=None
+        self,
+        blocks: dict = None,
+        num_of_entities_1: int = None,
+        num_of_entities_2: int = None,
+        workflow: WorkFlow = None
     ) -> dict:
 
-        if workflow and blocks is None:
+        if num_of_entities_2:
+            self._is_dirty_er = False
+        else:
+            self._is_dirty_er = True
+
+        if workflow and (blocks is None):
+            print("WORKFLOW")
             self._is_dirty_er = workflow.is_dirty_er
-            blocks = workflow.blocks
-            if workflow.entity_index:
-                self._entity_index = workflow.entity_index
-            else:
-                self._entity_index = create_entity_index(blocks, self._is_dirty_er)
+            self._entity_index = create_entity_index(workflow.blocks, self._is_dirty_er)
             self._num_of_entities_1 = workflow.num_of_entities_1
             self._num_of_entities = workflow.num_of_entities_1
             if not self._is_dirty_er:
@@ -51,18 +66,18 @@ class AbstractComparisonCleaning:
             self._dataset_limit: int = num_of_entities_1
             self._num_of_blocks = len(blocks)
             self.blocks: dict = blocks
+        
+        self._progress_bar = tqdm(total=2*self._num_of_entities, desc=self._method_name)
+            
 
-        return self._apply_main_processing(blocks)
+        return self._apply_main_processing()
 
-    def _apply_main_processing(self, blocks: dict) -> dict:
-        pass
+    # def _apply_main_processing(self) -> dict:
+    #     pass
 
     def _add_decomposed_block(self, entity_id: int, neighbors: set, neighbors_weights: set, new_blocks: dict) -> None:
-
         if len(neighbors) == 0:
             return
-
-        # new_blocks.setdefault(entity_id, set())
         new_blocks[entity_id] = neighbors
 
     # def _replicate_id(self, entity_id, times) -> np.array:
@@ -89,25 +104,26 @@ class AbstractMetablocking(AbstractComparisonCleaning):
         self._neighbors: set = set()
         self._retained_neighbors: set = set()
         self._retained_neighbors_weights: set = set()
-
+        self._block_assignments: int = 0
         self.weighting_scheme: str
 
-    def _apply_main_processing(self, blocks: dict) -> dict:
+    def _apply_main_processing(self) -> dict:
 
-        block_assignments = 0
-        counters = np.empty([self._num_of_entities], dtype=float)
+        self._counters = np.empty([self._num_of_entities], dtype=float)
 
-        for block_key in blocks:
-            block_assignments += blocks[block_key].get_total_block_assignments(self._is_dirty_er)
+        for block_key in self.blocks.keys():
+            self._block_assignments += self.blocks[block_key].get_total_block_assignments(self._is_dirty_er)
+        
+        # print(block_assignments)
 
         self._set_threshold()
-
+        
         return self._prune_edges()
 
     def _get_weight(self, entity_id: int, neighbor_id: int) -> float:
         ws = self._weighting_scheme
         if ws == 'ARCS' or ws == 'CBS':
-            return self.counters[neighbor_id]
+            return self._counters[neighbor_id]
         elif ws == 'ECBS':
             # TODO
             pass
@@ -128,7 +144,10 @@ class AbstractMetablocking(AbstractComparisonCleaning):
         self._neighbors.clear()
         if self._is_dirty_er:
             if not self._node_centric:
+                # print("block_key: ", block_key)
+                # print(block_key in self.blocks)
                 for neighbor_id in self.blocks[block_key].entities_D1:
+                    # print(neighbor_id)
                     if neighbor_id < entity_id:
                         self._neighbors.add(neighbor_id)
             else:
@@ -146,11 +165,6 @@ class AbstractMetablocking(AbstractComparisonCleaning):
     def _discretize_comparison_weight(self, weight: float) -> int:
         return int(weight * DISCRETIZATION_FACTOR)
 
-    def _prune_edges(self) -> dict:
-        pass
-
-    def _set_threshold(self) -> None:
-        pass
 
 class WeightedEdgePruning(AbstractMetablocking):
 
@@ -170,14 +184,14 @@ class WeightedEdgePruning(AbstractMetablocking):
         for i in range(0, self._num_of_entities):
             self._process_entity(i)
             self._verify_valid_entities(i, new_blocks)
-
+            self._progress_bar.update(1)
         return new_blocks
 
     def _process_entity(self, entity_id: int):
         self._valid_entities.clear()
-        flags = np.empty([self._num_of_entities], dtype=int)
-        flags[:] = EMPTY
-        print(entity_id)
+        self._flags = np.empty([self._num_of_entities], dtype=int)
+        self._flags[:] = EMPTY
+        # print("entity_id", entity_id)
         associated_blocks = self._entity_index[entity_id]
 
         if len(associated_blocks) == 0:
@@ -205,12 +219,15 @@ class WeightedEdgePruning(AbstractMetablocking):
 
         # TODO: ARCS
         # Java inline if ??
-
+        # print("_set_threshold ",  self._num_of_entities)
         for i in range(0, self._num_of_entities):
             self._process_entity(i)
             self._update_threshold(i)
+            self._progress_bar.update(1)
 
         self._threshold /= self._num_of_edges
+
+        # print("- threshold: ", self._threshold)
 
     def _verify_valid_entities(self, entity_id: int, new_blocks: dict) -> None:
         self._retained_neighbors.clear()
@@ -227,3 +244,4 @@ class WeightedNodePruning(WeightedEdgePruning):
         super().__init__()
         pass    
     pass
+

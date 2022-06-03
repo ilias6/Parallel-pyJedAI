@@ -6,6 +6,7 @@ from html import entities
 import os
 import sys
 import pandas as pd
+from pyrsistent import b
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from src.utils.tokenizer import Tokenizer, cora_text_cleaning_method
@@ -13,12 +14,13 @@ from src.blocks.building import StandardBlocking, QGramsBlocking
 from src.blocks.cleaning import BlockFiltering
 from src.blocks.comparison_cleaning import WeightedEdgePruning
 from src.core.entities import WorkFlow
+from src.blocks.utils import print_blocks, print_candidate_pairs
 
 # --- 1. Read the dataset --- #
 
 dataset = pd.read_csv(
     "../data/cora/cora.csv",
-    usecols=['author'],
+    usecols=['title', 'author'],
     # nrows=10,
     sep='|'
 )
@@ -35,31 +37,33 @@ w = WorkFlow(
 is_dirty_er = True
 # --- 2. Block Building techniques --- #
 
-blocks = StandardBlocking(
-    text_cleaning_method=cora_text_cleaning_method
-).build_blocks(workflow=w)
+SB = StandardBlocking(text_cleaning_method=cora_text_cleaning_method)
+SB.build_blocks(workflow=w)
 
 # print(blocks)
 
-blocks = QGramsBlocking(
-    qgrams=2,
-    text_cleaning_method=cora_text_cleaning_method
-).build_blocks(workflow=w)
+# blocks = QGramsBlocking(
+#     qgrams=2,
+#     text_cleaning_method=cora_text_cleaning_method
+# ).build_blocks(workflow=w)
 
 # print(blocks)
 
 # --- 4. Block Filtering --- #
 
-blocks = BlockFiltering(ratio=0.6).process(workflow=w)
+BF = BlockFiltering(is_dirty_er, ratio=0.9)
+blocks = BF.process(blocks=SB.blocks, dataset_lim=SB._dataset_lim)
+
+
+print_blocks(blocks, is_dirty_er)
 
 
 # --- META-Blocking -- #
 
-blocks = WeightedEdgePruning().process(w)
+WE = WeightedEdgePruning()
+candidate_pairs_blocks = WE.process(blocks, SB._num_of_entities_1, SB._num_of_entities_2)
 
-
-for k, b in blocks.items():
-    b.verbose(is_dirty_er)
+print_candidate_pairs(candidate_pairs_blocks)
 
 # --- 5. Comparison Propagation --- #
 # --- 6. Jaccard Similarity --- #
