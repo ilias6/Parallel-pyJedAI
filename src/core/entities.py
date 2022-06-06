@@ -61,6 +61,13 @@ class Block:
             return len(self.entities_D1)
         return len(self.entities_D1) + len(self.entities_D2)
 
+    def get_num_of_comparisons(self, is_dirty_er: bool) -> int:
+        entities_D1_size = len(self.entities_D1)
+        if is_dirty_er:
+            return entities_D1_size*(entities_D1_size-1)/2
+        entities_D2_size = len(self.entities_D2)
+        return entities_D1_size*entities_D2_size
+
     def verbose(self, is_dirty_er):
         print("\nBlock ", "\033[1;32m"+self.key+"\033[0m", " contains entities with ids: ")
         if is_dirty_er:

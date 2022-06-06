@@ -7,6 +7,8 @@ import os, sys
 
 import tqdm
 from tqdm import tqdm
+import math
+from math import log10
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from src.core.entities import WorkFlow
@@ -88,7 +90,8 @@ class AbstractMetablocking(AbstractComparisonCleaning):
         self._comparisons_per_entity: np.array
         self._node_centric: bool
         self._threshold: float
-
+        self._distinct_comparisons: int
+        self._comparisons_per_entity: np.array
         self._neighbors: list = list()
         self._retained_neighbors: list = list()
         self._retained_neighbors_weights: list = list()
@@ -111,16 +114,18 @@ class AbstractMetablocking(AbstractComparisonCleaning):
         if ws == 'ARCS' or ws == 'CBS':
             return self._counters[neighbor_id]
         elif ws == 'ECBS':
-            # TODO
-            pass
+            return float(
+                self._counters[neighbor_id] *
+                log10(float(self._num_of_blocks / len(self._entity_index[entity_id]))) *
+                log10(float(self._num_of_blocks / len(self._entity_index[neighbor_id])))
+            )
         elif ws == 'JS':
-            # TODO
-            pass
+            return self._counters[neighbor_id] / (len(self._entity_index[entity_id]) + len(self._entity_index[neighbor_id]) - self._counters[neighbor_id])
         elif ws == 'EJS':
-            # TODO
-            pass
+            probability = self._counters[neighbor_id] / (len(self._entity_index[entity_id]) + len(self._entity_index[neighbor_id]) - self._counters[neighbor_id])
+            return float(probability * log10(self._distinct_comparisons / self._comparisons_per_entity[entity_id]) * log10(self._distinct_comparisons / self._comparisons_per_entity[neighbor_id]))
         elif ws == 'PEARSON_X2':
-            # TODO
+            # TODO: ChiSquared
             pass
         else:
             # TODO: Error handling
@@ -148,6 +153,31 @@ class AbstractMetablocking(AbstractComparisonCleaning):
     def _discretize_comparison_weight(self, weight: float) -> int:
         return int(weight * DISCRETIZATION_FACTOR)
 
+    def _set_statistics(self) -> None:
+        self._distinct_comparisons = 0
+        self._comparisons_per_entity = np.empty([self._num_of_entities], dtype=float)
+        distinct_neighbors = set()
+
+        for entity_id in range(0, self._num_of_entities, 1):
+            associated_blocks = self._entity_index[entity_id]
+            if len(associated_blocks) != 0:
+                distinct_neighbors.clear()
+                for block_id in associated_blocks:
+                    for neighbor_id in self._get_neighbor_entities(block_id, entity_id):
+                        distinct_neighbors.add(neighbor_id)
+                self._comparisons_per_entity[entity_id] = len(distinct_neighbors)
+
+                if self._is_dirty_er:
+                    self._comparisons_per_entity[entity_id] -= 1
+
+                self._distinct_comparisons += self._comparisons_per_entity[entity_id]
+        self._distinct_comparisons /= 2
+
+    def _get_neighbor_entities(self, block_id: int, entity_id: int) -> set:
+        if not self._is_dirty_er and entity_id < self._dataset_limit:
+            return self._blocks[block_id].entities_D2
+        return self._blocks[block_id].entities_D1
+
 
 class WeightedEdgePruning(AbstractMetablocking):
 
@@ -162,8 +192,6 @@ class WeightedEdgePruning(AbstractMetablocking):
         self._num_of_edges: float
 
     def _prune_edges(self) -> dict:
-        
-        # TODO ARCS
         for i in range(0, self._num_of_entities):
             self._process_entity(i)
             self._verify_valid_entities(i)
@@ -182,13 +210,18 @@ class WeightedEdgePruning(AbstractMetablocking):
             return
 
         for block_id in associated_blocks:
+            if self.weighting_scheme == 'ARCS':
+                block_comparisons = self._blocks[block_id].get_num_of_comparisons(self._is_dirty_er)
             self._normalize_neighbor_entities(block_id, entity_id)
             for neighbor_id in self._neighbors:
                 if self._flags[neighbor_id] != entity_id:
                     self._counters[neighbor_id] = 0
                     self._flags[neighbor_id] = entity_id
 
-                self._counters[neighbor_id] += 1
+                if self.weighting_scheme == 'ARCS':
+                    self._counters[neighbor_id] += 1/block_comparisons
+                else:
+                    self._counters[neighbor_id] += 1
                 self._valid_entities.add(neighbor_id)
 
     def _update_threshold(self, entity_id: int) -> None:
@@ -200,9 +233,6 @@ class WeightedEdgePruning(AbstractMetablocking):
         self._num_of_edges = 0.0
         self._threshold = 0.0
 
-        # TODO: ARCS
-        # Java inline if ??
-        # Loop for all entities
         for i in range(0, self._num_of_entities):
             self._process_entity(i)
             self._update_threshold(i)
@@ -220,7 +250,7 @@ class WeightedEdgePruning(AbstractMetablocking):
                 self._retained_neighbors_weights.append(self._discretize_comparison_weight(weight))
         if len(self._retained_neighbors) > 0:
             self.blocks[entity_id] = self._retained_neighbors.copy()
-        
+
 class WeightedNodePruning(WeightedEdgePruning):
     def __init__(self) -> None:
         super().__init__()
