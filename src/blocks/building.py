@@ -98,6 +98,13 @@ class AbstractBlockBuilding:
             self._num_of_entities_2 = entities_D2_size
             self._num_of_entities += self._num_of_entities_2
 
+        if workflow:
+            workflow.num_of_entities_1 = self._num_of_entities_1
+            workflow.num_of_entities += self._num_of_entities_1
+            if not self._is_dirty_er:
+                workflow.num_of_entities_2 =  self._num_of_entities_2
+                workflow.dataset_lim = self._dataset_lim
+
         return self.blocks
 
     def _tokenize_entity(self, entity: str) -> list:

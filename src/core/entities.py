@@ -26,14 +26,6 @@ class WorkFlow:
         else:
             self.is_dirty_er = False
 
-        is_dirty_er: bool
-        dataset_1: pd.DataFrame
-        dataset_2: pd.DataFrame = None
-        ground_truth: pd.DataFrame
-
-        self.blocks: dict = None
-        self.num_of_blocks: int = None
-        self.entity_index: dict = None
         self.dataset_lim: int = None
         self.num_of_entities_1: int = None
         self.num_of_entities_2: int = None

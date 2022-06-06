@@ -43,10 +43,7 @@ class AbstractComparisonCleaning:
             workflow: WorkFlow = None
     ) -> dict:
 
-        if num_of_entities_2:
-            self._is_dirty_er = False
-        else:
-            self._is_dirty_er = True
+        self._is_dirty_er = False if num_of_entities_2 else True
 
         if workflow and (blocks is None):
             print("WORKFLOW")
@@ -92,9 +89,9 @@ class AbstractMetablocking(AbstractComparisonCleaning):
         self._threshold: float
         self._distinct_comparisons: int
         self._comparisons_per_entity: np.array
-        self._neighbors: list = list()
-        self._retained_neighbors: list = list()
-        self._retained_neighbors_weights: list = list()
+        self._neighbors: set() = set()
+        self._retained_neighbors: set() = set()
+        self._retained_neighbors_weights: set() = set()
         self._block_assignments: int = 0
         self.weighting_scheme: str
 
@@ -137,18 +134,18 @@ class AbstractMetablocking(AbstractComparisonCleaning):
             if not self._node_centric:
                 for neighbor_id in self._blocks[block_key].entities_D1:
                     if neighbor_id < entity_id:
-                        self._neighbors.append(neighbor_id)
+                        self._neighbors.add(neighbor_id)
             else:
                 for neighbor_id in self._blocks[block_key].entities_D1:
                     if neighbor_id != entity_id:
-                        self._neighbors.append(neighbor_id)
+                        self._neighbors.add(neighbor_id)
         else:
             if entity_id < self._dataset_limit:
                 for original_id in self._blocks[block_key].entities_D2:
-                    self._neighbors.append(original_id)
+                    self._neighbors.add(original_id)
             else:
                 for original_id in self._blocks[block_key].entities_D1:
-                    self._neighbors.append(original_id)
+                    self._neighbors.add(original_id)
 
     def _discretize_comparison_weight(self, weight: float) -> int:
         return int(weight * DISCRETIZATION_FACTOR)
@@ -163,8 +160,7 @@ class AbstractMetablocking(AbstractComparisonCleaning):
             if len(associated_blocks) != 0:
                 distinct_neighbors.clear()
                 for block_id in associated_blocks:
-                    for neighbor_id in self._get_neighbor_entities(block_id, entity_id):
-                        distinct_neighbors.add(neighbor_id)
+                    distinct_neighbors = set.union(distinct_neighbors, self._get_neighbor_entities(block_id, entity_id))
                 self._comparisons_per_entity[entity_id] = len(distinct_neighbors)
 
                 if self._is_dirty_er:
@@ -250,8 +246,8 @@ class WeightedEdgePruning(AbstractMetablocking):
         for neighbor_id in self._valid_entities:
             weight = self._get_weight(entity_id, neighbor_id)
             if self._threshold <= weight:
-                self._retained_neighbors.append(neighbor_id)
-                self._retained_neighbors_weights.append(self._discretize_comparison_weight(weight))
+                self._retained_neighbors.add(neighbor_id)
+                self._retained_neighbors_weights.add(self._discretize_comparison_weight(weight))
         if len(self._retained_neighbors) > 0:
             self.blocks[entity_id] = self._retained_neighbors.copy()
 
