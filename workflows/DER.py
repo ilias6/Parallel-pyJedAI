@@ -61,7 +61,7 @@ print_blocks(blocks, is_dirty_er)
 # --- META-Blocking -- #
 
 WE = WeightedEdgePruning()
-candidate_pairs_blocks = WE.process(blocks, SB._num_of_entities_1, SB._num_of_entities_2)
+candidate_pairs_blocks = WE.process(blocks, SB._num_of_entities_1)
 
 print_candidate_pairs(candidate_pairs_blocks)
 

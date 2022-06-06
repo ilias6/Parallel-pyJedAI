@@ -110,7 +110,7 @@ class AbstractMetablocking(AbstractComparisonCleaning):
         return self._prune_edges()
 
     def _get_weight(self, entity_id: int, neighbor_id: int) -> float:
-        ws = self._weighting_scheme
+        ws = self.weighting_scheme
         if ws == 'ARCS' or ws == 'CBS':
             return self._counters[neighbor_id]
         elif ws == 'ECBS':
@@ -187,7 +187,7 @@ class WeightedEdgePruning(AbstractMetablocking):
 
     def __init__(self, weighting_scheme: str = 'CBS') -> None:
         super().__init__()
-        self._weighting_scheme = weighting_scheme
+        self.weighting_scheme = weighting_scheme
         self._node_centric = False
         self._num_of_edges: float
 
@@ -199,10 +199,14 @@ class WeightedEdgePruning(AbstractMetablocking):
 
         return self.blocks
 
-    def _process_entity(self, entity_id: int):
+    def _process_entity(self, entity_id: int) -> None:
         self._valid_entities.clear()
         self._flags = np.empty([self._num_of_entities], dtype=int)
         self._flags[:] = EMPTY
+        
+        if entity_id not in self._entity_index:
+            return
+
         associated_blocks = self._entity_index[entity_id]
 
         if len(associated_blocks) == 0:
