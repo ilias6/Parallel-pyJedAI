@@ -30,13 +30,15 @@ class AbstractComparisonCleaning:
         self._valid_entities: set() = set()
         self._entity_index: dict
         self._weighting_scheme: str
+        self._blocks: dict() # initial blocks
+        self.blocks = dict() # blocks after CC
 
     def process(
-        self,
-        blocks: dict = None,
-        num_of_entities_1: int = None,
-        num_of_entities_2: int = None,
-        workflow: WorkFlow = None
+            self,
+            blocks: dict = None,
+            num_of_entities_1: int = None,
+            num_of_entities_2: int = None,
+            workflow: WorkFlow = None
     ) -> dict:
 
         if num_of_entities_2:
@@ -55,7 +57,7 @@ class AbstractComparisonCleaning:
                 self._num_of_entities += workflow.num_of_entities_2
             self._dataset_limit: int = workflow.num_of_entities_1
             self._num_of_blocks = len(workflow.blocks)
-            self.blocks: dict = workflow.blocks
+            self._blocks: dict = workflow.blocks
         else:
             self._entity_index = create_entity_index(blocks, self._is_dirty_er)
             self._num_of_entities_1 = num_of_entities_1
@@ -65,25 +67,11 @@ class AbstractComparisonCleaning:
                 self._num_of_entities += self._num_of_entities_2
             self._dataset_limit: int = num_of_entities_1
             self._num_of_blocks = len(blocks)
-            self.blocks: dict = blocks
-        
+            self._blocks: dict = blocks
+
         self._progress_bar = tqdm(total=2*self._num_of_entities, desc=self._method_name)
-            
 
         return self._apply_main_processing()
-
-    # def _apply_main_processing(self) -> dict:
-    #     pass
-
-    def _add_decomposed_block(self, entity_id: int, neighbors: set, neighbors_weights: set, new_blocks: dict) -> None:
-        if len(neighbors) == 0:
-            return
-        new_blocks[entity_id] = neighbors
-
-    # def _replicate_id(self, entity_id, times) -> np.array:
-    #     array = np.empty([times])
-    #     array[:] = entity_id
-    #     return array 
 
 class AbstractMetablocking(AbstractComparisonCleaning):
     """
@@ -99,11 +87,11 @@ class AbstractMetablocking(AbstractComparisonCleaning):
         self._counters: np.array
         self._comparisons_per_entity: np.array
         self._node_centric: bool
+        self._threshold: float
 
-        # All dicts will be {int -> np.array}
-        self._neighbors: set = set()
-        self._retained_neighbors: set = set()
-        self._retained_neighbors_weights: set = set()
+        self._neighbors: list = list()
+        self._retained_neighbors: list = list()
+        self._retained_neighbors_weights: list = list()
         self._block_assignments: int = 0
         self.weighting_scheme: str
 
@@ -111,10 +99,8 @@ class AbstractMetablocking(AbstractComparisonCleaning):
 
         self._counters = np.empty([self._num_of_entities], dtype=float)
 
-        for block_key in self.blocks.keys():
-            self._block_assignments += self.blocks[block_key].get_total_block_assignments(self._is_dirty_er)
-        
-        # print(block_assignments)
+        for block_key in self._blocks.keys():
+            self._block_assignments += self._blocks[block_key].get_total_block_assignments(self._is_dirty_er)
 
         self._set_threshold()
         
@@ -137,30 +123,27 @@ class AbstractMetablocking(AbstractComparisonCleaning):
             # TODO
             pass
         else:
-            # TODO error
+            # TODO: Error handling
             print('This weighting scheme does not exist')
         
-    def _normalize_neighbour_entities(self, block_key: str, entity_id: int) -> None:
+    def _normalize_neighbor_entities(self, block_key: str, entity_id: int) -> None:
         self._neighbors.clear()
         if self._is_dirty_er:
             if not self._node_centric:
-                # print("block_key: ", block_key)
-                # print(block_key in self.blocks)
-                for neighbor_id in self.blocks[block_key].entities_D1:
-                    # print(neighbor_id)
+                for neighbor_id in self._blocks[block_key].entities_D1:
                     if neighbor_id < entity_id:
-                        self._neighbors.add(neighbor_id)
+                        self._neighbors.append(neighbor_id)
             else:
-                for neighbor_id in self.blocks[block_key].entities_D1:
+                for neighbor_id in self._blocks[block_key].entities_D1:
                     if neighbor_id != entity_id:
-                        self._neighbors.add(neighbor_id)
+                        self._neighbors.append(neighbor_id)
         else:
             if entity_id < self._dataset_limit:
-                for original_id in self.blocks[block_key].entities_D2:
-                    self._neighbors.add(original_id)
+                for original_id in self._blocks[block_key].entities_D2:
+                    self._neighbors.append(original_id)
             else:
-                for original_id in self.blocks[block_key].entities_D1:
-                    self._neighbors.add(original_id)
+                for original_id in self._blocks[block_key].entities_D1:
+                    self._neighbors.append(original_id)
 
     def _discretize_comparison_weight(self, weight: float) -> int:
         return int(weight * DISCRETIZATION_FACTOR)
@@ -176,29 +159,30 @@ class WeightedEdgePruning(AbstractMetablocking):
         super().__init__()
         self._weighting_scheme = weighting_scheme
         self._node_centric = False
-        self._num_of_edges: float = 0.0
+        self._num_of_edges: float
 
     def _prune_edges(self) -> dict:
-        new_blocks = dict()
+        
         # TODO ARCS
         for i in range(0, self._num_of_entities):
             self._process_entity(i)
-            self._verify_valid_entities(i, new_blocks)
+            self._verify_valid_entities(i)
             self._progress_bar.update(1)
-        return new_blocks
+
+        return self.blocks
 
     def _process_entity(self, entity_id: int):
         self._valid_entities.clear()
         self._flags = np.empty([self._num_of_entities], dtype=int)
         self._flags[:] = EMPTY
-        # print("entity_id", entity_id)
         associated_blocks = self._entity_index[entity_id]
 
         if len(associated_blocks) == 0:
+            print("No associated blocks")
             return
 
         for block_id in associated_blocks:
-            self._normalize_neighbour_entities(block_id, entity_id)
+            self._normalize_neighbor_entities(block_id, entity_id)
             for neighbor_id in self._neighbors:
                 if self._flags[neighbor_id] != entity_id:
                     self._counters[neighbor_id] = 0
@@ -209,17 +193,16 @@ class WeightedEdgePruning(AbstractMetablocking):
 
     def _update_threshold(self, entity_id: int) -> None:
         self._num_of_edges += len(self._valid_entities)
-
-        for id in self._valid_entities:
-            self._threshold += super()._get_weight(entity_id, id)
+        for neighbor_id in self._valid_entities:
+            self._threshold += super()._get_weight(entity_id, neighbor_id)
 
     def _set_threshold(self):
-        self._num_of_edges = 0
-        self._threshold = 0
+        self._num_of_edges = 0.0
+        self._threshold = 0.0
 
         # TODO: ARCS
         # Java inline if ??
-        # print("_set_threshold ",  self._num_of_entities)
+        # Loop for all entities
         for i in range(0, self._num_of_entities):
             self._process_entity(i)
             self._update_threshold(i)
@@ -227,21 +210,19 @@ class WeightedEdgePruning(AbstractMetablocking):
 
         self._threshold /= self._num_of_edges
 
-        # print("- threshold: ", self._threshold)
-
-    def _verify_valid_entities(self, entity_id: int, new_blocks: dict) -> None:
+    def _verify_valid_entities(self, entity_id: int) -> None:
         self._retained_neighbors.clear()
         self._retained_neighbors_weights.clear()
         for neighbor_id in self._valid_entities:
             weight = self._get_weight(entity_id, neighbor_id)
             if self._threshold <= weight:
-                self._retained_neighbors.add(neighbor_id)
-                self._retained_neighbors_weights.add(self._discretize_comparison_weight(weight))
-        self._add_decomposed_block(entity_id, self._retained_neighbors, self._retained_neighbors_weights, new_blocks)
-
+                self._retained_neighbors.append(neighbor_id)
+                self._retained_neighbors_weights.append(self._discretize_comparison_weight(weight))
+        if len(self._retained_neighbors) > 0:
+            self.blocks[entity_id] = self._retained_neighbors.copy()
+        
 class WeightedNodePruning(WeightedEdgePruning):
     def __init__(self) -> None:
         super().__init__()
         pass    
     pass
-
