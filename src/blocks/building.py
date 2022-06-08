@@ -46,8 +46,7 @@ class AbstractBlockBuilding:
         self._num_of_entities_2 = None
 
     def build_blocks(
-            self, entities_df_1: pd.DataFrame = None,
-            entities_df_2: pd.DataFrame = None,
+            self,
             data: Data = None
     ) -> dict:
         '''

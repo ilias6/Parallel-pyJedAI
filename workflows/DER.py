@@ -16,61 +16,38 @@ from src.blocks.comparison_cleaning import WeightedEdgePruning
 from src.core.entities import Data
 from src.blocks.utils import print_blocks, print_candidate_pairs
 
-# --- 1. Read the dataset --- #
+IS_DIRTY_ER = True
 
-dataset = pd.read_csv(
-    "../data/cora/cora.csv",
-    usecols=['title', 'author'],
-    # nrows=10,
-    sep='|'
-)
-
-ground_truth = pd.read_csv("../data/cora/cora_gt.csv", sep='|')
-
-# Create data
+# --- Read the dataset --- #
 
 data = Data(
-    dataset_1=dataset,
-    ground_truth=ground_truth
+    dataset_1=pd.read_csv(
+        "../data/cora/cora.csv",
+        usecols=['title', 'author'],
+        sep='|'
+    ),
+    ground_truth=pd.read_csv("../data/cora/cora_gt.csv", sep='|')
 )
 
-is_dirty_er = True
-# --- 2. Block Building techniques --- #
+# --- Block Building techniques --- #
 
 SB = StandardBlocking(text_cleaning_method=cora_text_cleaning_method)
-blocks = SB.build_blocks(data=data)
+blocks = SB.build_blocks(data)
 
-# print(blocks)
-
-# blocks = QGramsBlocking(
-#     qgrams=2,
-#     text_cleaning_method=cora_text_cleaning_method
-# ).build_blocks(data=data)
-
-# print(blocks)
-
-# --- 4. Block Filtering --- #
+# --- Block Filtering --- #
 
 BF = BlockFiltering(ratio=0.9)
-blocks = BF.process(
-    blocks=SB.blocks,
-    data=data
-)
+blocks = BF.process(blocks, data)
 
-
-print_blocks(blocks, is_dirty_er)
+print_blocks(blocks, IS_DIRTY_ER)
 
 
 # --- META-Blocking -- #
 
 WE = WeightedEdgePruning()
-candidate_pairs_blocks = WE.process(
-    blocks,
-    data=data
-)
+candidate_pairs_blocks = WE.process(blocks, data)
 
 print_candidate_pairs(candidate_pairs_blocks)
 
-# --- 5. Comparison Propagation --- #
-# --- 6. Jaccard Similarity --- #
-# --- 7. Connected Components --- #
+
+# --- Entity Matching --- #
