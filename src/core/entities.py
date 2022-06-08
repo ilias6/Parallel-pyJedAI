@@ -10,7 +10,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 # from src.blocks.building import AbstractBlockBuilding
 # from src.blocks.cleaning import AbstractBlockCleaning
 
-class WorkFlow:
+class Data:
 
     def __init__(
             self, dataset_1,
@@ -25,11 +25,11 @@ class WorkFlow:
             self.is_dirty_er = True
         else:
             self.is_dirty_er = False
-
-        self.dataset_lim: int = None
+        self.dataset_limit: int = None
         self.num_of_entities_1: int = None
         self.num_of_entities_2: int = None
         self.num_of_entities: int = None
+        self.attributes: list = None
 
 class Block:
     '''

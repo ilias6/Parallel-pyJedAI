@@ -11,12 +11,10 @@ from tqdm import tqdm
 from sortedcontainers import SortedList, SortedSet
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from src.core.entities import Block, WorkFlow
+from src.core.entities import Block, Data
 from src.utils.utils import insert_to_dict
 from src.utils.constants import LIST, SET
 from src.blocks.utils import drop_single_entity_blocks, create_entity_index, print_blocks
-
-
 
 class AbstractBlockCleaning:
     def __init__(self) -> None:
@@ -38,10 +36,9 @@ class BlockFiltering(AbstractBlockCleaning):
     _method_name = "Block Filtering"
     _method_info = ": it retains every entity in a subset of its smallest blocks."
 
-    def __init__(self, is_dirty_er: bool = None, ratio: float = 0.8) -> None:
+    def __init__(self, ratio: float = 0.8) -> None:
         super().__init__()
         self.ratio = ratio
-        self._is_dirty_er = is_dirty_er
         self.blocks: dict
 
     def __str__(self) -> str:
@@ -49,18 +46,19 @@ class BlockFiltering(AbstractBlockCleaning):
         print("Ratio: ", self.ratio)
         return super().__str__()
 
-    def process(self, blocks: dict = None, dataset_lim: int = None, workflow: WorkFlow = None) -> dict:
+    def process(self, blocks: dict = None, data: Data = None) -> dict:
         '''
         Main function of Block Filtering
         ---
         Input: dict of keys -> Block
         Returns: dict of keys -> Block
         '''
+        self.data = data
         pbar = tqdm(total=3, desc="Block Filtering")
-        # print("dataset_lim: ", dataset_lim)
+        # print("dataset_limit: ", dataset_limit)
         sorted_blocks = self._sort_blocks_cardinality(blocks)
         pbar.update(1)
-        entity_index = create_entity_index(sorted_blocks, self._is_dirty_er)
+        entity_index = create_entity_index(sorted_blocks, self.data.is_dirty_er)
         pbar.update(1)
 
         filtered_blocks = {}
@@ -72,19 +70,19 @@ class BlockFiltering(AbstractBlockCleaning):
 
                 # Entities ids start to 0 ... n-1 for 1st dataset
                 # and n ... m for 2nd dataset
-                if entity_id < dataset_lim:
+                if entity_id < self.data.dataset_limit:
                     # print(key)
                     filtered_blocks[key].entities_D1.add(entity_id)
                 else:
                     filtered_blocks[key].entities_D2.add(entity_id)
         pbar.update(1)
         # print_blocks(filtered_blocks, self._is_dirty_er)
-        self.blocks = drop_single_entity_blocks(filtered_blocks, self._is_dirty_er)
+        self.blocks = drop_single_entity_blocks(filtered_blocks, self.data.is_dirty_er)
 
         return self.blocks
 
     def _sort_blocks_cardinality(self, blocks: dict) -> dict:
-        return dict(sorted(blocks.items(), key=lambda x: x[1].get_cardinality(self._is_dirty_er)))
+        return dict(sorted(blocks.items(), key=lambda x: x[1].get_cardinality(self.data.is_dirty_er)))
 
 class BlockClustering(AbstractBlockCleaning):
     pass
