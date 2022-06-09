@@ -1,3 +1,6 @@
+# import typing
+# from typing import Final
+
 COMMA_SEPARATOR = ','
 LIST = 'list'
 SET = 'set'

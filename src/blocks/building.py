@@ -8,8 +8,8 @@ One block is consisted of 1 set if Dirty ER and
 TODO: Change dict instertion like cleaning or use method insert_to_dict
 TODO: ids to CC as 0...n-1 and n..m can be merged in one set, no need of 2 sets?
 '''
-
 import logging
+logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 from operator import methodcaller
 import os
 import sys

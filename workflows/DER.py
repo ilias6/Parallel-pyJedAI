@@ -39,7 +39,7 @@ blocks = SB.build_blocks(data)
 BF = BlockFiltering(ratio=0.9)
 blocks = BF.process(blocks, data)
 
-print_blocks(blocks, IS_DIRTY_ER)
+# print_blocks(blocks, IS_DIRTY_ER)
 
 
 # --- META-Blocking -- #
@@ -47,7 +47,7 @@ print_blocks(blocks, IS_DIRTY_ER)
 WE = WeightedEdgePruning()
 candidate_pairs_blocks = WE.process(blocks, data)
 
-print_candidate_pairs(candidate_pairs_blocks)
+# print_candidate_pairs(candidate_pairs_blocks)
 
 
 # --- Entity Matching --- #
