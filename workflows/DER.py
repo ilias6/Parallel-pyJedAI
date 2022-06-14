@@ -6,7 +6,6 @@ from html import entities
 import os
 import sys
 import pandas as pd
-from pyrsistent import b
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from src.utils.tokenizer import Tokenizer, cora_text_cleaning_method
@@ -15,6 +14,7 @@ from src.blocks.cleaning import BlockFiltering
 from src.blocks.comparison_cleaning import WeightedEdgePruning
 from src.core.entities import Data
 from src.blocks.utils import print_blocks, print_candidate_pairs
+from src.matching.similarity import EntityMatching
 
 IS_DIRTY_ER = True
 
@@ -44,10 +44,12 @@ blocks = BF.process(blocks, data)
 
 # --- META-Blocking -- #
 
-WE = WeightedEdgePruning()
-candidate_pairs_blocks = WE.process(blocks, data)
+# WE = WeightedEdgePruning()
+# candidate_pairs_blocks = WE.process(blocks, data)
 
 # print_candidate_pairs(candidate_pairs_blocks)
 
 
 # --- Entity Matching --- #
+EM = EntityMatching('jaccard')
+pairs_graph = EM.predict(blocks, data)

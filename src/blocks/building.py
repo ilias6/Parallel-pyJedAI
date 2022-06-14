@@ -62,12 +62,12 @@ class AbstractBlockBuilding:
             # TODO: Error
             print("ERROR")
 
-        entities_d1 = entities_df_1.apply(" ".join, axis=1)
-        data.dataset_limit = data.num_of_entities = data.num_of_entities_1 = len(entities_d1)
+        data.entities_d1 = entities_df_1.apply(" ".join, axis=1)
+        data.dataset_limit = data.num_of_entities = data.num_of_entities_1 = len(data.entities_d1)
 
         if entities_df_2 is not None:
-            entities_d2 = entities_df_2.apply(" ".join, axis=1)
-            data.num_of_entities_2 = len(entities_d2)
+            data.entities_d2 = entities_df_2.apply(" ".join, axis=1)
+            data.num_of_entities_2 = len(data.entities_d2)
             tqdm_desc_1 = self._method_name + " - Clean-Clean ER (1)"
             tqdm_desc_2 = self._method_name + " - Clean-Clean ER (2)"
             data.is_dirty_er = False
@@ -77,14 +77,14 @@ class AbstractBlockBuilding:
             data.is_dirty_er = True
 
         for i in tqdm(range(0, data.num_of_entities_1, 1), desc=tqdm_desc_1):
-            record = self.text_cleaning_method(entities_d1[i]) if self.text_cleaning_method is not None else entities_D1[i]
+            record = self.text_cleaning_method(data.entities_d1[i]) if self.text_cleaning_method is not None else entities_D1[i]
             for token in self._tokenize_entity(record):
                 self.blocks.setdefault(token, Block(token))
                 self.blocks[token].entities_D1.add(i)
 
         if not data.is_dirty_er:
             for i in tqdm(range(0, data.num_of_entities_2, 1), desc=tqdm_desc_2):
-                record = self.text_cleaning_method(entities_d2[i]) if self.text_cleaning_method is not None else entities_D2[i]
+                record = self.text_cleaning_method(data.entities_d2[i]) if self.text_cleaning_method is not None else entities_D2[i]
                 for token in self._tokenize_entity(record):
                     self.blocks.setdefault(token, Block(token))
                     self.blocks[token].entities_D2.add(data.num_of_entities_1+i)
