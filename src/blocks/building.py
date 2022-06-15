@@ -76,6 +76,8 @@ class AbstractBlockBuilding:
             tqdm_desc_1 = self._method_name + " - Dirty ER"
             data.is_dirty_er = True
 
+        data._init_entities()
+
         for i in tqdm(range(0, data.num_of_entities_1, 1), desc=tqdm_desc_1):
             record = self.text_cleaning_method(data.entities_d1[i]) if self.text_cleaning_method is not None else entities_D1[i]
             for token in self._tokenize_entity(record):

@@ -19,6 +19,12 @@ from strsimpy.jaccard import Jaccard
 from strsimpy.sorensen_dice import SorensenDice
 from strsimpy import SIFT4
 
+
+import gensim
+from gensim import corpora
+from pprint import pprint
+
+
 import tqdm
 from tqdm import tqdm
 import networkx
@@ -28,6 +34,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from src.core.entities import Block, Data
 from src.blocks.utils import drop_single_entity_blocks, create_entity_index, print_blocks
+from src.utils.constants import EMBEDING_TYPES
 
 
 class EntityMatching:
@@ -37,14 +44,15 @@ class EntityMatching:
     _method_name: str = "Entity Matching"
     _method_info: str = ": Calculates similarity from 0. to 1. for all blocks"
 
-    def __init__(self, metric: str, ngram: int = 2) -> None:
+    def __init__(self, metric: str, ngram: int = 2, embedings: str = None) -> None:
         self.data: Data
         self.pairs: networkx.Graph
         self.metric = metric
         self.ngram: int = 2
+        self.embedings: str = embedings
 
 
-    def predict(self, blocks: dict, data: Data) -> list:
+    def predict(self, blocks: dict, data: Data) -> networkx.Graph:
         '''
         TODO
         '''
@@ -63,6 +71,10 @@ class EntityMatching:
         else:
             # TODO: Error
             pass
+
+        # if self.embedings in EMBEDING_TYPES:
+        # TODO: Add GENSIM 
+
         return self.pairs
 
     def _predict_raw_blocks(self, blocks: dict) -> None:
@@ -72,7 +84,7 @@ class EntityMatching:
                 for entity_id_1 in range(0, len(entities_array), 1):
                     for entity_id_2 in range(entity_id_1+1, len(entities_array), 1):
                         self.pairs.add_edge(
-                            entity_id_1, entity_id_2, 
+                            entity_id_1, entity_id_2,
                             weight=self._similarity(self.data.entities_d1[entity_id_1], self.data.entities_d1[entity_id_2])
                         )
             else:
@@ -81,21 +93,23 @@ class EntityMatching:
                         self.pairs.add_edge(
                             entity_id_1, entity_id_2,
                             weight=self._similarity(
-                                self.data.entities_d1[entity_id_1], self.data.entities_d2[entity_id_2]
+                                self.data.entities_d1[entity_id_1], self.data.entities_d2[entity_id_2-self.data.dataset_limit]
                             )
                         )
             self._progress_bar.update(1)
 
     def _predict_prunned_blocks(self, blocks: dict) -> None:
+        # TODO ??? i am using a concatenated df -> change it ??
         for entity_id, candidates in blocks.items():
             for candidate_id in candidates:
-                self.pairs.add_edge(
-                    entity_id, candidate_id,
-                    weight=self._similarity(
-                        self.data.entities_d1[entity_id], 
-                        self.data.entities_d2[candidate_id]
+                if candidate_id < self.data.dataset_limit:
+                    self.pairs.add_edge(
+                        entity_id, candidate_id,
+                        weight=self._similarity(
+                            self.data.entities[entity_id], 
+                            self.data.entities[candidate_id]
+                        )
                     )
-                )
             self._progress_bar.update(1)
 
     def _similarity(self, entity_1: str, entity_2: str) -> float:
