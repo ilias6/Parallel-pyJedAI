@@ -36,7 +36,7 @@ class Data:
 
     def _init_entities(self) -> None:
         self.entities = self.entities_d1
-        if self.is_dirty_er:
+        if not self.is_dirty_er:
             self.entities = pd.concat([self.entities_d1,  self.entities_d2])
 
 class Block:
