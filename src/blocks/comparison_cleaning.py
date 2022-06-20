@@ -237,7 +237,7 @@ class WeightedEdgePruning(AbstractMetablocking):
 
 class WeightedNodePruning(WeightedEdgePruning):
     '''
-    TODO: add comment
+    TODO: WeightedNodePruning
     '''    
     def __init__(self) -> None:
         super().__init__()

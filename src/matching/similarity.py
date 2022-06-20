@@ -2,6 +2,7 @@
 TODO
 '''
 
+from html import entities
 import strsimpy
 from strsimpy.levenshtein import Levenshtein
 from strsimpy.normalized_levenshtein import NormalizedLevenshtein
@@ -50,7 +51,9 @@ class EntityMatching:
         self.metric = metric
         self.ngram: int = 2
         self.embedings: str = embedings
-        self.attributes: list = attributes 
+        self.attributes: list = attributes
+        self.entities_d1: pd.DataFrame
+        self.entities_d2: pd.DataFrame = None
 
         if self.metric == 'levenshtein' or self.metric == 'edit_distance':
             self._similarity = Levenshtein().distance
@@ -84,7 +87,17 @@ class EntityMatching:
         all_blocks = list(blocks.values())
         self._progress_bar = tqdm(total=len(all_blocks), desc=self._method_name+" ("+self.metric+")")
         
-        # if self.attributes:
+        if self.attributes:
+            if len(self.attributes.intersection(data.attributes)) == 0:
+                # TODO: Error
+                print("Columns inserted for similarity prediction do not exist")
+
+            self.entities_d1 = data.entities_d1[[self.attributes]]
+            if not data.is_dirty_er:
+                self.entities_d2 = data.entities_d2[[self.attributes]]
+        else:
+            self.entities_d1 = data.entities_d1
+            self.entities_d2 = data.entities_d2
 
         if isinstance(all_blocks[0], Block):
             self._predict_raw_blocks(blocks)
@@ -108,8 +121,8 @@ class EntityMatching:
                         self.pairs.add_edge(
                             entity_id_1, entity_id_2,
                             weight=self._similarity(
-                                self.data.entities_d1[entity_id_1],
-                                self.data.entities_d1[entity_id_2]
+                                self.entities_d1[entity_id_1],
+                                self.entities_d1[entity_id_2]
                             )
                         )
                 self._progress_bar.update(1)
@@ -120,21 +133,21 @@ class EntityMatching:
                         self.pairs.add_edge(
                             entity_id_1, entity_id_2,
                             weight=self._similarity(
-                                self.data.entities_d1[entity_id_1], 
-                                self.data.entities_d2[entity_id_2]
+                                self.entities_d1[entity_id_1], 
+                                self.entities_d2[entity_id_2]
                             )
                         )
                 self._progress_bar.update(1)
 
     def _predict_prunned_blocks(self, blocks: dict) -> None:
-        # TODO ??? i am using a concatenated df -> change it ??
+        # TODO: Blocks after meta-blocking are concatenated sets
         for entity_id, candidates in blocks.items():
             for candidate_id in candidates:
                 self.pairs.add_edge(
                     entity_id, candidate_id,
                     weight=self._similarity(
-                        self.data.entities[entity_id], 
-                        self.data.entities[candidate_id]
+                        self.entities[entity_id], 
+                        self.entities[candidate_id]
                     )
                 )
             self._progress_bar.update(1)

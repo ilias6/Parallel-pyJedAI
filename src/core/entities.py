@@ -21,7 +21,7 @@ class Data:
         self.dataset_1 = dataset_1
         self.dataset_2 = dataset_2
         self.entities_d1: pd.DataFrame
-        self.entities_d2: pd.DataFrame
+        self.entities_d2: pd.DataFrame = None
         self.ground_truth = ground_truth
         if dataset_2 is None:
             self.is_dirty_er = True

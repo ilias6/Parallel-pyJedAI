@@ -47,7 +47,9 @@ class AbstractBlockBuilding:
 
     def build_blocks(
             self,
-            data: Data = None
+            data: Data,
+            attributes = None,
+            with_header = None            
     ) -> dict:
         '''
         Main method of Standard Blocking
@@ -55,38 +57,43 @@ class AbstractBlockBuilding:
         Input: Dirty/Clean-1 dataframe, Clean-2 dataframe
         Returns: dict of token -> Block
         '''
-        if data:
-            entities_df_1 = data.dataset_1
-            entities_df_2 = data.dataset_2
-        elif entities_df_1 == None:
-            # TODO: Error
-            print("ERROR")
+        data.attributes = attributes
+        if data.attributes is None and with_header:
+            data.attributes = data.dataset_1.iloc[0].to_list()
+        entities_df_1 = data.dataset_1[[attributes]] if attributes is not None else data.dataset_1
+        entities_df_2 = data.dataset_2
+
+        if not data.is_dirty_er:
+            entities_df_2 = data.dataset_2[[attributes]] if attributes is not None else data.dataset_2
 
         data.entities_d1 = entities_df_1.apply(" ".join, axis=1)
         data.dataset_limit = data.num_of_entities = data.num_of_entities_1 = len(data.entities_d1)
+        data.entities = data.entities_d1
 
         if entities_df_2 is not None:
-            data.entities_d2 = entities_df_2.apply(" ".join, axis=1)
+            if data.attributes:
+                data.entities_d2 = entities_df_2[[data.attributes]].apply(" ".join, axis=1)
+            else:
+                data.entities_d2 = entities_df_2.apply(" ".join, axis=1)
             data.num_of_entities_2 = len(data.entities_d2)
             tqdm_desc_1 = self._method_name + " - Clean-Clean ER (1)"
             tqdm_desc_2 = self._method_name + " - Clean-Clean ER (2)"
             data.is_dirty_er = False
             data.num_of_entities += data.num_of_entities_2
+            data.entities = pd.concat([data.entities_d1,  data.entities_d2])
         else:
             tqdm_desc_1 = self._method_name + " - Dirty ER"
             data.is_dirty_er = True
 
-        data._init_entities()
-
         for i in tqdm(range(0, data.num_of_entities_1, 1), desc=tqdm_desc_1):
-            record = self.text_cleaning_method(data.entities_d1[i]) if self.text_cleaning_method is not None else entities_D1[i]
+            record = self.text_cleaning_method(data.entities_d1[i]) if self.text_cleaning_method is not None else data.entities_d1[i]
             for token in self._tokenize_entity(record):
                 self.blocks.setdefault(token, Block(token))
                 self.blocks[token].entities_D1.add(i)
 
         if not data.is_dirty_er:
             for i in tqdm(range(0, data.num_of_entities_2, 1), desc=tqdm_desc_2):
-                record = self.text_cleaning_method(data.entities_d2[i]) if self.text_cleaning_method is not None else entities_D2[i]
+                record = self.text_cleaning_method(data.entities_d2[i]) if self.text_cleaning_method is not None else data.entities_D2[i]
                 for token in self._tokenize_entity(record):
                     self.blocks.setdefault(token, Block(token))
                     self.blocks[token].entities_D2.add(data.num_of_entities_1+i)
