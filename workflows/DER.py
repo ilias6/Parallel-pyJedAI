@@ -6,8 +6,15 @@ from html import entities
 import os
 import sys
 import pandas as pd
+import networkx
+from networkx import (
+    draw,
+    DiGraph,
+    Graph,
+)
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from src.clustering.connected_components import ConnectedComponentsClustering
 from src.utils.tokenizer import Tokenizer, cora_text_cleaning_method
 from src.blocks.building import StandardBlocking, QGramsBlocking
 from src.blocks.cleaning import BlockFiltering
@@ -53,3 +60,11 @@ blocks = BF.process(blocks, data)
 # --- Entity Matching --- #
 EM = EntityMatching('jaccard')
 pairs_graph = EM.predict(blocks, data)
+
+draw(pairs_graph)
+
+# --- Entity clustering --- #
+CC = ConnectedComponentsClustering(0.7)
+pairs_df = CC.process(pairs_graph)
+
+print(pairs_df)
