@@ -58,7 +58,7 @@ blocks = BF.process(blocks, data)
 
 
 # --- Entity Matching --- #
-EM = EntityMatching('jaccard')
+EM = EntityMatching('jaccard', similarity_threshold=0.6)
 pairs_graph = EM.predict(blocks, data)
 
 draw(pairs_graph)

@@ -1,6 +1,5 @@
 import logging
 import os
-from pydoc import describe
 import sys
 
 import pandas as pd
