@@ -90,8 +90,7 @@ class EntityMatching:
         self._progress_bar = tqdm(total=len(all_blocks), desc=self._method_name+" ("+self.metric+")")
 
         if self.attributes:
-            if len(self.attributes.intersection(data.attributes)) == 0:
-                # TODO: Error
+            if len(self.attributes.intersection(data.attributes)) == 0: # TODO: Error
                 print("Columns inserted for similarity prediction do not exist")
             self.entities_d1 = data.entities_d1[[self.attributes]]
             if not data.is_dirty_er:
@@ -99,6 +98,7 @@ class EntityMatching:
         else:
             self.entities_d1 = data.entities_d1
             self.entities_d2 = data.entities_d2
+            self.entities = data.entities_d1 if data.is_dirty_er else pd.concat([data.entities_d1,  data.entities_d2])
 
         if isinstance(all_blocks[0], Block):
             self._predict_raw_blocks(blocks)

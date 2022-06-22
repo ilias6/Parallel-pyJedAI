@@ -9,12 +9,19 @@ from src.core.entities import Data
 
 class ConnectedComponentsClustering:
 
-    def __init__(self, similarity_threshold: float) -> None:
-        self.similarity_threshold = similarity_threshold
+    _method_name: str = "Connected Components Clustering"
+    _method_info: str = ": it gets equivalence clsuters from the transitive closure of the similarity graph."
+
+    def __init__(self) -> None:
+        self.similarity_threshold: float
+        self._progress_bar: tqdm
 
     def process(self, graph: nx.Graph) -> pd.DataFrame:
 
+
         connected_components = nx.connected_components(graph)
+        self._progress_bar = tqdm(total=len(connected_components), desc=self._method_name)
+
         pairs_df = pd.DataFrame(columns=["id1", "id2"])
         num_of_pairs = 1
         for cc in connected_components:
@@ -25,5 +32,5 @@ class ConnectedComponentsClustering:
                 for id2_index in range(id1_index+1, len(sorted_component), 1):
                     pairs_df.loc[num_of_pairs] = [sorted_component[id1_index], sorted_component[id2_index]]
                     num_of_pairs += 1
-
+            self._progress_bar.update(1)
         return pairs_df

@@ -64,7 +64,7 @@ pairs_graph = EM.predict(blocks, data)
 draw(pairs_graph)
 
 # --- Entity clustering --- #
-CC = ConnectedComponentsClustering(0.7)
+CC = ConnectedComponentsClustering()
 pairs_df = CC.process(pairs_graph)
 
-print(pairs_df)
+# print(pairs_df)
