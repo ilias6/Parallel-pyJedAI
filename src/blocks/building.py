@@ -49,7 +49,7 @@ class AbstractBlockBuilding:
             self,
             data: Data,
             attributes = None,
-            with_header = None            
+            with_header = None
     ) -> dict:
         '''
         Main method of Standard Blocking
@@ -64,7 +64,8 @@ class AbstractBlockBuilding:
         entities_df_2 = data.dataset_2
 
         if not data.is_dirty_er:
-            entities_df_2 = data.dataset_2[[attributes]] if attributes is not None else data.dataset_2
+            entities_df_2 = data.dataset_2[[attributes]] \
+                                if attributes is not None else data.dataset_2
 
         data.entities_d1 = entities_df_1.apply(" ".join, axis=1)
         data.dataset_limit = data.num_of_entities = data.num_of_entities_1 = len(data.entities_d1)
