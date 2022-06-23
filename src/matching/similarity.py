@@ -111,6 +111,8 @@ class EntityMatching:
         # if self.embedings in EMBEDING_TYPES:
         # TODO: Add GENSIM
 
+        # TODO: add weight and seperate attributes
+
         return self.pairs
 
     def _predict_raw_blocks(self, blocks: dict) -> None:
@@ -123,36 +125,30 @@ class EntityMatching:
                             self.entities_d1[entity_id_1],
                             self.entities_d1[entity_id_2]
                         )
-                        if self.similarity_threshold is None or \
-                            (self.similarity_threshold and similarity > self.similarity_threshold):
-                            self.pairs.add_edge(entity_id_1, entity_id_2, weight=similarity)
-                self._progress_bar.update(1)
+                        self._insert_to_graph(entity_id_1, entity_id_2, similarity)
+                        self._progress_bar.update(1)
         else:
             for _, block in blocks.items():
                 for entity_id_1 in block.entities_D1:
                     for entity_id_2 in block.entities_D2:
                         similarity = self._similarity(
                             self.entities_d1[entity_id_1],
-                            self.entities_d2[entity_id_2]
+                            self.entities_d2[entity_id_2 - self.data.dataset_limit]
                         )
-                        if self.similarity_threshold is None or \
-                            (self.similarity_threshold and similarity > self.similarity_threshold):
-                            self.pairs.add_edge(entity_id_1, entity_id_2, weight=similarity)
-                self._progress_bar.update(1)
+                        self._insert_to_graph(entity_id_1, entity_id_2, similarity)
+                        self._progress_bar.update(1)
 
     def _predict_prunned_blocks(self, blocks: dict) -> None:
-        # TODO: Blocks after meta-blocking are concatenated sets
         for entity_id, candidates in blocks.items():
             for candidate_id in candidates:
                 similarity = self._similarity(
                     self.entities[entity_id],
                     self.entities[candidate_id]
                 )
-                if self.similarity_threshold is None or \
-                    (self.similarity_threshold and similarity > self.similarity_threshold):
-                    self.pairs.add_edge(
-                        entity_id, candidate_id,
-                        weight=similarity
-                    )
-            self._progress_bar.update(1)
+                self._insert_to_graph(entity_id, candidate_id, similarity)
+                self._progress_bar.update(1)
 
+    def _insert_to_graph(self, entity_id_1, entity_id_2, similarity):
+        if self.similarity_threshold is None or \
+            (self.similarity_threshold and similarity > self.similarity_threshold):
+            self.pairs.add_edge(entity_id_1, entity_id_2, weight=similarity)

@@ -7,6 +7,11 @@ import sys
 
 from src.core.entities import Data
 
+class Evaluation:
+    # TODO: Based on Groundtruth traverse
+    pass
+
+
 class ConnectedComponentsClustering:
 
     _method_name: str = "Connected Components Clustering"
