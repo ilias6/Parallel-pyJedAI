@@ -16,7 +16,8 @@ class Data:
             self, dataset_1,
             dataset_2=None,
             ground_truth=None,
-            attributes=None
+            attributes=None,
+            with_header=None
         ) -> None:
 
         self.dataset_1 = dataset_1
@@ -41,10 +42,34 @@ class Data:
         if not self.is_dirty_er:
             self.entities = pd.concat([self.entities_d1,  self.entities_d2])
     
-    def clean(self, text_cleaning_method=None) -> None:
+    def process(self, text_cleaning_method=None) -> None:
+        
         self.dataset_1[self.attributes] = self.dataset_1[self.attributes].apply(text_cleaning_method)
+        self.dataset_1 = self.dataset_1[self.attributes] if self.attributes is not None else self.dataset_1
         if not self.is_dirty_er:
-            self.dataset_2 = self.dataset_2[self.attributes].apply(text_cleaning_method)
+            self.dataset_2 = self.dataset_2[self.attributes] \
+                                if self.attributes is not None else self.dataset_2
+
+        self.entities_d1 = self.dataset_1.apply(" ".join, axis=1)
+        self.dataset_limit = self.num_of_entities = self.num_of_entities_1 = len(self.entities_d1)
+        self.entities = self.entities_d1
+        
+        
+        if self.dataset_2 is not None:
+            self.dataset_2[self.attributes] = self.dataset_2[self.attributes].apply(text_cleaning_method)
+
+            if self.attributes:
+                self.entities_d2 = self.dataset_2[[data.attributes]].apply(" ".join, axis=1)
+            else:
+                self.entities_d2 = self.dataset_2.apply(" ".join, axis=1)
+
+            self.num_of_entities_2 = len(self.entities_d2)
+            self.is_dirty_er = False
+            self.num_of_entities += self.num_of_entities_2
+            self.entities = pd.concat([self.entities_d1,  self.entities_d2])
+        else:
+            self.is_dirty_er = True
+
 
 class Block:
     '''

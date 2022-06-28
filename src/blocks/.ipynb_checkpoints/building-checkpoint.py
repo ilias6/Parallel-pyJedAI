@@ -60,13 +60,11 @@ class AbstractBlockBuilding:
         data.attributes = attributes
         if data.attributes is None and with_header:
             data.attributes = data.dataset_1.iloc[0].to_list()
-        entities_df_1 = data.dataset_1[[attributes]] if attributes is not None else data.dataset_1
-        entities_df_2 = data.dataset_2
-
+        entities_df_1 = data.dataset_1[attributes] if attributes is not None else data.dataset_1
         if not data.is_dirty_er:
             entities_df_2 = data.dataset_2[[attributes]] \
                                 if attributes is not None else data.dataset_2
-
+        print(data.entities_d1)
         data.entities_d1 = entities_df_1.apply(" ".join, axis=1)
         data.dataset_limit = data.num_of_entities = data.num_of_entities_1 = len(data.entities_d1)
         data.entities = data.entities_d1

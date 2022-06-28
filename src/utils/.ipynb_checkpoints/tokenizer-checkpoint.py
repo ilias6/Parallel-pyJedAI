@@ -103,9 +103,8 @@ class Tokenizer:
 
 
 def cora_text_cleaning_method(col):
-    print(col)
     return col.str.replace("'", "") \
                 .str.replace("/z", " ") \
-                # .str.translate(str.maketrans(' ', ' ', string.punctuation))\
+                .str.translate(str.maketrans(' ', ' ', string.punctuation))\
                 .str.lower()
                 # .str.split()
