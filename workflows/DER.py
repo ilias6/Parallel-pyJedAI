@@ -9,7 +9,7 @@ import pandas as pd
 import networkx
 from networkx import (
     draw,
-    DiGraph,
+    DiGraph,    
     Graph,
 )
 
