@@ -56,7 +56,7 @@ class Evaluation:
 
         # self.accuracy = 
         # self.precision = 
-        # self.recall = 
+        # self.recall =     
         # self.f1 = 
         self.print_results()
 

@@ -120,23 +120,21 @@ class EntityMatching:
         if self.data.is_dirty_er:
             for _, block in blocks.items():
                 entities_array = list(block.entities_D1)
-                for entity_id_1 in range(0, len(entities_array), 1):
-                    for entity_id_2 in range(entity_id_1+1, len(entities_array), 1):
+                for entity_id1 in range(0, len(entities_array), 1):
+                    for entity_id2 in range(entity_id1+1, len(entities_array), 1):
                         similarity = self._similarity(
-                            self.entities_d1[entity_id_1],
-                            self.entities_d1[entity_id_2]
+                            entity_id1, entity_id2
                         )
-                        self._insert_to_graph(entity_id_1, entity_id_2, similarity)
+                        self._insert_to_graph(entity_id1, entity_id2, similarity)
                         self._progress_bar.update(1)
         else:
             for _, block in blocks.items():
-                for entity_id_1 in block.entities_D1:
-                    for entity_id_2 in block.entities_D2:
+                for entity_id1 in block.entities_D1:
+                    for entity_id2 in block.entities_D2:
                         similarity = self._similarity(
-                            self.entities_d1[entity_id_1],
-                            self.entities_d2[entity_id_2 - self.data.dataset_limit]
+                            entity_id1, entity_id2 - self.data.dataset_limit
                         )
-                        self._insert_to_graph(entity_id_1, entity_id_2, similarity)
+                        self._insert_to_graph(entity_id1, entity_id2, similarity)
                         self._progress_bar.update(1)
 
     def _predict_prunned_blocks(self, blocks: dict) -> None:
@@ -146,16 +144,15 @@ class EntityMatching:
         for entity_id, candidates in blocks.items():
             for candidate_id in candidates:
                 similarity = self._similarity(
-                    self.entities[entity_id],
-                    self.entities[candidate_id]
+                    entity_id, candidate_id
                 )
                 self._insert_to_graph(entity_id, candidate_id, similarity)
                 self._progress_bar.update(1)
 
-    def _insert_to_graph(self, entity_id_1, entity_id_2, similarity):
+    def _insert_to_graph(self, entity_id1, entity_id2, similarity):
         if self.similarity_threshold is None or \
             (self.similarity_threshold and similarity > self.similarity_threshold):
-            self.pairs.add_edge(entity_id_1, entity_id_2, weight=similarity)
+            self.pairs.add_edge(entity_id1, entity_id2, weight=similarity)
 
     def _similarity(self, entity_id1: int, entity_id2: int) -> float:
 
@@ -174,6 +171,8 @@ class EntityMatching:
                     self.entities.iloc[entity_id2][attribute]
                 )
         else:
+            print(entity_id1)
+            print(self.entities.iloc[entity_id1])
             similarity = self._metric(
                 self.entities.iloc[entity_id1].apply(" ".join, axis=1),
                 self.entities.iloc[entity_id2].apply(" ".join, axis=1)
