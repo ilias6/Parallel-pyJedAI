@@ -34,6 +34,8 @@ class Evaluation:
         self._entity_cluster_index = dict()
         self.data: Data
 
+        
+        
     def report(self, predicted_clusters: list, data: Data) -> None:
         
         self.data = data
@@ -41,11 +43,10 @@ class Evaluation:
 
         self._inverse_clusters(predicted_clusters)
 
-        for pair in gt.itterrows():
-            id1 = pair['id1']
-            id2 = pair['id2']
-
-            if self._entity_cluster_index[id1] == self._entity_cluster_index[id2]:
+        for _, (id1, id2) in gt.iterrows():
+            if id1 in self._entity_cluster_index and    \
+                id2 in self._entity_cluster_index and     \
+                    self._entity_cluster_index[id1] == self._entity_cluster_index[id2]:
                 self.true_positives += 1
             else:
                 self.false_negatives += 1
@@ -56,7 +57,7 @@ class Evaluation:
 
         # self.accuracy = 
         # self.precision = 
-        # self.recall = 
+        # self.recall =     
         # self.f1 = 
         self.print_results()
 
@@ -65,7 +66,7 @@ class Evaluation:
 
     def _inverse_clusters(self, clusters: list) -> dict:
 
-        for cluster, cluster_id in (clusters, range(0, len(clusters))):
+        for cluster, cluster_id in zip(clusters, range(0, len(clusters))):
             cluster_entities_d1 = 0
             cluster_entities_d2 = 0
             for id in cluster:

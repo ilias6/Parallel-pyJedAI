@@ -34,4 +34,4 @@ class ConnectedComponentsClustering:
         #             num_of_pairs += 1
         #     self._progress_bar.update(1)
         
-        return nx.connected_components(graph)
+        return list(nx.connected_components(graph))

@@ -33,6 +33,7 @@ import os
 import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+import core
 from core.entities import Block, Data
 from blocks.utils import drop_single_entity_blocks, create_entity_index, print_blocks
 from utils.constants import EMBEDING_TYPES
@@ -88,25 +89,15 @@ class EntityMatching:
         self.data = data
         self.pairs = networkx.Graph()
         all_blocks = list(blocks.values())
-        self._progress_bar = tqdm(total=len(all_blocks), desc=self._method_name+" ("+self.metric+")")
-
-        if self.attributes:
-            self.entities_d1 = data.dataset_1[[self.attributes]]
-            if not data.is_dirty_er:
-                self.entities_d2 = data.dataset_2[[self.attributes]]
-        else:
-            self.entities_d1 = data.entities_d1
-            self.entities_d2 = data.entities_d2
+        self._progress_bar = tqdm(total=len(all_blocks), desc=self._method_name+" ("+self.metric+")") 
         
-        self.entities = data.entities_d1 if data.is_dirty_er else pd.concat([data.entities_d1,  data.entities_d2])
-
-        if isinstance(all_blocks[0], Block):
+        if 'Block' in str(type(all_blocks[0])):
             self._predict_raw_blocks(blocks)
         elif isinstance(all_blocks[0], set):
             self._predict_prunned_blocks(blocks)
         else:
             # TODO: Error
-            pass
+            print("Error")
 
         # if self.embedings in EMBEDING_TYPES:
         # TODO: Add GENSIM
@@ -126,7 +117,7 @@ class EntityMatching:
                             entity_id1, entity_id2
                         )
                         self._insert_to_graph(entity_id1, entity_id2, similarity)
-                        self._progress_bar.update(1)
+                self._progress_bar.update(1)
         else:
             for _, block in blocks.items():
                 for entity_id1 in block.entities_D1:
@@ -135,7 +126,7 @@ class EntityMatching:
                             entity_id1, entity_id2 - self.data.dataset_limit
                         )
                         self._insert_to_graph(entity_id1, entity_id2, similarity)
-                        self._progress_bar.update(1)
+                self._progress_bar.update(1)
 
     def _predict_prunned_blocks(self, blocks: dict) -> None:
         '''
@@ -161,21 +152,19 @@ class EntityMatching:
         if isinstance(self.attributes, dict):
             for attribute, weight in self.attributes.items():
                 similarity += weight*self._metric(
-                    self.entities.iloc[entity_id1][attribute],
-                    self.entities.iloc[entity_id2][attribute]
+                    self.data.entities.iloc[entity_id1][attribute],
+                    self.data.entities.iloc[entity_id2][attribute]
                 )
         if isinstance(self.attributes, list):
             for attribute in self.attributes:
                 similarity += self._metric(
-                    self.entities.iloc[entity_id1][attribute],
-                    self.entities.iloc[entity_id2][attribute]
+                    self.data.entities.iloc[entity_id1][attribute],
+                    self.data.entities.iloc[entity_id2][attribute]
                 )
         else:
-            print(entity_id1)
-            print(self.entities.iloc[entity_id1])
             similarity = self._metric(
-                self.entities.iloc[entity_id1].apply(" ".join, axis=1),
-                self.entities.iloc[entity_id2].apply(" ".join, axis=1)
+                self.data.entities.iloc[entity_id1],
+                self.data.entities.iloc[entity_id2]
             )
 
         return similarity
