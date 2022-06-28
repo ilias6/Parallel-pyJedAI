@@ -52,13 +52,13 @@ class Evaluation:
                 self.false_negatives += 1
 
         self.false_positives = self.total_matching_pairs - self.true_positives
-        self.true_negatives = self.total_matching_pairs - self.false_positives
+        self.true_negatives = self.total_matching_pairs - self.false_negatives
         
 
-        # self.accuracy = 
-        # self.precision = 
-        # self.recall =     
-        # self.f1 = 
+        self.accuracy = 
+        self.precision = self.true_positives / (self.true_positives + self.false_positives)
+        self.recall =  self.true_positives / 
+        self.f1 = 2*((self.precision*self.recall)/(self.precision+self.recall))
         self.print_results()
 
     def print_results(self) -> None:

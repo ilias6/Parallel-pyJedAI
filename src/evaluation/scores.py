@@ -33,8 +33,6 @@ class Evaluation:
         self.total_matching_pairs = 0
         self._entity_cluster_index = dict()
         self.data: Data
-
-        
         
     def report(self, predicted_clusters: list, data: Data) -> None:
         
@@ -52,13 +50,13 @@ class Evaluation:
                 self.false_negatives += 1
 
         self.false_positives = self.total_matching_pairs - self.true_positives
-        self.true_negatives = self.total_matching_pairs - self.false_positives
+        self.true_negatives = self.total_matching_pairs - self.false_negatives
         
 
-        # self.accuracy = 
-        # self.precision = 
-        # self.recall =     
-        # self.f1 = 
+        self.accuracy = (self.true_negatives + self.true_positives) / ()
+        self.precision = self.true_positives / self.total_matching_pairs
+        self.recall =  self.true_positives / len(gt)
+        self.f1 = 2*((self.precision*self.recall)/(self.precision+self.recall))
         self.print_results()
 
     def print_results(self) -> None:
