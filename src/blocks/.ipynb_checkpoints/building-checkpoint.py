@@ -69,7 +69,7 @@ class AbstractBlockBuilding:
 
         if not data.is_dirty_er:
             for i in tqdm(range(0, data.num_of_entities_2, 1), desc=tqdm_desc_2):
-                record = data.entities_D2[i]
+                record = data.entities_d2[i]
                 for token in self._tokenize_entity(record):
                     self.blocks.setdefault(token, Block(token))
                     self.blocks[token].entities_D2.add(data.num_of_entities_1+i)

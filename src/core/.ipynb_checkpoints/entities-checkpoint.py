@@ -33,7 +33,6 @@ class Data:
         self.num_of_entities_1: int = None
         self.num_of_entities_2: int = None
         self.num_of_entities: int = None
-        print(dataset_1.columns.values.tolist())
         self.attributes: list = attributes if attributes else dataset_1.columns.values.tolist()
         self.entities: pd.DataFrame
 
@@ -52,25 +51,32 @@ class Data:
 
         self.entities_d1 = self.dataset_1.apply(" ".join, axis=1)
         self.dataset_limit = self.num_of_entities = self.num_of_entities_1 = len(self.entities_d1)
-        self.entities = self.entities_d1
+        self.entities = self.dataset_1
         
         
         if self.dataset_2 is not None:
             self.dataset_2[self.attributes] = self.dataset_2[self.attributes].apply(text_cleaning_method)
 
             if self.attributes:
-                self.entities_d2 = self.dataset_2[[data.attributes]].apply(" ".join, axis=1)
+                self.entities_d2 = self.dataset_2[self.attributes].apply(" ".join, axis=1)
             else:
                 self.entities_d2 = self.dataset_2.apply(" ".join, axis=1)
 
             self.num_of_entities_2 = len(self.entities_d2)
             self.is_dirty_er = False
             self.num_of_entities += self.num_of_entities_2
-            self.entities = pd.concat([self.entities_d1,  self.entities_d2])
+            self.entities = pd.concat([self.dataset_1, self.dataset_2])
         else:
             self.is_dirty_er = True
 
-
+    def print_specs(self):
+        print("Type of Entity Resolution: ", "Dirty" if self.is_dirty_er else "Clean-Clean" )
+        print("Number of entities in D1: ", self.num_of_entities_1)
+        if not self.is_dirty_er:
+            print("Number of entities in D1: ", self.num_of_entities_2)
+        print("Total number of entities: ", self.num_of_entities)
+        print("Attributes provided: ", self.dataset_1.columns.values.tolist())
+        
 class Block:
     '''
     Block entity
