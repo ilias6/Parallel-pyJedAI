@@ -161,7 +161,9 @@ class EntityMatching:
                     self.data.entities.iloc[entity_id1][attribute],
                     self.data.entities.iloc[entity_id2][attribute]
                 )
+                similarity /= len(self.attributes)
         else:
+            # concatenated row string
             similarity = self._metric(
                 self.data.entities.iloc[entity_id1],
                 self.data.entities.iloc[entity_id2]
