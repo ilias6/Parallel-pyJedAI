@@ -52,7 +52,7 @@ class Data:
 
         self.entities_d1 = self.dataset_1.apply(" ".join, axis=1)
         self.dataset_limit = self.num_of_entities = self.num_of_entities_1 = len(self.entities_d1)
-        self.entities = self.entities_d1
+        self.entities = self.dataset_1
         
         
         if self.dataset_2 is not None:
@@ -66,7 +66,7 @@ class Data:
             self.num_of_entities_2 = len(self.entities_d2)
             self.is_dirty_er = False
             self.num_of_entities += self.num_of_entities_2
-            self.entities = pd.concat([self.entities_d1,  self.entities_d2])
+            self.entities = pd.concat([self.dataset_1, self.dataset_2])
         else:
             self.is_dirty_er = True
 

@@ -39,7 +39,6 @@ class AbstractBlockBuilding:
     _method_name: str
     _method_info: str
     _is_dirty_er: bool
-    text_cleaning_method: Callable = None
     blocks: dict = dict()
 
     def __init__(self) -> any:
@@ -47,9 +46,7 @@ class AbstractBlockBuilding:
 
     def build_blocks(
             self,
-            data: Data,
-            attributes = None,
-            with_header = None
+            data: Data
     ) -> dict:
         '''
         Main method of Standard Blocking
@@ -57,42 +54,22 @@ class AbstractBlockBuilding:
         Input: Dirty/Clean-1 dataframe, Clean-2 dataframe
         Returns: dict of token -> Block
         '''
-        data.attributes = attributes
-        if data.attributes is None and with_header:
-            data.attributes = data.dataset_1.iloc[0].to_list()
-        entities_df_1 = data.dataset_1[attributes] if attributes is not None else data.dataset_1
+        
         if not data.is_dirty_er:
-            entities_df_2 = data.dataset_2[[attributes]] \
-                                if attributes is not None else data.dataset_2
-        print(data.entities_d1)
-        data.entities_d1 = entities_df_1.apply(" ".join, axis=1)
-        data.dataset_limit = data.num_of_entities = data.num_of_entities_1 = len(data.entities_d1)
-        data.entities = data.entities_d1
-
-        if entities_df_2 is not None:
-            if data.attributes:
-                data.entities_d2 = entities_df_2[[data.attributes]].apply(" ".join, axis=1)
-            else:
-                data.entities_d2 = entities_df_2.apply(" ".join, axis=1)
-            data.num_of_entities_2 = len(data.entities_d2)
             tqdm_desc_1 = self._method_name + " - Clean-Clean ER (1)"
             tqdm_desc_2 = self._method_name + " - Clean-Clean ER (2)"
-            data.is_dirty_er = False
-            data.num_of_entities += data.num_of_entities_2
-            data.entities = pd.concat([data.entities_d1,  data.entities_d2])
         else:
             tqdm_desc_1 = self._method_name + " - Dirty ER"
-            data.is_dirty_er = True
 
         for i in tqdm(range(0, data.num_of_entities_1, 1), desc=tqdm_desc_1):
-            record = self.text_cleaning_method(data.entities_d1[i]) if self.text_cleaning_method is not None else data.entities_d1[i]
+            record = data.entities_d1[i]
             for token in self._tokenize_entity(record):
                 self.blocks.setdefault(token, Block(token))
                 self.blocks[token].entities_D1.add(i)
 
         if not data.is_dirty_er:
             for i in tqdm(range(0, data.num_of_entities_2, 1), desc=tqdm_desc_2):
-                record = self.text_cleaning_method(data.entities_d2[i]) if self.text_cleaning_method is not None else data.entities_D2[i]
+                record = data.entities_D2[i]
                 for token in self._tokenize_entity(record):
                     self.blocks.setdefault(token, Block(token))
                     self.blocks[token].entities_D2.add(data.num_of_entities_1+i)
@@ -118,9 +95,8 @@ class StandardBlocking(AbstractBlockBuilding):
     _method_info = _method_name + ": it creates one block for every token in the attribute \
                                     values of at least two entities."
 
-    def __init__(self, text_cleaning_method=None) -> any:
+    def __init__(self) -> any:
         super().__init__()
-        self.text_cleaning_method = text_cleaning_method
 
     def _tokenize_entity(self, entity) -> list:
         return nltk.word_tokenize(entity)
@@ -142,12 +118,10 @@ class QGramsBlocking(AbstractBlockBuilding):
     def __init__(
             self,
             qgrams=None,
-            text_cleaning_method=None
     ) -> any:
         super().__init__()
 
         self.qgrams = qgrams
-        self.text_cleaning_method = text_cleaning_method
 
     def _tokenize_entity(self, entity) -> list:
         return [' '.join(grams) for grams in nltk.ngrams(entity, n=self.qgrams)]

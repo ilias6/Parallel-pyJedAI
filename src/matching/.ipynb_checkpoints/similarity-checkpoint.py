@@ -46,17 +46,14 @@ class EntityMatching:
     _method_name: str = "Entity Matching"
     _method_info: str = ": Calculates similarity from 0. to 1. for all blocks"
 
-    def __init__(self, metric: str, ngram: int = 2, embedings: str = None, attributes: list = None, similarity_threshold: float = None) -> None:
+    def __init__(self, metric: str, qgram: int = 2, embedings: str = None, attributes: list = None, similarity_threshold: float = None) -> None:
         self.data: Data
         self.pairs: networkx.Graph
         self.metric = metric
-        self.ngram: int = 2
+        self.qgram: int = 2
         self.embedings: str = embedings
         self.attributes: list = attributes
         self.similarity_threshold = similarity_threshold
-        self.entities_d1: pd.DataFrame
-        self.entities_d2: pd.DataFrame = None
-        self.entities: pd.DataFrame
         self._progress_bar: tqdm
 
         if self.metric == 'levenshtein' or self.metric == 'edit_distance':
@@ -67,13 +64,13 @@ class EntityMatching:
             self._metric = JaroWinkler().distance
         elif self.metric == 'metric_lcs':
             self._metric = MetricLCS().distance
-        elif self.metric == 'ngram':
-            self._metric = NGram(self.ngram).distance
+        elif self.metric == 'qgram':
+            self._metric = NGram(self.qgram).distance
         # elif self.metric == 'cosine':
-        #     cosine = Cosine(self.ngram)
+        #     cosine = Cosine(self.qgram)
         #     self._metric = cosine.similarity_profiles(cosine.get_profile(entity_1), cosine.get_profile(entity_2))
         elif self.metric == 'jaccard':
-            self._metric = Jaccard(self.ngram).distance
+            self._metric = Jaccard(self.qgram).distance
         elif self.metric == 'sorensen_dice':
             self._metric = SorensenDice().distance
         elif self.metric == 'overlap_coefficient':
@@ -89,7 +86,7 @@ class EntityMatching:
         self.data = data
         self.pairs = networkx.Graph()
         all_blocks = list(blocks.values())
-        self._progress_bar = tqdm(total=len(all_blocks), desc=self._method_name+" ("+self.metric+")") 
+        self._progress_bar = tqdm(total=len(blocks), desc=self._method_name+" ("+self.metric+")") 
         
         if 'Block' in str(type(all_blocks[0])):
             self._predict_raw_blocks(blocks)
@@ -123,7 +120,7 @@ class EntityMatching:
                 for entity_id1 in block.entities_D1:
                     for entity_id2 in block.entities_D2:
                         similarity = self._similarity(
-                            entity_id1, entity_id2 - self.data.dataset_limit
+                            entity_id1, entity_id2
                         )
                         self._insert_to_graph(entity_id1, entity_id2, similarity)
                 self._progress_bar.update(1)
@@ -138,7 +135,7 @@ class EntityMatching:
                     entity_id, candidate_id
                 )
                 self._insert_to_graph(entity_id, candidate_id, similarity)
-                self._progress_bar.update(1)
+            self._progress_bar.update(1)
 
     def _insert_to_graph(self, entity_id1, entity_id2, similarity):
         if self.similarity_threshold is None or \
@@ -165,8 +162,8 @@ class EntityMatching:
         else:
             # concatenated row string
             similarity = self._metric(
-                self.data.entities.iloc[entity_id1],
-                self.data.entities.iloc[entity_id2]
+                self.data.entities.iloc[entity_id1].str.cat(sep=' '),
+                self.data.entities.iloc[entity_id2].str.cat(sep=' ')
             )
 
         return similarity

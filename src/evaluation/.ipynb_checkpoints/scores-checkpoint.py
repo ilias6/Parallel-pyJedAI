@@ -33,12 +33,12 @@ class Evaluation:
         self.total_matching_pairs = 0
         self.data: Data
     
-    def report(self, prediction: list, data: Data) -> None:
+    def report(self, prediction: any, data: Data) -> None:
         
         self.data = data
         gt = self.data.ground_truth
 
-        if isinstance(list(prediction.values())[0], set):
+        if isinstance(prediction, dict) and isinstance(list(prediction.values())[0], set):
             self.total_matching_pairs = sum([len(block) for block in prediction.values()])
             for _, (id1, id2) in gt.iterrows():
                 if (id1 in prediction and id2 in prediction[id1]) or   \

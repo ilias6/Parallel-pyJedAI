@@ -39,7 +39,6 @@ class AbstractBlockBuilding:
     _method_name: str
     _method_info: str
     _is_dirty_er: bool
-    text_cleaning_method: Callable = None
     blocks: dict = dict()
 
     def __init__(self) -> any:
@@ -47,9 +46,7 @@ class AbstractBlockBuilding:
 
     def build_blocks(
             self,
-            data: Data,
-            attributes = None,
-            with_header = None
+            data: Data
     ) -> dict:
         '''
         Main method of Standard Blocking
@@ -98,9 +95,8 @@ class StandardBlocking(AbstractBlockBuilding):
     _method_info = _method_name + ": it creates one block for every token in the attribute \
                                     values of at least two entities."
 
-    def __init__(self, text_cleaning_method=None) -> any:
+    def __init__(self) -> any:
         super().__init__()
-        self.text_cleaning_method = text_cleaning_method
 
     def _tokenize_entity(self, entity) -> list:
         return nltk.word_tokenize(entity)
@@ -122,12 +118,10 @@ class QGramsBlocking(AbstractBlockBuilding):
     def __init__(
             self,
             qgrams=None,
-            text_cleaning_method=None
     ) -> any:
         super().__init__()
 
         self.qgrams = qgrams
-        self.text_cleaning_method = text_cleaning_method
 
     def _tokenize_entity(self, entity) -> list:
         return [' '.join(grams) for grams in nltk.ngrams(entity, n=self.qgrams)]
