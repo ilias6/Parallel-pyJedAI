@@ -84,27 +84,19 @@ class Block:
     Consists of 2 sets of profile entities (1 for Dirty ER and 2 for Clean-Clean ER)
     '''
 
-    def __init__(self, key) -> None:
-        self.key = key
+    def __init__(self) -> None:
         self.entities_D1: set = set()
         self.entities_D2: set = set()
 
     def get_cardinality(self, is_dirty_er) -> int:
         if is_dirty_er:
-            return len(self.entities_D1)
+            return len(self.entities_D1)*(len(self.entities_D1)-1)/2
         return len(self.entities_D1) * len(self.entities_D2)
 
-    def get_total_block_assignments(self, is_dirty_er: bool) -> int:
+    def get_size(self, is_dirty_er: bool) -> int:
         if is_dirty_er:
             return len(self.entities_D1)
         return len(self.entities_D1) + len(self.entities_D2)
-
-    def get_num_of_comparisons(self, is_dirty_er: bool) -> int:
-        entities_D1_size = len(self.entities_D1)
-        if is_dirty_er:
-            return entities_D1_size*(entities_D1_size-1)/2
-        entities_D2_size = len(self.entities_D2)
-        return entities_D1_size*entities_D2_size
 
     def verbose(self, is_dirty_er):
         print("\nBlock ", "\033[1;32m"+self.key+"\033[0m", " contains entities with ids: ")
