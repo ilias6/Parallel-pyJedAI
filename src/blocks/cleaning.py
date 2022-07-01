@@ -10,7 +10,7 @@ from tqdm import tqdm
 from sortedcontainers import SortedList, SortedSet
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from core.entities import Block, Data
+from datamodel import Block, Data
 from utils.utils import insert_to_dict
 from utils.constants import LIST, SET
 from blocks.utils import drop_single_entity_blocks, create_entity_index, print_blocks
@@ -65,7 +65,7 @@ class BlockFiltering(AbstractBlockCleaning):
             # Create new blocks from the entity index
             # print(int(self.ratio*len(block_keys)))
             for key in block_keys[:int(self.ratio*len(block_keys))]:
-                filtered_blocks.setdefault(key, Block(key))
+                filtered_blocks.setdefault(key, Block())
 
                 # Entities ids start to 0 ... n-1 for 1st dataset
                 # and n ... m for 2nd dataset

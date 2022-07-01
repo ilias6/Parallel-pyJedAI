@@ -9,7 +9,7 @@ from tqdm import tqdm
 from math import log10
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from core.entities import Data
+from datamodel import Data
 from utils.enums import WEIGHTING_SCHEME
 from utils.constants import EMPTY
 from blocks.utils import create_entity_index
@@ -76,7 +76,7 @@ class AbstractMetablocking(AbstractComparisonCleaning):
         self._flags = np.empty([self.data.num_of_entities], dtype=int)
 
         for block_key in self._blocks.keys():
-            self._block_assignments += self._blocks[block_key].get_total_block_assignments(self.data.is_dirty_er)
+            self._block_assignments += self._blocks[block_key].get_size(self.data.is_dirty_er)
 
         self._set_threshold()
 

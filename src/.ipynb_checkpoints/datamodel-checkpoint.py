@@ -5,11 +5,6 @@ from typing import Dict
 import pandas as pd
 import sys, os
 
-# print(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-# from src.blocks.building import AbstractBlockBuilding
-# from src.blocks.cleaning import AbstractBlockCleaning
-
 class Data:
 
     def __init__(

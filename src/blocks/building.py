@@ -27,7 +27,7 @@ info = logging.info
 error = logging.error
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from core.entities import Block, Data
+from datamodel import Block, Data
 from blocks.utils import drop_single_entity_blocks
 
 
@@ -64,14 +64,14 @@ class AbstractBlockBuilding:
         for i in tqdm(range(0, data.num_of_entities_1, 1), desc=tqdm_desc_1):
             record = data.entities_d1[i]
             for token in self._tokenize_entity(record):
-                self.blocks.setdefault(token, Block(token))
+                self.blocks.setdefault(token, Block())
                 self.blocks[token].entities_D1.add(i)
 
         if not data.is_dirty_er:
             for i in tqdm(range(0, data.num_of_entities_2, 1), desc=tqdm_desc_2):
                 record = data.entities_d2[i]
                 for token in self._tokenize_entity(record):
-                    self.blocks.setdefault(token, Block(token))
+                    self.blocks.setdefault(token, Block())
                     self.blocks[token].entities_D2.add(data.num_of_entities_1+i)
 
         self.blocks = drop_single_entity_blocks(self.blocks, data.is_dirty_er)

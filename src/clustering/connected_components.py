@@ -6,7 +6,7 @@ import os
 import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from core.entities import Data
+from datamodel import Data
 
 
 class ConnectedComponentsClustering:

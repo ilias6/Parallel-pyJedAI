@@ -15,7 +15,7 @@ from tqdm import tqdm
 from typing import Dict, List, Callable
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from core.entities import Block, Data
+from datamodel import Block, Data
 from blocks.utils import drop_single_entity_blocks
 
 class Evaluation:

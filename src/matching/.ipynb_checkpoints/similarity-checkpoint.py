@@ -34,7 +34,7 @@ import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import core
-from core.entities import Block, Data
+from datamodel import Block, Data
 from blocks.utils import drop_single_entity_blocks, create_entity_index, print_blocks
 from utils.constants import EMBEDING_TYPES
 
