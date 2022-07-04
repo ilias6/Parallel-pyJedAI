@@ -20,36 +20,21 @@ class Data:
         self.entities_d1: pd.DataFrame
         self.entities_d2: pd.DataFrame = None
         self.ground_truth = ground_truth
-        if dataset_2 is None:
-            self.is_dirty_er = True
-        else:
-            self.is_dirty_er = False
-        self.dataset_limit: int = None
-        self.num_of_entities_1: int = None
-        self.num_of_entities_2: int = None
-        self.num_of_entities: int = None
+        self.is_dirty_er = False if dataset_2 else True
+        self.dataset_limit = self.num_of_entities_1 = len(dataset_1)
+        self.num_of_entities_2: int = len(dataset_2) if dataset_2 else 0
+        self.num_of_entities: int = self.num_of_entities_1 + self.num_of_entities_2
         self.attributes: list = attributes if attributes else dataset_1.columns.values.tolist()
         self.entities: pd.DataFrame
 
-    def _init_entities(self) -> None:
-        self.entities = self.entities_d1
-        if not self.is_dirty_er:
-            self.entities = pd.concat([self.entities_d1,  self.entities_d2])
-    
     def process(self, text_cleaning_method=None) -> None:
         
-        self.dataset_1[self.attributes] = self.dataset_1[self.attributes].apply(text_cleaning_method)
-        self.dataset_1 = self.dataset_1[self.attributes] if self.attributes is not None else self.dataset_1
+        if self.attributes: self.dataset_1 = self.dataset_1[self.attributes]
+        self.entities = self.dataset_1[self.attributes] = self.dataset_1[self.attributes].apply(text_cleaning_method)
+        self.entities_d1 = self.dataset_1.apply(" ".join, axis=1)        
+        
         if not self.is_dirty_er:
-            self.dataset_2 = self.dataset_2[self.attributes] \
-                                if self.attributes is not None else self.dataset_2
-
-        self.entities_d1 = self.dataset_1.apply(" ".join, axis=1)
-        self.dataset_limit = self.num_of_entities = self.num_of_entities_1 = len(self.entities_d1)
-        self.entities = self.dataset_1
-        
-        
-        if self.dataset_2 is not None:
+            if self.attributes: self.dataset_2 = self.dataset_2[self.attributes]
             self.dataset_2[self.attributes] = self.dataset_2[self.attributes].apply(text_cleaning_method)
 
             if self.attributes:
@@ -57,13 +42,10 @@ class Data:
             else:
                 self.entities_d2 = self.dataset_2.apply(" ".join, axis=1)
 
-            self.num_of_entities_2 = len(self.entities_d2)
-            self.is_dirty_er = False
-            self.num_of_entities += self.num_of_entities_2
             self.entities = pd.concat([self.dataset_1, self.dataset_2])
-        else:
-            self.is_dirty_er = True
+            self.ground_truth.iloc[:, 1] = self.ground_truth.iloc[:, 1] + len(self.ground_truth.iloc[:, 0])
 
+        
     def print_specs(self):
         print("Type of Entity Resolution: ", "Dirty" if self.is_dirty_er else "Clean-Clean" )
         print("Number of entities in D1: ", self.num_of_entities_1)
@@ -88,9 +70,7 @@ class Block:
             return len(self.entities_D1)*(len(self.entities_D1)-1)/2
         return len(self.entities_D1) * len(self.entities_D2)
 
-    def get_size(self, is_dirty_er: bool) -> int:
-        if is_dirty_er:
-            return len(self.entities_D1)
+    def get_size(self) -> int:
         return len(self.entities_D1) + len(self.entities_D2)
 
     def verbose(self, is_dirty_er):

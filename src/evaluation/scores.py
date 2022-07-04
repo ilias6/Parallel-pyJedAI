@@ -56,7 +56,6 @@ class Evaluation:
                     self.true_positives += 1
                 else:
                     self.false_negatives += 1
-
         self.false_positives = self.total_matching_pairs - self.true_positives
         self.precision = self.true_positives / self.total_matching_pairs
         self.recall = self.true_positives / len(gt)

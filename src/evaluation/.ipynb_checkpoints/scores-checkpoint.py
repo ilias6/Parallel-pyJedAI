@@ -56,7 +56,11 @@ class Evaluation:
                     self.true_positives += 1
                 else:
                     self.false_negatives += 1
-
+        
+        print("total_matching_pairs: ", self.total_matching_pairs)
+        print("true_positives: ", self.true_positives)
+        print("false_negatives: ", self.false_negatives)
+        
         self.false_positives = self.total_matching_pairs - self.true_positives
         self.precision = self.true_positives / self.total_matching_pairs
         self.recall = self.true_positives / len(gt)

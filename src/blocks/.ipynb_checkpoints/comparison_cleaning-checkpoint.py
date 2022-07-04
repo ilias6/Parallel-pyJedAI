@@ -76,7 +76,7 @@ class AbstractMetablocking(AbstractComparisonCleaning):
         self._flags = np.empty([self.data.num_of_entities], dtype=int)
 
         for block_key in self._blocks.keys():
-            self._block_assignments += self._blocks[block_key].get_size(self.data.is_dirty_er)
+            self._block_assignments += self._blocks[block_key].get_size()
 
         self._set_threshold()
 

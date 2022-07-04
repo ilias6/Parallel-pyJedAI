@@ -55,11 +55,12 @@ class AbstractBlockBuilding:
         Returns: dict of token -> Block
         '''
         
-        if not data.is_dirty_er:
+        if data.is_dirty_er:
+            tqdm_desc_1 = self._method_name + " - Dirty ER"
+        else:
             tqdm_desc_1 = self._method_name + " - Clean-Clean ER (1)"
             tqdm_desc_2 = self._method_name + " - Clean-Clean ER (2)"
-        else:
-            tqdm_desc_1 = self._method_name + " - Dirty ER"
+            
 
         for i in tqdm(range(0, data.num_of_entities_1, 1), desc=tqdm_desc_1):
             record = data.entities_d1[i]
@@ -72,7 +73,7 @@ class AbstractBlockBuilding:
                 record = data.entities_d2[i]
                 for token in self._tokenize_entity(record):
                     self.blocks.setdefault(token, Block())
-                    self.blocks[token].entities_D2.add(data.num_of_entities_1+i)
+                    self.blocks[token].entities_D2.add(data.dataset_limit+i)
 
         self.blocks = drop_single_entity_blocks(self.blocks, data.is_dirty_er)
 
