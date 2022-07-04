@@ -83,30 +83,30 @@ class AbstractMetablocking(AbstractComparisonCleaning):
         return self._prune_edges()
 
     def _get_weight(self, entity_id: int, neighbor_id: int) -> float:
-        ws = self.weighting_scheme
-        if ws == 'ARCS' or ws == 'CBS':
-            return self._counters[neighbor_id]
-        elif ws == 'ECBS':
-            return float(
-                self._counters[neighbor_id] *
-                log10(float(self._num_of_blocks / len(self._entity_index[entity_id]))) *
-                log10(float(self._num_of_blocks / len(self._entity_index[neighbor_id])))
-            )
-        elif ws == 'JS':
-            return self._counters[neighbor_id] / (len(self._entity_index[entity_id]) + \
-                    len(self._entity_index[neighbor_id]) - self._counters[neighbor_id])
-        elif ws == 'EJS':
-            probability = self._counters[neighbor_id] / (len(self._entity_index[entity_id]) + \
-                            len(self._entity_index[neighbor_id]) - self._counters[neighbor_id])
-            return float(probability * \
-                    log10(self._distinct_comparisons / self._comparisons_per_entity[entity_id]) * \
-                    log10(self._distinct_comparisons / self._comparisons_per_entity[neighbor_id]))
-        elif ws == 'PEARSON_X2':
-            # TODO: ChiSquared
-            pass
-        else:
-            # TODO: Error handling
-            print('This weighting scheme does not exist')
+        match self.weighting_scheme:
+            case 'ARCS'|'CBS':
+                return self._counters[neighbor_id]
+            case 'ECBS':
+                return float(
+                    self._counters[neighbor_id] * \
+                        log10(float(self._num_of_blocks / len(self._entity_index[entity_id]))) * \
+                        log10(float(self._num_of_blocks / len(self._entity_index[neighbor_id])))
+                )
+            case 'JS':
+                return self._counters[neighbor_id] / (len(self._entity_index[entity_id]) + \
+                        len(self._entity_index[neighbor_id]) - self._counters[neighbor_id])
+            case 'EJS':
+                probability = self._counters[neighbor_id] / (len(self._entity_index[entity_id]) + \
+                                len(self._entity_index[neighbor_id]) - self._counters[neighbor_id])
+                return float(probability * \
+                        log10(self._distinct_comparisons / self._comparisons_per_entity[entity_id]) * \
+                        log10(self._distinct_comparisons / self._comparisons_per_entity[neighbor_id]))
+            case 'PEARSON_X2':
+                # TODO: ChiSquared
+                pass
+            case _:
+                # TODO: Error handling
+                print('This weighting scheme does not exist')
 
     def _normalize_neighbor_entities(self, block_key: str, entity_id: int) -> None:
         self._neighbors.clear()
