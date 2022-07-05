@@ -129,14 +129,48 @@ class QGramsBlocking(AbstractBlockBuilding):
 
 
 class SuffixArraysBlocking(AbstractBlockBuilding):
-    pass
+        
+    _method_name = "Suffix Arrays Blocking"
+    _method_info = _method_name + ": it creates one block for every suffix that appears in the attribute value tokens of at least two entities."
 
-class ExtendedSuffixArraysBlocking(AbstractBlockBuilding):
-    pass
+    def __init__(
+            self, suffix_length: int = 3,
+    ) -> any:
+        super().__init__()
+
+        self.suffix_length = suffix_length
+
+    def _tokenize_entity(self, entity) -> list:
+        return [word[:self.suffix_length] if len(word) > self.suffix_length else word for word in nltk.word_tokenize(entity)]
+
+    
+class ExtendedSuffixArraysBlocking(SuffixArraysBlocking):
+    _method_name = "Extended Suffix Arrays Blocking"
+    _method_info = _method_name + ": it creates one block for every substring (not just suffix) that appears in the tokens of at least two entities."
+
+    def __init__(
+            self, suffix_length: int = 3,
+    ) -> any:
+        super().__init__(suffix_length)
+        self.suffix_length = suffix_length
+
+
+    def _tokenize_entity(self, entity) -> list:
+        tokens = []
+        for word in nltk.word_tokenize(entity):
+            if len(word) > self.suffix_length:
+                for token in list(nltk.ngrams(word,n=self.suffix_length)):
+                    tokens.append("".join(token))
+            else:
+                tokens.append("".join(word))
+        return tokens
 
 class ExtendedQGramsBlocking(AbstractBlockBuilding):
-    pass
+    
+    _method_name = "Extended Suffix Arrays Blocking"
+    _method_info = _method_name + ": it creates one block for every substring (not just suffix) that appears in the tokens of at least two entities."
 
+    
 class LSHSuperBitBlocking(AbstractBlockBuilding):
     pass
 
