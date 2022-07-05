@@ -22,7 +22,7 @@ class Data:
         self.ground_truth = ground_truth
         self.is_dirty_er = True if dataset_2 is None else False
         self.dataset_limit = self.num_of_entities_1 = len(dataset_1)
-        self.num_of_entities_2: int = len(dataset_2) if dataset_2.empty else 0
+        self.num_of_entities_2: int = len(dataset_2) if dataset_2 is not None else 0
         self.num_of_entities: int = self.num_of_entities_1 + self.num_of_entities_2
         self.attributes: list = attributes if attributes else dataset_1.columns.values.tolist()
         self.entities: pd.DataFrame
@@ -44,7 +44,7 @@ class Data:
         print("Type of Entity Resolution: ", "Dirty" if self.is_dirty_er else "Clean-Clean" )
         print("Number of entities in D1: ", self.num_of_entities_1)
         if not self.is_dirty_er:
-            print("Number of entities in D1: ", self.num_of_entities_2)
+            print("Number of entities in D2: ", self.num_of_entities_2)
         print("Total number of entities: ", self.num_of_entities)
         print("Attributes provided: ", self.dataset_1.columns.values.tolist())
         
