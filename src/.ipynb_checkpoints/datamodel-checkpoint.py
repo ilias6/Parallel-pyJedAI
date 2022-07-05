@@ -20,9 +20,9 @@ class Data:
         self.entities_d1: pd.DataFrame
         self.entities_d2: pd.DataFrame = None
         self.ground_truth = ground_truth
-        self.is_dirty_er = False if dataset_2 else True
+        self.is_dirty_er = True if dataset_2 is None else False
         self.dataset_limit = self.num_of_entities_1 = len(dataset_1)
-        self.num_of_entities_2: int = len(dataset_2) if dataset_2 else 0
+        self.num_of_entities_2: int = len(dataset_2) if dataset_2.empty else 0
         self.num_of_entities: int = self.num_of_entities_1 + self.num_of_entities_2
         self.attributes: list = attributes if attributes else dataset_1.columns.values.tolist()
         self.entities: pd.DataFrame
