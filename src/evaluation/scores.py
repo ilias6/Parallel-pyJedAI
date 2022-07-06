@@ -62,8 +62,11 @@ class Evaluation:
         self.recall = self.true_positives / len(gt)
         self.f1 = 2*((self.precision*self.recall)/(self.precision+self.recall))
         
-        print("+----------+\n Evaluation\n+----------+\nPrecision: {:9.2f}% \nRecall:    {:9.2f}%\nF1-score:  {:9.2f}%\nTotal pairs: {:9d}".format(
-            self.precision*100, self.recall*100, self.f1*100, self.total_matching_pairs)
+        print("+-----------------------------+\n > Evaluation\n+-----------------------------+\nPrecision: {:9.2f}% \nRecall:    {:9.2f}%\nF1-score:  {:9.2f}%\n\nTotal pairs: {:14d}\nTrue positives: {:6d}\nFalse positives: {:10d}\nFalse negative: {:11d}".format(
+            self.precision*100, self.recall*100, self.f1*100, 
+            self.total_matching_pairs, self.true_positives, 
+            self.false_positives, self.false_positives
+            )
         )
 
     def _create_entity_index(self, groups: any, all_ground_truth_ids: set) -> dict:
