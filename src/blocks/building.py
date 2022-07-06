@@ -46,7 +46,8 @@ class AbstractBlockBuilding:
 
     def build_blocks(
             self,
-            data: Data
+            data: Data,
+            attributes: list=None,
     ) -> dict:
         '''
         Main method of Standard Blocking
@@ -54,7 +55,7 @@ class AbstractBlockBuilding:
         Input: Dirty/Clean-1 dataframe, Clean-2 dataframe
         Returns: dict of token -> Block
         '''
-        
+        self.attributes = attributes
         if data.is_dirty_er:
             tqdm_desc_1 = self._method_name + " - Dirty ER"
         else:
@@ -63,14 +64,14 @@ class AbstractBlockBuilding:
             
 
         for i in tqdm(range(0, data.num_of_entities_1, 1), desc=tqdm_desc_1):
-            record = data.entities_d1[i]
+            record = data.dataset_1.iloc[i, attributes] if attributes else data.entities_d1[i] 
             for token in self._tokenize_entity(record):
                 self.blocks.setdefault(token, Block())
                 self.blocks[token].entities_D1.add(i)
 
         if not data.is_dirty_er:
             for i in tqdm(range(0, data.num_of_entities_2, 1), desc=tqdm_desc_2):
-                record = data.entities_d2[i]
+                record = data.dataset_2.iloc[i, attributes] if attributes else data.entities_d2[i]
                 for token in self._tokenize_entity(record):
                     self.blocks.setdefault(token, Block())
                     self.blocks[token].entities_D2.add(data.dataset_limit+i)
@@ -100,7 +101,7 @@ class StandardBlocking(AbstractBlockBuilding):
         super().__init__()
 
     def _tokenize_entity(self, entity) -> list:
-        return nltk.word_tokenize(entity)
+        return entity.split()
 
 
 class QGramsBlocking(AbstractBlockBuilding):
@@ -141,7 +142,7 @@ class SuffixArraysBlocking(AbstractBlockBuilding):
         self.suffix_length = suffix_length
 
     def _tokenize_entity(self, entity) -> list:
-        return [word[:self.suffix_length] if len(word) > self.suffix_length else word for word in nltk.word_tokenize(entity)]
+        return [word[:self.suffix_length] if len(word) > self.suffix_length else word for word in entity.split()]
 
     
 class ExtendedSuffixArraysBlocking(SuffixArraysBlocking):
@@ -157,7 +158,7 @@ class ExtendedSuffixArraysBlocking(SuffixArraysBlocking):
 
     def _tokenize_entity(self, entity) -> list:
         tokens = []
-        for word in nltk.word_tokenize(entity):
+        for word in entity.split():
             if len(word) > self.suffix_length:
                 for token in list(nltk.ngrams(word,n=self.suffix_length)):
                     tokens.append("".join(token))

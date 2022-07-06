@@ -37,8 +37,9 @@ class Evaluation:
         
         self.data = data
         gt = self.data.ground_truth
-
+        all_gt_ids = set(gt.iloc[:, 0]).union(set(gt.iloc[:, 1]))
         if isinstance(prediction, dict) and isinstance(list(prediction.values())[0], set):
+            # case of candidate pairs, entity-id -> {entity-id, ..}
             self.total_matching_pairs = sum([len(block) for block in prediction.values()])
             for _, (id1, id2) in gt.iterrows():
                 if (id1 in prediction and id2 in prediction[id1]) or   \
@@ -46,8 +47,8 @@ class Evaluation:
                     self.true_positives += 1
                 else:
                     self.false_negatives += 1
-        else:
-            entity_index: dict = self._create_entity_index(prediction)
+        else: # blocks, clusters evaluation
+            entity_index: dict = self._create_entity_index(prediction, all_gt_ids)
 
             for _, (id1, id2) in gt.iterrows():
                 if id1 in entity_index and    \
@@ -56,42 +57,39 @@ class Evaluation:
                     self.true_positives += 1
                 else:
                     self.false_negatives += 1
-        
-        print("total_matching_pairs: ", self.total_matching_pairs)
-        print("true_positives: ", self.true_positives)
-        print("false_negatives: ", self.false_negatives)
-        
         self.false_positives = self.total_matching_pairs - self.true_positives
         self.precision = self.true_positives / self.total_matching_pairs
         self.recall = self.true_positives / len(gt)
         self.f1 = 2*((self.precision*self.recall)/(self.precision+self.recall))
         
-        print("+----------+\n Evaluation\n+----------+\nPrecision: {:9.2f}% \nRecall:    {:9.2f}%\nF1-score:  {:9.2f}%".format(
-            self.precision*100, self.recall*100, self.f1*100)
+        print("+----------+\n Evaluation\n+----------+\nPrecision: {:9.2f}% \nRecall:    {:9.2f}%\nF1-score:  {:9.2f}%\nTotal pairs: {:9d}".format(
+            self.precision*100, self.recall*100, self.f1*100, self.total_matching_pairs)
         )
 
-    def _create_entity_index(self, groups: any) -> dict:
+    def _create_entity_index(self, groups: any, all_ground_truth_ids: set) -> dict:
         
         if len(groups) < 1:
             print("error")
             # TODO: error
         
-        if isinstance(groups, list):
-            return self._create_entity_index_from_clusters(groups)
-        elif 'Block' in str(type(list(groups.values())[0])):
-            return self._create_entity_index_from_blocks(groups)
+        if isinstance(groups, list): # clusters evaluation             
+            return self._create_entity_index_from_clusters(groups, all_ground_truth_ids)
+        elif 'Block' in str(type(list(groups.values())[0])): # blocks evaluation
+            return self._create_entity_index_from_blocks(groups, all_ground_truth_ids)
         else:
             print("Not supported type")
             # TODO: error
     
     
-    def _create_entity_index_from_clusters(self, clusters: list) -> dict:
+    def _create_entity_index_from_clusters(
+        self, clusters: list, all_ground_truth_ids: set
+    ) -> dict:
        
         entity_index = dict()
         for cluster, cluster_id in zip(clusters, range(0, len(clusters))):
             cluster_entities_d1 = 0
             cluster_entities_d2 = 0
-            for id in cluster:
+            for id in cluster.intersection(all_ground_truth_ids):
                 entity_index[id] = cluster_id
 
                 if not self.data.is_dirty_er:
@@ -107,19 +105,21 @@ class Evaluation:
                     
         return entity_index
     
-    def _create_entity_index_from_blocks(self, blocks: dict) -> dict:
+    def _create_entity_index_from_blocks(
+        self, blocks: dict, all_ground_truth_ids: set
+    ) -> dict:
         
         entity_index = dict()
         for block_id, block in blocks.items():
             block_entities_d1 = 0
             block_entities_d2 = 0
             
-            for id in block.entities_D1:
+            for id in block.entities_D1.intersection(all_ground_truth_ids):
                 entity_index.setdefault(id, set())
                 entity_index[id] = block_id
                 
             if not self.data.is_dirty_er:
-                for id in block.entities_D2:
+                for id in block.entities_D2.intersection(all_ground_truth_ids):
                     entity_index.setdefault(id, set())
                     entity_index[id] = block_id
                     
@@ -132,10 +132,16 @@ class Evaluation:
     
     
     def _are_matching(self, entity_index, id1, id2) -> bool:
+        '''
+        id1 and id2 consist a matching pair if:
+        - Blocks: intersection > 0 (comparison of sets)
+        - Clusters: cluster-id-j == cluster-id-i (comparison of integers)
+        '''
+        
         if len(entity_index) < 1:
             print("error") # TODO: error
             return None
         
-        return True if (isinstance([entity_index.values()][0], set) and \
-                        entity_index[id1].intersection(entity_index[id2]) > 0) or \
-                        entity_index[id1] == entity_index[id2] else False
+        if isinstance([entity_index.values()][0], set): # Blocks case
+            return (entity_index[id1].intersection(entity_index[id2]) > 0)
+        return entity_index[id1] == entity_index[id2] # Clusters case
