@@ -239,6 +239,110 @@ class WeightedNodePruning(WeightedEdgePruning):
     '''
     TODO: WeightedNodePruning
     '''    
+    _method_name = "Weighted Node Pruning"
+    _method_info = ": a Meta-blocking method that retains for every entity, the comparisons \
+                    that correspond to edges in the blocking graph that are exceed \
+                    the average edge weight in the respective node neighborhood."
+            
+    def __init__(self, weighting_scheme: str = 'CBS') -> None:
+        super().__init__(weighting_scheme)
+        self._average_weight: np.array
+    
+    def _verify_valid_entities(self, entity_id: int) -> None:
+        self._retained_neighbors.clear()
+        self._retained_neighbors_weights.clear()
+        for neighbor_id in self._valid_entities:
+            weight = self._get_valid_weight(entity_id, neighbor_id)
+            if weight >= 0:
+                self._retained_neighbors.add(neighbor_id)
+                self._retained_neighbors_weights.add(self._discretize_comparison_weight(weight))
+        if len(self._retained_neighbors) > 0:
+            self.blocks[entity_id] = self._retained_neighbors.copy()
+
+    def _get_valid_weight(self, entity_id: int, neighbor_id: int) -> float:
+        weight = self._get_weight(entity_id, neighbor_id)
+        return weight if ((self._average_weight[entity_id] <= weight or \
+                             self._average_weight[entity_id] <= weight) and 
+                                entity_id < neighbor_id) else -1
+
+    def _set_threshold(self):
+        self._average_weight = np.empty([self.data.num_of_entities], dtype=float)
+        for i in range(0, self.data.num_of_entities):
+            self._process_entity(i)
+            self._update_threshold(i)
+            self._average_weight[i] = self._threshold
+            self._progress_bar.update(1)            
+
+    def _update_threshold(self, entity_id: int) -> None:
+        self._threshold = 0.0
+        for neighbor_id in self._valid_entities:
+            self._threshold += super()._get_weight(entity_id, neighbor_id)        
+        
+        if len(self._valid_entities): self._threshold /= len(self._valid_entities)
+        else: print("Valid entities are: ", len(self._valid_entities))
+        # TODO: this is getting 0, why ???
+        
+class CardinalityEdgePruning(WeightedEdgePruning):
+    '''
+    TODO: WeightedNodePruning
+    '''    
+    def __init__(self) -> None:
+        super().__init__()
+        pass    
+    pass
+
+
+class CardinalityNodePruning(CardinalityEdgePruning):
+    '''
+    TODO: WeightedNodePruning
+    '''    
+    def __init__(self) -> None:
+        super().__init__()
+        pass    
+    pass
+
+class CanopyClustering(CardinalityNodePruning):
+    '''
+    TODO: WeightedNodePruning
+    '''    
+    def __init__(self) -> None:
+        super().__init__()
+        pass    
+    pass
+
+
+class ComparisonPropagation(AbstractComparisonCleaning):
+    '''
+    TODO: WeightedNodePruning
+    '''    
+    def __init__(self) -> None:
+        super().__init__()
+        pass    
+    pass
+
+class BLAST(WeightedNodePruning):
+    '''
+    TODO: BLAST
+    '''    
+    def __init__(self) -> None:
+        super().__init__()
+        pass    
+    pass
+
+class ExtendedCanopyClustering(CardinalityNodePruning):
+    '''
+    TODO: BLAST
+    '''    
+    def __init__(self) -> None:
+        super().__init__()
+        pass    
+    pass
+
+
+class ReciprocalCardinalityNodePruning(CardinalityNodePruning):
+    '''
+    TODO: BLAST
+    '''    
     def __init__(self) -> None:
         super().__init__()
         pass    

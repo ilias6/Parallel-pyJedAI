@@ -26,15 +26,18 @@ class Evaluation:
         self.precision: float
         self.accuracy: float
         self.num_of_comparisons: int
-        self.true_positives = 0
-        self.true_negatives = 0
-        self.false_positives = 0
-        self.false_negatives = 0
+        self.true_positives: int
+        self.true_negatives: int
+        self.false_positives: int
+        self.false_negatives: int
         self.total_matching_pairs = 0
         self.data: Data
     
     def report(self, prediction: any, data: Data) -> None:
-        
+        self.true_positives = 0
+        self.true_negatives = 0
+        self.false_positives = 0
+        self.false_negatives = 0
         self.data = data
         gt = self.data.ground_truth
         all_gt_ids = set(gt.iloc[:, 0]).union(set(gt.iloc[:, 1]))
@@ -62,12 +65,13 @@ class Evaluation:
         self.recall = self.true_positives / len(gt)
         self.f1 = 2*((self.precision*self.recall)/(self.precision+self.recall))
         
-        print("+-----------------------------+\n > Evaluation\n+-----------------------------+\nPrecision: {:9.2f}% \nRecall:    {:9.2f}%\nF1-score:  {:9.2f}%\n\nTotal pairs: {:14d}\nTrue positives: {:6d}\nFalse positives: {:10d}\nFalse negative: {:11d}".format(
+        print("+-----------------------------+\n > Evaluation\n+-----------------------------+\nPrecision: {:9.2f}% \nRecall:    {:9.2f}%\nF1-score:  {:9.2f}%\n\nTotal pairs: {:d}\nTrue positives: {:d}\nFalse positives: {:d}\nFalse negative: {:d}".format(
             self.precision*100, self.recall*100, self.f1*100, 
-            self.total_matching_pairs, self.true_positives, 
-            self.false_positives, self.false_positives
+            int(self.total_matching_pairs), int(self.true_positives), 
+            int(self.false_positives), int(self.false_negatives)
             )
         )
+
 
     def _create_entity_index(self, groups: any, all_ground_truth_ids: set) -> dict:
         
