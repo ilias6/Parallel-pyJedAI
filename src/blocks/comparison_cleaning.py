@@ -42,7 +42,7 @@ class AbstractComparisonCleaning:
         self._entity_index = create_entity_index(blocks, self.data.is_dirty_er)
         self._num_of_blocks = len(blocks)
         self._blocks: dict = blocks
-        self._progress_bar = tqdm(total=2*self.data.num_of_entities, desc=self._method_name)
+        self._progress_bar = tqdm(total=self.data.num_of_entities, desc=self._method_name)
 
         return self._apply_main_processing()
 
@@ -156,8 +156,9 @@ class AbstractMetablocking(AbstractComparisonCleaning):
         if not self.data.is_dirty_er and entity_id < self.data.dataset_limit:
             return self._blocks[block_id].entities_D2
         return self._blocks[block_id].entities_D1
-
-
+        
+        
+        
 class WeightedEdgePruning(AbstractMetablocking):
     '''
     TODO: add comment
@@ -271,7 +272,6 @@ class WeightedNodePruning(WeightedEdgePruning):
             self._process_entity(i)
             self._update_threshold(i)
             self._average_weight[i] = self._threshold
-            self._progress_bar.update(1)            
 
     def _update_threshold(self, entity_id: int) -> None:
         self._threshold = 0.0
@@ -284,17 +284,52 @@ class WeightedNodePruning(WeightedEdgePruning):
         
 class CardinalityEdgePruning(WeightedEdgePruning):
     '''
-    TODO: WeightedNodePruning
-    '''    
-    def __init__(self) -> None:
-        super().__init__()
-        pass    
-    pass
-
-
+    TODO: CardinalityEdgePruning
+    '''
+    
+    _method_name = "Cardinality Edge Pruning"
+    _method_info = ": a Meta-blocking method that retains the comparisons \
+                        that correspond to the top-K weighted edges in the blocking graph."
+    
+    def __init__(self, weighting_scheme: str = 'CBS') -> None:
+        super().__init__(weighting_scheme)
+        
+        self._minimum_weight: float = sys.float_info.min
+        self._top_k_edges: list
+        self._node_centric = False
+        
+    def _prune_edges(self) -> dict:
+        self._top_k_edges = list()        
+        for i in range(0, self.data.num_of_entities):
+            self._process_entity(i)
+            self._verify_valid_entities(i)
+            self._progress_bar.update(1)
+        
+        return self.blocks
+     
+    def _set_threshold(self) -> None:
+        self._threshold = self._block_assignments/2
+    
+    def _verify_valid_entities(self, entity_id: int) -> None:
+        
+        new_blocks = {}
+        for neighbor_id in self._valid_entities:
+            weight = self._get_weight(entity_id, neighbor_id)
+            if weight >= self._minimum_weight:
+                self._top_k_edges.append(
+                    (entity_id, neighbor_id, weight)
+                )
+                
+                if self._threshold < len(self._top_k_edges):
+                    self._minimum_weight = self._top_k_edges.pop(0)[2]
+                    
+        if len(self._top_k_edges) > 0:
+            self.blocks[entity_id] = [x[1] for x in self._top_k_edges]
+        
+        
 class CardinalityNodePruning(CardinalityEdgePruning):
     '''
-    TODO: WeightedNodePruning
+    TODO: CardinalityNodePruning
     '''    
     def __init__(self) -> None:
         super().__init__()
@@ -303,7 +338,7 @@ class CardinalityNodePruning(CardinalityEdgePruning):
 
 class CanopyClustering(CardinalityNodePruning):
     '''
-    TODO: WeightedNodePruning
+    TODO: CanopyClustering
     '''    
     def __init__(self) -> None:
         super().__init__()
@@ -313,7 +348,7 @@ class CanopyClustering(CardinalityNodePruning):
 
 class ComparisonPropagation(AbstractComparisonCleaning):
     '''
-    TODO: WeightedNodePruning
+    TODO: ComparisonPropagation
     '''    
     def __init__(self) -> None:
         super().__init__()
@@ -331,7 +366,7 @@ class BLAST(WeightedNodePruning):
 
 class ExtendedCanopyClustering(CardinalityNodePruning):
     '''
-    TODO: BLAST
+    TODO: ExtendedCanopyClustering
     '''    
     def __init__(self) -> None:
         super().__init__()
@@ -341,7 +376,7 @@ class ExtendedCanopyClustering(CardinalityNodePruning):
 
 class ReciprocalCardinalityNodePruning(CardinalityNodePruning):
     '''
-    TODO: BLAST
+    TODO: ReciprocalCardinalityNodePruning
     '''    
     def __init__(self) -> None:
         super().__init__()
