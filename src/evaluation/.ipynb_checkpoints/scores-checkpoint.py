@@ -52,7 +52,6 @@ class Evaluation:
                     self.false_negatives += 1
         else: # blocks, clusters evaluation
             entity_index: dict = self._create_entity_index(prediction, all_gt_ids)
-
             for _, (id1, id2) in gt.iterrows():
                 if id1 in entity_index and    \
                     id2 in entity_index and     \

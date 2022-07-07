@@ -291,7 +291,7 @@ class CardinalityEdgePruning(WeightedEdgePruning):
     _method_info = ": a Meta-blocking method that retains the comparisons \
                         that correspond to the top-K weighted edges in the blocking graph."
     
-    def __init__(self, weighting_scheme: str = 'CBS') -> None:
+    def __init__(self, weighting_scheme: str = 'JS') -> None:
         super().__init__(weighting_scheme)
         
         self._minimum_weight: float = sys.float_info.min
@@ -299,7 +299,7 @@ class CardinalityEdgePruning(WeightedEdgePruning):
         self._node_centric = False
         
     def _prune_edges(self) -> dict:
-        self._top_k_edges = list()        
+        self._top_k_edges = list()
         for i in range(0, self.data.num_of_entities):
             self._process_entity(i)
             self._verify_valid_entities(i)
@@ -311,8 +311,6 @@ class CardinalityEdgePruning(WeightedEdgePruning):
         self._threshold = self._block_assignments/2
     
     def _verify_valid_entities(self, entity_id: int) -> None:
-        
-        new_blocks = {}
         for neighbor_id in self._valid_entities:
             weight = self._get_weight(entity_id, neighbor_id)
             if weight >= self._minimum_weight:
@@ -331,10 +329,75 @@ class CardinalityNodePruning(CardinalityEdgePruning):
     '''
     TODO: CardinalityNodePruning
     '''    
-    def __init__(self) -> None:
-        super().__init__()
-        pass    
-    pass
+    _method_name = "Cardinality Node Pruning"
+    _method_info = ": a Meta-blocking method that retains for every entity, \
+                        the comparisons that correspond to its top-k weighted edges in the blocking graph."
+    
+    def __init__(self, weighting_scheme: str = 'CBS') -> None:
+        super().__init__(weighting_scheme)
+        self._nearest_entities: dict
+        self._threshold = -1
+        self.node_centric = True
+        
+    def _prune_edges(self) -> dict:
+        self._nearest_entities = dict()
+        self._top_k_edges = list()        
+        for i in range(0, self.data.num_of_entities):
+            self._process_entity(i)
+            self._verify_valid_entities(i)
+            self._progress_bar.update(1)
+        return self._retain_valid_comparisons()
+        
+    def _retain_valid_comparisons(self) -> dict:
+        new_blocks = dict()
+        retained_comparisons = list()
+        
+        for i in range(0, self.data.num_of_entities):
+            if i in self._nearest_entities:
+                retained_comparisons.clear()
+                # Comparison is a triple: (id1, id2, weight)                
+                for comparison in self._nearest_entities[i]:
+                    if self._is_valid_comparison(i, comparison[1]):
+                        retained_comparisons.append(
+                            (i, comparison[1], comparison[2])
+                        )
+                if len(retained_comparisons) > 0:
+                    self.blocks[i] = {x[1] for x in retained_comparisons}
+    
+        return self.blocks
+
+    def _is_valid_comparison(self, entity_id: int, neighbor_id: int) -> bool:
+        if neighbor_id not in self._nearest_entities:
+            return True
+        
+        if entity_id in self._nearest_entities[neighbor_id]:
+            return  entityId < neighborId
+
+        return True
+        
+    def _set_threshold(self) -> None:
+        self._threshold = max(1, self._block_assignments/self.data.num_of_entities)
+    
+    def _verify_valid_entities(self, entity_id: int) -> None: 
+        
+        if not self._valid_entities:
+            return None
+        
+        self._top_k_edges.clear()
+        self._minimum_weight = sys.float_info.min
+        
+        for neighbor_id in self._valid_entities:
+            weight = self._get_weight(entity_id, neighbor_id)
+            if weight >= self._minimum_weight:
+                self._top_k_edges.append(
+                    (entity_id, neighbor_id, weight)
+                )
+                
+                if self._threshold < len(self._top_k_edges):
+                    self._minimum_weight = self._top_k_edges.pop(0)[2]
+        if self._top_k_edges:         
+            self._nearest_entities[entity_id] = self._top_k_edges.copy()
+
 
 class CanopyClustering(CardinalityNodePruning):
     '''
