@@ -40,11 +40,14 @@ class Evaluation:
         self.false_negatives = 0
         self.data = data
         gt = self.data.ground_truth
-        all_gt_ids = set(gt.iloc[:, 0]).union(set(gt.iloc[:, 1]))
+        all_gt_ids = set(self.data._ids_mapping_1.values()) if self.data.is_dirty_er else \
+                        set(self.data._ids_mapping_1.values()).union(set(self.data._ids_mapping_2.values()))
         if isinstance(prediction, dict) and isinstance(list(prediction.values())[0], set):
             # case of candidate pairs, entity-id -> {entity-id, ..}
             self.total_matching_pairs = sum([len(block) for block in prediction.values()])
             for _, (id1, id2) in gt.iterrows():
+                id1 = self.data._ids_mapping_1[id1]
+                id2 = self.data._ids_mapping_2[id2]
                 if (id1 in prediction and id2 in prediction[id1]) or   \
                     (id2 in prediction and id1 in prediction[id2]):
                     self.true_positives += 1
@@ -53,6 +56,8 @@ class Evaluation:
         else: # blocks, clusters evaluation
             entity_index: dict = self._create_entity_index(prediction, all_gt_ids)
             for _, (id1, id2) in gt.iterrows():
+                id1 = self.data._ids_mapping_1[id1]
+                id2 = self.data._ids_mapping_2[id2]
                 if id1 in entity_index and    \
                     id2 in entity_index and     \
                         self._are_matching(entity_index, id1, id2):
