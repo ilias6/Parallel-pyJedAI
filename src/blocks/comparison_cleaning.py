@@ -350,7 +350,7 @@ class CardinalityNodePruning(CardinalityEdgePruning):
         return self._retain_valid_comparisons()
         
     def _retain_valid_comparisons(self) -> dict:
-        new_blocks = dict()
+        self.blocks = dict()
         retained_comparisons = list()
         
         for i in range(0, self.data.num_of_entities):
@@ -370,10 +370,8 @@ class CardinalityNodePruning(CardinalityEdgePruning):
     def _is_valid_comparison(self, entity_id: int, neighbor_id: int) -> bool:
         if neighbor_id not in self._nearest_entities:
             return True
-        
         if entity_id in self._nearest_entities[neighbor_id]:
-            return  entityId < neighborId
-
+            return entity_id < neighbor_id
         return True
         
     def _set_threshold(self) -> None:
@@ -446,7 +444,7 @@ class ReciprocalCardinalityNodePruning(CardinalityNodePruning):
         if neighbor_id not in self._nearest_entities:
             return False
         if entity_id in self._nearest_entities[neighbor_id]:
-            return  entityId < neighborId
+            return  entity_id < neighbor_id
         return False
 
 class ReciprocalCardinalityWeightPruning(WeightedNodePruning):
@@ -474,13 +472,28 @@ class ComparisonPropagation(AbstractComparisonCleaning):
     TODO: ComparisonPropagation
     ''' 
     
-    _method_name = ""
-    _method_info = ""
+    _method_name = "Comparison Propagation"
+    _method_info = ": it eliminates all redundant comparisons from a set of overlapping blocks."
     
     def __init__(self) -> None:
         super().__init__()
-        pass    
-    pass
+    
+    def _apply_main_processing(self) -> dict:
+        self.blocks = dict()
+        for i in range(0, self.data.num_of_entities):
+            associated_blocks = self._entity_index[i]
+            if associated_blocks:
+                self._valid_entities.clear()
+                for block_index in associated_blocks:
+                    if self.data.is_dirty_er:
+                        for neighbor_id in self._blocks[block_index].entities_D1:
+                            if i < neighbor_id: self._valid_entities.add(neighbor_id)
+                    else:
+                        for neighbor_id in self._blocks[block_index].entities_D2:
+                            self._valid_entities.add(neighbor_id)
+                self.blocks[i] = self._valid_entities.copy()
+            self._progress_bar.update(1)
+        return self.blocks
 
 class CanopyClustering(CardinalityNodePruning):
     '''
