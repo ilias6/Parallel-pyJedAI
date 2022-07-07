@@ -13,7 +13,7 @@ from datamodel import Data
 from utils.enums import WEIGHTING_SCHEME
 from utils.constants import EMPTY
 from blocks.utils import create_entity_index
-from utils.constants import  DISCRETIZATION_FACTOR
+from utils.constants import DISCRETIZATION_FACTOR
 
 class AbstractComparisonCleaning:
     '''
@@ -103,7 +103,8 @@ class AbstractMetablocking(AbstractComparisonCleaning):
                         log10(self._distinct_comparisons / self._comparisons_per_entity[neighbor_id]))
             case 'PEARSON_X2':
                 # TODO: ChiSquared
-                pass
+                print("Weighting scheme PEARSON_X2 not developed yet")
+                sys.exit(0)
             case _:
                 # TODO: Error handling
                 print('This weighting scheme does not exist')
@@ -398,49 +399,109 @@ class CardinalityNodePruning(CardinalityEdgePruning):
         if self._top_k_edges:         
             self._nearest_entities[entity_id] = self._top_k_edges.copy()
 
-
-class CanopyClustering(CardinalityNodePruning):
-    '''
-    TODO: CanopyClustering
-    '''    
-    def __init__(self) -> None:
-        super().__init__()
-        pass    
-    pass
-
-
-class ComparisonPropagation(AbstractComparisonCleaning):
-    '''
-    TODO: ComparisonPropagation
-    '''    
-    def __init__(self) -> None:
-        super().__init__()
-        pass    
-    pass
-
 class BLAST(WeightedNodePruning):
     '''
     TODO: BLAST
-    '''    
-    def __init__(self) -> None:
-        super().__init__()
-        pass    
-    pass
-
-class ExtendedCanopyClustering(CardinalityNodePruning):
+    
+    PEARSON_X2 scheme
     '''
-    TODO: ExtendedCanopyClustering
-    '''    
-    def __init__(self) -> None:
-        super().__init__()
-        pass    
-    pass
-
+    
+    _method_name = "BLAST"
+    _method_info = ": a Meta-blocking method that retains the comparisons \
+                        that correspond to edges in the blocking graph that are exceed 1/4 of the sum \
+                            of the maximum edge weights in the two adjacent node neighborhoods."
+    
+    def __init__(self, weighting_scheme: str = 'PEARSON_X2') -> None:
+        super().__init__(weighting_scheme)
+        
+    def _get_valid_weight(self, entity_id: int, neighbor_id: int) -> float:
+        weight = self._get_weight(entity_id, neighbor_id)
+        edge_threshold = (self._average_weight[entity_id] + self._average_weight[neighbor_id])/4
+        
+        if edge_threshold <= weight and entity_id < neighbor_id:
+            return weight
+        
+        return -1
+        
+    def _update_threshold(self, entity_id: int) -> None:
+        self._threshold = 0.0
+        for neighbor_id in self._valid_entities:
+            self._threshold = max(self._threshold, self._get_weight(entity_id, neighbor_id))
+        
 
 class ReciprocalCardinalityNodePruning(CardinalityNodePruning):
     '''
     TODO: ReciprocalCardinalityNodePruning
     '''    
+    
+    _method_name = "Reciprocal Cardinality Node Pruning"
+    _method_info = ": a Meta-blocking method that retains the comparisons \
+                        that correspond to edges in the blocking graph that are among the top-k weighted  \
+                            ones for both adjacent entities/nodes."
+    
+    def __init__(self, weighting_scheme: str = 'ARCS') -> None:
+        super().__init__(weighting_scheme)
+
+    def _is_valid_comparison(self, entity_id: int, neighbor_id: int) -> bool:
+        if neighbor_id not in self._nearest_entities:
+            return False
+        if entity_id in self._nearest_entities[neighbor_id]:
+            return  entityId < neighborId
+        return False
+
+class ReciprocalCardinalityWeightPruning(WeightedNodePruning):
+    '''
+    TODO: ReciprocalCardinalityWeightPruning
+    '''    
+    
+    _method_name = "Reciprocal Weighted Node Pruning"
+    _method_info = ": a Meta-blocking method that retains the comparisons\
+                        that correspond to edges in the blocking graph that are \
+                            exceed the average edge weight in both adjacent node neighborhoods."
+    
+    def __init__(self, weighting_scheme: str = 'ARCS') -> None:
+        super().__init__(weighting_scheme)
+        
+    
+    def _get_valid_weight(self, entity_id: int, neighbor_id: int) -> float:
+        weight = self._get_weight(entity_id, neighbor_id)
+        return weight if ((self._average_weight[entity_id] <= weight and \
+                             self._average_weight[entity_id] <= weight) and 
+                                entity_id < neighbor_id) else -1
+    
+class ComparisonPropagation(AbstractComparisonCleaning):
+    '''
+    TODO: ComparisonPropagation
+    ''' 
+    
+    _method_name = ""
+    _method_info = ""
+    
+    def __init__(self) -> None:
+        super().__init__()
+        pass    
+    pass
+
+class CanopyClustering(CardinalityNodePruning):
+    '''
+    TODO: CanopyClustering
+    '''    
+    _method_name = ""
+    _method_info = ""
+    
+    
+    def __init__(self) -> None:
+        super().__init__()
+        
+
+class ExtendedCanopyClustering(CardinalityNodePruning):
+    '''
+    TODO: ExtendedCanopyClustering
+    '''
+    
+    _method_name = ""
+    _method_info = ""    
+    
     def __init__(self) -> None:
         super().__init__()
         pass    
