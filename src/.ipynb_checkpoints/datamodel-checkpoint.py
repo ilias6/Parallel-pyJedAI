@@ -33,8 +33,7 @@ class Data:
         self.attributes_1: list = attributes_1
         # self.attributes_1.remove(id_column_name_1)
         
-        if dataset_2 is not None:
-            self.attributes_2: list = attributes_2
+        if dataset_2 is not None: self.attributes_2: list = attributes_2
             # self.attributes_2.remove(id_column_name_2)
 
         self.entities: pd.DataFrame
@@ -47,20 +46,23 @@ class Data:
         self.entities_d1 = self.dataset_1[self.attributes_1].apply(" ".join, axis=1)
         
         if not self.is_dirty_er:
-            self.dataset_2 = self.dataset_2.apply(text_cleaning_method)
+            self.dataset_2 = self.dataset_2.astype(str).apply(text_cleaning_method)
             self.entities_d2 = self.dataset_2[self.attributes_2].apply(" ".join, axis=1)
             self.entities = pd.concat([self.dataset_1, self.dataset_2])
         self._create_gt_mapping()
         
     def _create_gt_mapping(self) -> None:
         
+        if self.ground_truth is not None:
+            self.ground_truth = self.ground_truth.astype(str)
+
         self._ids_mapping_1 = dict(zip(
             self.dataset_1[self.id_column_name_1].tolist(), range(0, self.num_of_entities_1)
         ))
         
         if not self.is_dirty_er:
             self._ids_mapping_2 = dict(zip(
-                self.dataset_2[self.id_column_name_2].tolist(), range(0, self.num_of_entities_2)
+                self.dataset_2[self.id_column_name_2].tolist(), range(self.num_of_entities_1, self.num_of_entities_1+self.num_of_entities_2)
             ))      
 
     def print_specs(self):

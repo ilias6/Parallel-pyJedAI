@@ -38,16 +38,14 @@ class AbstractBlockBuilding:
 
     _method_name: str
     _method_info: str
-    _is_dirty_er: bool
-    blocks: dict = dict()
 
     def __init__(self) -> any:
-        self._num_of_entities_2 = None
+        self.blocks: dict = dict()
 
     def build_blocks(
-            self,
-            data: Data,
-            attributes: list=None,
+            self, data: Data,
+            attributes_1: list=None,
+            attributes_2: list=None,
     ) -> dict:
         '''
         Main method of Standard Blocking
@@ -55,7 +53,8 @@ class AbstractBlockBuilding:
         Input: Dirty/Clean-1 dataframe, Clean-2 dataframe
         Returns: dict of token -> Block
         '''
-        self.attributes = attributes
+        self.attributes_1 = attributes_1
+        self.attributes_2 = attributes_2
         if data.is_dirty_er:
             tqdm_desc_1 = self._method_name + " - Dirty ER"
         else:
@@ -64,18 +63,16 @@ class AbstractBlockBuilding:
             
 
         for i in tqdm(range(0, data.num_of_entities_1, 1), desc=tqdm_desc_1):
-            record = data.dataset_1.iloc[i, attributes] if attributes else data.entities_d1[i] 
+            record = data.dataset_1.iloc[i, attributes_1] if attributes_1 else data.entities_d1.iloc[i] 
             for token in self._tokenize_entity(record):
                 self.blocks.setdefault(token, Block())
                 self.blocks[token].entities_D1.add(i)
-
         if not data.is_dirty_er:
             for i in tqdm(range(0, data.num_of_entities_2, 1), desc=tqdm_desc_2):
-                record = data.dataset_2.iloc[i, attributes] if attributes else data.entities_d2[i]
+                record = data.dataset_2.iloc[i, attributes_2] if attributes_2 else data.entities_d2.iloc[i]
                 for token in self._tokenize_entity(record):
                     self.blocks.setdefault(token, Block())
                     self.blocks[token].entities_D2.add(data.dataset_limit+i)
-
         self.blocks = drop_single_entity_blocks(self.blocks, data.is_dirty_er)
 
         return self.blocks
