@@ -56,14 +56,18 @@ class Evaluation:
         else: # blocks, clusters evaluation
             entity_index: dict = self._create_entity_index(prediction, all_gt_ids)
             for _, (id1, id2) in gt.iterrows():
+                print("Real ids: ", id1, id2)
                 id1 = self.data._ids_mapping_1[id1]
                 id2 = self.data._ids_mapping_2[id2]
+                print("Mapped ids: ", id1, id2)
                 if id1 in entity_index and    \
                     id2 in entity_index and     \
                         self._are_matching(entity_index, id1, id2):
                     self.true_positives += 1
+                    print("true_positives: ", id1, id2)
                 else:
                     self.false_negatives += 1
+                    print("false_negatives: ", id1, id2)
         self.false_positives = self.total_matching_pairs - self.true_positives
         self.precision = self.true_positives / self.total_matching_pairs
         self.recall = self.true_positives / len(gt)
@@ -100,8 +104,8 @@ class Evaluation:
         for cluster, cluster_id in zip(clusters, range(0, len(clusters))):
             cluster_entities_d1 = 0
             cluster_entities_d2 = 0
-            for id in cluster.intersection(all_ground_truth_ids):
-                entity_index[id] = cluster_id
+            for entity_id in cluster.intersection(all_ground_truth_ids):
+                entity_index[entity_id] = cluster_id
 
                 if not self.data.is_dirty_er:
                     if id < self.data.dataset_limit:
@@ -125,14 +129,14 @@ class Evaluation:
             block_entities_d1 = 0
             block_entities_d2 = 0
             
-            for id in block.entities_D1.intersection(all_ground_truth_ids):
-                entity_index.setdefault(id, set())
-                entity_index[id] = block_id
+            for entity_id in block.entities_D1:
+                entity_index.setdefault(entity_id, set())
+                entity_index[entity_id].add(block_id)
                 
             if not self.data.is_dirty_er:
-                for id in block.entities_D2.intersection(all_ground_truth_ids):
-                    entity_index.setdefault(id, set())
-                    entity_index[id] = block_id
+                for entity_id in block.entities_D2:
+                    entity_index.setdefault(entity_id, set())
+                    entity_index[entity_id].add(block_id)
                     
             if self.data.is_dirty_er:
                 self.total_matching_pairs += len(block.entities_D1)*(len(block.entities_D1)-1)/2
@@ -152,7 +156,6 @@ class Evaluation:
         if len(entity_index) < 1:
             print("error") # TODO: error
             return None
-        
-        if isinstance([entity_index.values()][0], set): # Blocks case
-            return (entity_index[id1].intersection(entity_index[id2]) > 0)
+        if isinstance(list(entity_index.values())[0], set): # Blocks case
+            return (len(entity_index[id1].intersection(entity_index[id2])) > 0)
         return entity_index[id1] == entity_index[id2] # Clusters case
