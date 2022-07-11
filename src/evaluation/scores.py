@@ -56,24 +56,24 @@ class Evaluation:
         else: # blocks, clusters evaluation
             entity_index: dict = self._create_entity_index(prediction, all_gt_ids)
             for _, (id1, id2) in gt.iterrows():
-                print("Real ids: ", id1, id2)
+                #print("Real ids: ", id1, id2)
                 id1 = self.data._ids_mapping_1[id1]
                 id2 = self.data._ids_mapping_2[id2]
-                print("Mapped ids: ", id1, id2)
+                #print("Mapped ids: ", id1, id2)
                 if id1 in entity_index and    \
                     id2 in entity_index and     \
                         self._are_matching(entity_index, id1, id2):
                     self.true_positives += 1
-                    print("true_positives: ", id1, id2)
+                    #print("true_positives: ", id1, id2)
                 else:
                     self.false_negatives += 1
-                    print("false_negatives: ", id1, id2)
+                    #print("false_negatives: ", id1, id2)
         self.false_positives = self.total_matching_pairs - self.true_positives
         self.precision = self.true_positives / self.total_matching_pairs
         self.recall = self.true_positives / len(gt)
         self.f1 = 2*((self.precision*self.recall)/(self.precision+self.recall))
         
-        print("+-----------------------------+\n > Evaluation\n+-----------------------------+\nPrecision: {:9.2f}% \nRecall:    {:9.2f}%\nF1-score:  {:9.2f}%\n\nTotal pairs: {:d}\nTrue positives: {:d}\nFalse positives: {:d}\nFalse negative: {:d}".format(
+        print("+-----------------------------+\n > Evaluation\n+-----------------------------+\nPrecision: {:9.2f}% \nRecall:    {:9.2f}%\nF1-score:  {:9.2f}%\n\nTotal pairs: {:d}\nTrue positives: {:d}\nFalse positives: {:d}\nFalse negatives: {:d}".format(
             self.precision*100, self.recall*100, self.f1*100, 
             int(self.total_matching_pairs), int(self.true_positives), 
             int(self.false_positives), int(self.false_negatives)
