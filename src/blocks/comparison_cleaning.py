@@ -32,8 +32,8 @@ class AbstractComparisonCleaning:
 
     def process(
             self,
-            blocks: dict = None,
-            data: Data = None
+            blocks: dict,
+            data: Data
     ) -> dict:
         '''
         TODO: add description

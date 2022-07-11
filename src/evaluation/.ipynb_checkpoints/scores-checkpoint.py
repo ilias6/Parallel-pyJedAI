@@ -56,18 +56,14 @@ class Evaluation:
         else: # blocks, clusters evaluation
             entity_index: dict = self._create_entity_index(prediction, all_gt_ids)
             for _, (id1, id2) in gt.iterrows():
-                print("Real ids: ", id1, id2)
                 id1 = self.data._ids_mapping_1[id1]
                 id2 = self.data._ids_mapping_2[id2]
-                print("Mapped ids: ", id1, id2)
                 if id1 in entity_index and    \
                     id2 in entity_index and     \
                         self._are_matching(entity_index, id1, id2):
                     self.true_positives += 1
-                    print("true_positives: ", id1, id2)
                 else:
                     self.false_negatives += 1
-                    print("false_negatives: ", id1, id2)
         self.false_positives = self.total_matching_pairs - self.true_positives
         self.precision = self.true_positives / self.total_matching_pairs
         self.recall = self.true_positives / len(gt)
@@ -108,7 +104,7 @@ class Evaluation:
                 entity_index[entity_id] = cluster_id
 
                 if not self.data.is_dirty_er:
-                    if id < self.data.dataset_limit:
+                    if entity_id < self.data.dataset_limit:
                         cluster_entities_d1 += 1
                     else:
                         cluster_entities_d2 += 1
