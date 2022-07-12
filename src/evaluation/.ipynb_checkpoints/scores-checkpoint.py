@@ -22,7 +22,7 @@ from blocks.utils import drop_single_entity_blocks
 
 class Evaluation:
 
-    def __init__(self) -> None:
+    def __init__(self, data) -> None:
         self.f1: float
         self.recall: float
         self.precision: float
@@ -33,14 +33,13 @@ class Evaluation:
         self.false_positives: int
         self.false_negatives: int
         self.total_matching_pairs = 0
-        self.data: Data
+        self.data: Data= data
     
-    def report(self, prediction: any, data: Data) -> None:
+    def report(self, prediction: any) -> None:
         self.true_positives = 0
         self.true_negatives = 0
         self.false_positives = 0
         self.false_negatives = 0
-        self.data = data
         gt = self.data.ground_truth
         all_gt_ids = set(self.data._ids_mapping_1.values()) if self.data.is_dirty_er else \
                         set(self.data._ids_mapping_1.values()).union(set(self.data._ids_mapping_2.values()))
