@@ -13,6 +13,8 @@ import tqdm
 from tqdm import tqdm
 
 from typing import Dict, List, Callable
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from datamodel import Block, Data
@@ -65,14 +67,15 @@ class Evaluation:
                 else:
                     self.false_negatives += 1
         self.false_positives = self.total_matching_pairs - self.true_positives
+        cardinality = self.data.num_of_entities_1*(self.data.num_of_entities_1-1)/2 if self.data.is_dirty_er else self.data.num_of_entities_1 * self.data.num_of_entities_2
+        self.true_negatives = cardinality - self.false_negatives - self.false_positives
         self.precision = self.true_positives / self.total_matching_pairs
         self.recall = self.true_positives / len(gt)
         self.f1 = 2*((self.precision*self.recall)/(self.precision+self.recall))
         
-        print("+-----------------------------+\n > Evaluation\n+-----------------------------+\nPrecision: {:9.2f}% \nRecall:    {:9.2f}%\nF1-score:  {:9.2f}%\n\nTotal pairs: {:d}\nTrue positives: {:d}\nFalse positives: {:d}\nFalse negative: {:d}".format(
+        print("+-----------------------------+\n > Evaluation\n+-----------------------------+\nPrecision: {:9.2f}% \nRecall:    {:9.2f}%\nF1-score:  {:9.2f}%\n\nTotal pairs: {:d}\nTrue positives: {:d}\nTrue negatives: {:d}\nFalse positives: {:d}\nFalse negative: {:d}".format(
             self.precision*100, self.recall*100, self.f1*100, 
-            int(self.total_matching_pairs), int(self.true_positives), 
-            int(self.false_positives), int(self.false_negatives)
+            int(self.total_matching_pairs), int(self.true_positives), int(self.true_negatives), int(self.false_positives), int(self.false_negatives)
             )
         )
 
@@ -155,3 +158,17 @@ class Evaluation:
         if isinstance(list(entity_index.values())[0], set): # Blocks case
             return (len(entity_index[id1].intersection(entity_index[id2])) > 0)
         return entity_index[id1] == entity_index[id2] # Clusters case
+    
+    
+    def confusion_matrix(self):
+        
+        heatmap = [
+            [int(self.true_positives), int(self.false_positives)],
+            [int(self.false_negatives), int(self.true_negatives)]
+        ]
+        # plt.colorbar(heatmap)
+        sns.heatmap(heatmap, annot=True, cmap='Blues', xticklabels=['Non-Matching', 'Matching'], yticklabels=['Non-Matching', 'Matching'], fmt='g')
+        plt.title("Confusion Matrix", fontsize=12, fontweight='bold')
+        plt.xlabel("Predicted pairs", fontsize=10, fontweight='bold')
+        plt.ylabel("Real matching pairs", fontsize=10, fontweight='bold')
+        plt.show()
