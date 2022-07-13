@@ -168,7 +168,7 @@ class ExtendedSuffixArraysBlocking(SuffixArraysBlocking):
 
 class ExtendedQGramsBlocking(QGramsBlocking):
     
-    _method_name = "Extended Suffix Arrays Blocking"
+    _method_name = "Extended QGramsBlocking"
     _method_info = _method_name + ": it creates one block for every substring (not just suffix) that appears in the tokens of at least two entities."
     
     def __init__(

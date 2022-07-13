@@ -2,7 +2,6 @@
 TODO
 '''
 
-from html import entities
 import strsimpy
 from strsimpy.levenshtein import Levenshtein
 from strsimpy.normalized_levenshtein import NormalizedLevenshtein
@@ -46,7 +45,7 @@ class EntityMatching:
     _method_name: str = "Entity Matching"
     _method_info: str = ": Calculates similarity from 0. to 1. for all blocks"
 
-    def __init__(self, metric: str, qgram: int = 2, embedings: str = None, attributes: list = None, similarity_threshold: float = None) -> None:
+    def __init__(self, metric: str, qgram: int = 2, embedings: str = None, attributes: any = None, similarity_threshold: float = None) -> None:
         self.data: Data
         self.pairs: networkx.Graph
         self.metric = metric
@@ -108,10 +107,10 @@ class EntityMatching:
         if self.data.is_dirty_er:
             for _, block in blocks.items():
                 entities_array = list(block.entities_D1)
-                for entity_id1 in range(0, len(entities_array), 1):
-                    for entity_id2 in range(entity_id1+1, len(entities_array), 1):
+                for index_1 in range(0, len(entities_array), 1):
+                    for index_2 in range(index_1+1, len(entities_array), 1):
                         similarity = self._similarity(
-                            entity_id1, entity_id2
+                            entities_array[index_1], entities_array[index_2]
                         )
                         self._insert_to_graph(entity_id1, entity_id2, similarity)
                 self._progress_bar.update(1)
