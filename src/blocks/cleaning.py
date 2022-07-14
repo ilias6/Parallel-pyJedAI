@@ -6,7 +6,7 @@ import pandas as pd
 import nltk
 import numpy as np
 
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 from sortedcontainers import SortedList, SortedSet
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -14,6 +14,8 @@ from datamodel import Block, Data
 from utils.utils import insert_to_dict
 from utils.constants import LIST, SET
 from blocks.utils import drop_single_entity_blocks, create_entity_index, print_blocks
+import time
+from datetime import timedelta
 
 class AbstractBlockCleaning:
     def __init__(self) -> None:
@@ -52,8 +54,9 @@ class BlockFiltering(AbstractBlockCleaning):
         Input: dict of keys -> Block
         Returns: dict of keys -> Block
         '''
+        start_time = time.time()
         self.data = data
-        pbar = tqdm(total=3, desc="Block Filtering")
+        pbar = tqdm(total=3, desc="Block Filtering", dynamic_ncols =True)
         # print("dataset_limit: ", dataset_limit)
         sorted_blocks = self._sort_blocks_cardinality(blocks)
         pbar.update(1)
@@ -77,7 +80,9 @@ class BlockFiltering(AbstractBlockCleaning):
         pbar.update(1)
         # print_blocks(filtered_blocks, self._is_dirty_er)
         self.blocks = drop_single_entity_blocks(filtered_blocks, self.data.is_dirty_er)
-
+        pbar.close() 
+        self.execution_time = time.time() - start_time
+        
         return self.blocks
 
     def _sort_blocks_cardinality(self, blocks: dict) -> dict:
