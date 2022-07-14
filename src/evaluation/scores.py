@@ -78,8 +78,8 @@ class Evaluation:
         print("+-----------------------------+\n > Evaluation\n+-----------------------------+\nPrecision: {:9.2f}% \nRecall:    {:9.2f}%\nF1-score:  {:9.2f}%".format(self.precision*100, self.recall*100, self.f1*100))
         if execution_time:
             print("\nTotal execution time: ", str(timedelta(seconds=execution_time)))
-        print("\nTrue positives: {:d}\nTrue negatives: {:d}\nFalse positives: {:d}\nFalse negative: {:d}\nTotal comparisons: {:d}".format(
-            int(self.false_negatives), int(self.true_positives), int(self.true_negatives), int(self.false_positives), int(self.total_matching_pairs)
+        print("\nTrue positives: {:d}\nFalse positives: {:d}\nTrue negatives: {:d}\nFalse negatives: {:d}\nTotal comparisons: {:d}".format(
+            int(self.true_positives), int(self.false_positives), int(self.true_negatives),int(self.false_negatives),int(self.total_matching_pairs)
             )
         )
         
