@@ -76,6 +76,7 @@ class AbstractBlockBuilding:
                     self.blocks[token].entities_D2.add(data.dataset_limit+i)
                 self._progress_bar.update(1)
         self.blocks = drop_single_entity_blocks(self.blocks, data.is_dirty_er)
+        self.blocks = self._clean_blocks(self.blocks)
         self.execution_time = time.time() - start_time
         self._progress_bar.close()
         
@@ -105,7 +106,7 @@ class StandardBlocking(AbstractBlockBuilding):
         return set(filter(None, re.split('[\\W_]', entity.lower())))
 
     def _clean_blocks(self, blocks: dict) -> dict:
-        pass
+        return blocks
 
 class QGramsBlocking(StandardBlocking):
     '''
@@ -131,12 +132,11 @@ class QGramsBlocking(StandardBlocking):
         keys = set()
         tokens = super()._tokenize_entity(entity)
         for token in tokens:
-            for qgrams in nltk.ngrams(token, n=self.qgrams):
-                keys.add(''.join(qgrams))
+            keys.update(''.join(qg) for qg in nltk.ngrams(token, n=self.qgrams))
         return keys
     
     def _clean_blocks(self, blocks: dict) -> dict:
-        pass
+        return blocks
 
 
 class SuffixArraysBlocking(StandardBlocking):
@@ -200,13 +200,15 @@ class ExtendedQGramsBlocking(StandardBlocking):
         super().__init__()
         self.threshold: float = threshold
         self.MAX_QGRAMS: int = 15
+        self.qgrams = qgrams
 
     def _tokenize_entity(self, entity) -> set:
-        keys = {}
+        keys = set()
         for token in super()._tokenize_entity(entity):
-            qgrams = [''.join(qgram) for qgram in nltk.ngrams(word, n=self.qgrams)]
+            qgrams = [''.join(qgram) for qgram in nltk.ngrams(token, n=self.qgrams)]
+            
             if len(qgrams) == 1:
-                keys.add(qgrams)
+                keys.update(qgrams)
             else:
                 if len(qgrams) > self.MAX_QGRAMS:
                     qgrams = qgrams[:self.MAX_QGRAMS]
@@ -214,7 +216,7 @@ class ExtendedQGramsBlocking(StandardBlocking):
                 minimum_length = math.floor(len(qgrams) * self.threshold)
 
                 for i in range(minimum_length, len(qgrams)):
-                    keys.add(self._qgrams_combinations(qgrams, i))
+                    keys.update(self._qgrams_combinations(qgrams, i))
         
         return keys
     
@@ -238,4 +240,4 @@ class ExtendedQGramsBlocking(StandardBlocking):
         return resulting_combinations
     
     def _clean_blocks(self, blocks: dict) -> dict:
-        pass
+        return blocks
