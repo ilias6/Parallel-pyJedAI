@@ -151,7 +151,7 @@ class SuffixArraysBlocking(StandardBlocking):
     _method_info = _method_name + ": it creates one block for every suffix that appears in the attribute value tokens of at least two entities."
 
     def __init__(
-            self, suffix_length: int = 6, max_block_size = 100
+            self, suffix_length: int = 6, max_block_size = 53
     ) -> any:
         super().__init__()
         self.suffix_length = suffix_length
@@ -182,7 +182,7 @@ class ExtendedSuffixArraysBlocking(StandardBlocking):
     _method_info = _method_name + ": it creates one block for every substring (not just suffix) that appears in the tokens of at least two entities."
 
     def __init__(
-            self, suffix_length: int = 3, max_block_size = 100
+            self, suffix_length: int = 3, max_block_size = 39
     ) -> any:
         super().__init__()
         self.suffix_length = suffix_length
