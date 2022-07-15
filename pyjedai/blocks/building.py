@@ -130,9 +130,11 @@ class QGramsBlocking(StandardBlocking):
 
     def _tokenize_entity(self, entity) -> set:
         keys = set()
-        tokens = super()._tokenize_entity(entity)
-        for token in tokens:
-            keys.update(''.join(qg) for qg in nltk.ngrams(token, n=self.qgrams))
+        for token in super()._tokenize_entity(entity):
+            if len(token) < self.qgrams:
+                keys.add(token)
+            else:
+                keys.update(''.join(qg) for qg in nltk.ngrams(token, n=self.qgrams))
         return keys
     
     def _clean_blocks(self, blocks: dict) -> dict:
@@ -140,7 +142,11 @@ class QGramsBlocking(StandardBlocking):
 
 
 class SuffixArraysBlocking(StandardBlocking):
-        
+     '''
+    Suffix Arrays Blocking
+    ---
+    It creates one block for every suffix that appears in the attribute value tokens of at least two entities.
+    '''
     _method_name = "Suffix Arrays Blocking"
     _method_info = _method_name + ": it creates one block for every suffix that appears in the attribute value tokens of at least two entities."
 
@@ -167,6 +173,11 @@ class SuffixArraysBlocking(StandardBlocking):
 
     
 class ExtendedSuffixArraysBlocking(StandardBlocking):
+    '''
+    Extended Suffix Arrays Blocking
+    ---
+    It creates one block for every substring (not just suffix) that appears in the tokens of at least two entities..
+    '''
     _method_name = "Extended Suffix Arrays Blocking"
     _method_info = _method_name + ": it creates one block for every substring (not just suffix) that appears in the tokens of at least two entities."
 
@@ -191,7 +202,12 @@ class ExtendedSuffixArraysBlocking(StandardBlocking):
         return drop_big_blocks_by_size(blocks, self.max_block_size)
     
 class ExtendedQGramsBlocking(StandardBlocking):
-    
+    '''
+    Extended Q-Grams Blocking
+    ---
+    It creates one block for every combination of q-grams that represents at least two entities.
+    The q-grams are extracted from any token in the attribute values of any entity.
+    '''
     _method_name = "Extended QGramsBlocking"
     _method_info = _method_name + ": it creates one block for every substring (not just suffix) that appears in the tokens of at least two entities."
     
