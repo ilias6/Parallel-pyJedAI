@@ -145,11 +145,12 @@ class SuffixArraysBlocking(StandardBlocking):
     _method_info = _method_name + ": it creates one block for every suffix that appears in the attribute value tokens of at least two entities."
 
     def __init__(
-            self, suffix_length: int = 6
+            self, suffix_length: int = 6, max_block_size = 100
     ) -> any:
         super().__init__()
         self.suffix_length = suffix_length
-
+        self.max_block_size = max_block_size
+        
     def _tokenize_entity(self, entity) -> set:
         keys = set()
         tokens = super()._tokenize_entity(entity)
@@ -162,7 +163,7 @@ class SuffixArraysBlocking(StandardBlocking):
         return keys
     
     def _clean_blocks(self, blocks: dict) -> dict:
-        return drop_big_blocks_by_size(blocks)
+        return drop_big_blocks_by_size(blocks, self.max_block_size)
 
     
 class ExtendedSuffixArraysBlocking(StandardBlocking):
@@ -170,11 +171,11 @@ class ExtendedSuffixArraysBlocking(StandardBlocking):
     _method_info = _method_name + ": it creates one block for every substring (not just suffix) that appears in the tokens of at least two entities."
 
     def __init__(
-            self, suffix_length: int = 3,
+            self, suffix_length: int = 3, max_block_size = 100
     ) -> any:
         super().__init__()
         self.suffix_length = suffix_length
-
+        self.max_block_size = max_block_size
 
     def _tokenize_entity(self, entity) -> set:
         tokens = []
@@ -187,7 +188,7 @@ class ExtendedSuffixArraysBlocking(StandardBlocking):
         return tokens
     
     def _clean_blocks(self, blocks: dict) -> dict:
-        return drop_big_blocks_by_size(blocks)
+        return drop_big_blocks_by_size(blocks, self.max_block_size)
     
 class ExtendedQGramsBlocking(StandardBlocking):
     
