@@ -58,6 +58,7 @@ class AbstractBlockBuilding:
         Returns: dict of token -> Block
         '''
         start_time = time.time()
+        
         self.blocks: dict = dict()
         self.attributes_1 = attributes_1
         self.attributes_2 = attributes_2
@@ -75,8 +76,10 @@ class AbstractBlockBuilding:
                     self.blocks.setdefault(token, Block())
                     self.blocks[token].entities_D2.add(data.dataset_limit+i)
                 self._progress_bar.update(1)
+                
         self.blocks = drop_single_entity_blocks(self.blocks, data.is_dirty_er)
         self.blocks = self._clean_blocks(self.blocks)
+        
         self.execution_time = time.time() - start_time
         self._progress_bar.close()
         
@@ -122,8 +125,7 @@ class QGramsBlocking(StandardBlocking):
                 "The q-gram must be shared by at least two entities."
 
     def __init__(
-            self,
-            qgrams: int=6,
+            self, qgrams: int=6,
     ) -> any:
         super().__init__()
         self.qgrams = qgrams
@@ -151,7 +153,7 @@ class SuffixArraysBlocking(StandardBlocking):
     _method_info = _method_name + ": it creates one block for every suffix that appears in the attribute value tokens of at least two entities."
 
     def __init__(
-            self, suffix_length: int = 6, max_block_size = 53
+            self, suffix_length: int = 6, max_block_size : int = 53
     ) -> any:
         super().__init__()
         self.suffix_length = suffix_length
@@ -159,13 +161,12 @@ class SuffixArraysBlocking(StandardBlocking):
         
     def _tokenize_entity(self, entity) -> set:
         keys = set()
-        tokens = super()._tokenize_entity(entity)
-        for token in tokens:
+        for token in super()._tokenize_entity(entity):
             if len(token) < self.suffix_length:
                 keys.add(token)
             else:
                 for length in range(0, len(token) - self.suffix_length + 1):
-                    keys.add(token[:length])
+                    keys.add(token[length:])
         return keys
     
     def _clean_blocks(self, blocks: dict) -> dict:
@@ -182,7 +183,7 @@ class ExtendedSuffixArraysBlocking(StandardBlocking):
     _method_info = _method_name + ": it creates one block for every substring (not just suffix) that appears in the tokens of at least two entities."
 
     def __init__(
-            self, suffix_length: int = 3, max_block_size = 39
+            self, suffix_length: int = 3, max_block_size : int = 39
     ) -> any:
         super().__init__()
         self.suffix_length = suffix_length
