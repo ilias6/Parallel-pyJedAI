@@ -22,6 +22,7 @@ import tqdm
 from tqdm.notebook import tqdm
 
 import math
+import re
 import time
 
 from typing import Dict, List, Callable
@@ -31,7 +32,7 @@ error = logging.error
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from datamodel import Block, Data
-from blocks.utils import drop_single_entity_blocks
+from blocks.utils import drop_single_entity_blocks, drop_big_blocks_by_size
 
 
 class AbstractBlockBuilding:
@@ -60,9 +61,7 @@ class AbstractBlockBuilding:
         self.blocks: dict = dict()
         self.attributes_1 = attributes_1
         self.attributes_2 = attributes_2
-            
-        self._progress_bar = tqdm(total=data.num_of_entities, desc=self._method_name)
-        
+        self._progress_bar = tqdm(total=data.num_of_entities, desc=self._method_name)        
         for i in range(0, data.num_of_entities_1, 1):
             record = data.dataset_1.iloc[i, attributes_1] if attributes_1 else data.entities_d1.iloc[i] 
             for token in self._tokenize_entity(record):
@@ -79,6 +78,7 @@ class AbstractBlockBuilding:
         self.blocks = drop_single_entity_blocks(self.blocks, data.is_dirty_er)
         self.execution_time = time.time() - start_time
         self._progress_bar.close()
+        
         return self.blocks
 
     def _tokenize_entity(self, entity: str) -> list:
@@ -101,11 +101,13 @@ class StandardBlocking(AbstractBlockBuilding):
     def __init__(self) -> any:
         super().__init__()
 
-    def _tokenize_entity(self, entity) -> list:
-        return entity.split()
+    def _tokenize_entity(self, entity) -> set:
+        return set(filter(None, re.split('[\\W_]', entity.lower())))
 
+    def _clean_blocks(self, blocks: dict) -> dict:
+        pass
 
-class QGramsBlocking(AbstractBlockBuilding):
+class QGramsBlocking(StandardBlocking):
     '''
     Q-Grams Blocking
     ---
@@ -120,44 +122,61 @@ class QGramsBlocking(AbstractBlockBuilding):
 
     def __init__(
             self,
-            qgrams=None,
+            qgrams: int=6,
     ) -> any:
         super().__init__()
-
         self.qgrams = qgrams
 
-    def _tokenize_entity(self, entity) -> list:
-        return [' '.join(grams) for grams in nltk.ngrams(entity, n=self.qgrams)]
+    def _tokenize_entity(self, entity) -> set:
+        keys = set()
+        tokens = super()._tokenize_entity(entity)
+        for token in tokens:
+            for qgrams in nltk.ngrams(token, n=self.qgrams):
+                keys.add(''.join(qgrams))
+        return keys
+    
+    def _clean_blocks(self, blocks: dict) -> dict:
+        pass
 
 
-class SuffixArraysBlocking(AbstractBlockBuilding):
+class SuffixArraysBlocking(StandardBlocking):
         
     _method_name = "Suffix Arrays Blocking"
     _method_info = _method_name + ": it creates one block for every suffix that appears in the attribute value tokens of at least two entities."
 
     def __init__(
-            self, suffix_length: int = 3,
+            self, suffix_length: int = 6
     ) -> any:
         super().__init__()
-
         self.suffix_length = suffix_length
 
-    def _tokenize_entity(self, entity) -> list:
-        return [word[:self.suffix_length] if len(word) > self.suffix_length else word for word in entity.split()]
+    def _tokenize_entity(self, entity) -> set:
+        keys = set()
+        tokens = super()._tokenize_entity(entity)
+        for token in tokens:
+            if len(token) < self.suffix_length:
+                keys.add(token)
+            else:
+                for length in range(0, len(token) - self.suffix_length + 1):
+                    keys.add(token[:length])
+        return keys
+    
+    def _clean_blocks(self, blocks: dict) -> dict:
+        return drop_big_blocks_by_size(blocks)
 
     
-class ExtendedSuffixArraysBlocking(SuffixArraysBlocking):
+class ExtendedSuffixArraysBlocking(StandardBlocking):
     _method_name = "Extended Suffix Arrays Blocking"
     _method_info = _method_name + ": it creates one block for every substring (not just suffix) that appears in the tokens of at least two entities."
 
     def __init__(
             self, suffix_length: int = 3,
     ) -> any:
-        super().__init__(suffix_length)
+        super().__init__()
         self.suffix_length = suffix_length
 
 
-    def _tokenize_entity(self, entity) -> list:
+    def _tokenize_entity(self, entity) -> set:
         tokens = []
         for word in entity.split():
             if len(word) > self.suffix_length:
@@ -166,25 +185,28 @@ class ExtendedSuffixArraysBlocking(SuffixArraysBlocking):
             else:
                 tokens.append("".join(word))
         return tokens
-
-class ExtendedQGramsBlocking(QGramsBlocking):
+    
+    def _clean_blocks(self, blocks: dict) -> dict:
+        return drop_big_blocks_by_size(blocks)
+    
+class ExtendedQGramsBlocking(StandardBlocking):
     
     _method_name = "Extended QGramsBlocking"
     _method_info = _method_name + ": it creates one block for every substring (not just suffix) that appears in the tokens of at least two entities."
     
     def __init__(
-        self, qgrams: int, threshold: float = 0.95
+        self, qgrams: int = 6, threshold: float = 0.95
     ) -> any:
-        super().__init__(qgrams)
+        super().__init__()
         self.threshold: float = threshold
         self.MAX_QGRAMS: int = 15
 
-    def _tokenize_entity(self, entity) -> list:
-        tokens = []
-        for word in entity.split():
+    def _tokenize_entity(self, entity) -> set:
+        keys = {}
+        for token in super()._tokenize_entity(entity):
             qgrams = [''.join(qgram) for qgram in nltk.ngrams(word, n=self.qgrams)]
             if len(qgrams) == 1:
-                tokens += qgrams
+                keys.add(qgrams)
             else:
                 if len(qgrams) > self.MAX_QGRAMS:
                     qgrams = qgrams[:self.MAX_QGRAMS]
@@ -192,11 +214,11 @@ class ExtendedQGramsBlocking(QGramsBlocking):
                 minimum_length = math.floor(len(qgrams) * self.threshold)
 
                 for i in range(minimum_length, len(qgrams)):
-                    tokens += self._qgrams_combinations(qgrams, i)
+                    keys.add(self._qgrams_combinations(qgrams, i))
         
-        return tokens
+        return keys
     
-    def _qgrams_combinations(self, sublists: list, sublist_length: int) -> list:
+    def _qgrams_combinations(self, sublists: list, sublist_length: int) -> set:
         
         if not sublists or len(sublists) < sublist_length:
             return []
@@ -214,3 +236,6 @@ class ExtendedQGramsBlocking(QGramsBlocking):
                 resulting_combinations.append(combination+last_sublist)
             
         return resulting_combinations
+    
+    def _clean_blocks(self, blocks: dict) -> dict:
+        pass

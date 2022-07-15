@@ -36,6 +36,17 @@ def drop_single_entity_blocks(blocks: dict, is_dirty_er: bool) -> dict:
     # print("All keys after: ", len(blocks.keys()))
     return blocks
 
+def drop_big_blocks_by_size(blocks: dict, max_block_size: int) -> dict:
+    
+    all_keys = list(blocks.keys())
+    # print("All keys before: ", len(all_keys))
+    for key in all_keys:
+        if blocks[key].get_size() > max_block_size:
+            blocks.pop(key)
+
+    return blocks
+    
+
 def print_blocks(blocks, is_dirty_er):
     print("Number of blocks: ", len(blocks))
     for key, block in blocks.items():
