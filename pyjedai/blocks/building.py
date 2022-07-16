@@ -210,7 +210,7 @@ class ExtendedQGramsBlocking(StandardBlocking):
     The q-grams are extracted from any token in the attribute values of any entity.
     '''
     _method_name = "Extended QGramsBlocking"
-    _method_info = _method_name + ": it creates one block for every substring (not just suffix) that appears in the tokens of at least two entities."
+    _method_info = _method_name + ": it creates one block for every substring (not just suffix) that        appears in the tokens of at least two entities."
     
     def __init__(
         self, qgrams: int = 6, threshold: float = 0.95
@@ -223,33 +223,35 @@ class ExtendedQGramsBlocking(StandardBlocking):
     def _tokenize_entity(self, entity) -> set:
         keys = set()
         for token in super()._tokenize_entity(entity):
-            qgrams = [''.join(qgram) for qgram in nltk.ngrams(token, n=self.qgrams)]
-            
-            if len(qgrams) == 1:
-                keys.update(qgrams)
-            else:
-                if len(qgrams) > self.MAX_QGRAMS:
-                    qgrams = qgrams[:self.MAX_QGRAMS]
+            if len(token) < self.qgrams:
+                keys.add(token)
+            else:    
+                qgrams = [''.join(qgram) for qgram in nltk.ngrams(token, n=self.qgrams)]
+                if len(qgrams) == 1:
+                    keys.update(qgrams)
+                else:
+                    if len(qgrams) > self.MAX_QGRAMS:
+                        qgrams = qgrams[:self.MAX_QGRAMS]
 
-                minimum_length = math.floor(len(qgrams) * self.threshold)
-
-                for i in range(minimum_length, len(qgrams)):
-                    keys.update(self._qgrams_combinations(qgrams, i))
+                    minimum_length = max(1, math.floor(len(qgrams) * self.threshold))
+                    for i in range(minimum_length, len(qgrams) + 1):
+                        keys.update(self._qgrams_combinations(qgrams, i))
         
         return keys
     
-    def _qgrams_combinations(self, sublists: list, sublist_length: int) -> set:
-        
-        if not sublists or len(sublists) < sublist_length:
+    def _qgrams_combinations(self, sublists: list, sublist_length: int) -> list:
+        if sublist_length == 0 or len(sublists) < sublist_length:
             return []
         
         remaining_elements = sublists.copy()
         last_sublist = remaining_elements.pop(len(sublists)-1)
+        
         combinations_exclusive_x = self._qgrams_combinations(remaining_elements, sublist_length)
         combinations_inclusive_x = self._qgrams_combinations(remaining_elements, sublist_length-1)
         
-        resulting_combinations = combinations_exclusive_x.copy()
-        if not resulting_combinations:
+        resulting_combinations = combinations_exclusive_x.copy() if combinations_exclusive_x else []
+
+        if not combinations_inclusive_x: # is empty
             resulting_combinations.append(last_sublist)
         else:
             for combination in combinations_inclusive_x:
