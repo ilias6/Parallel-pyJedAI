@@ -190,14 +190,14 @@ class ExtendedSuffixArraysBlocking(StandardBlocking):
         self.max_block_size = max_block_size
 
     def _tokenize_entity(self, entity) -> set:
-        tokens = []
-        for word in entity.split():
-            if len(word) > self.suffix_length:
-                for token in list(nltk.ngrams(word,n=self.suffix_length)):
-                    tokens.append("".join(token))
-            else:
-                tokens.append("".join(word))
-        return tokens
+       keys = set()
+       for token in super()._tokenize_entity(entity):
+           keys.add(token)
+           if len(token) > self.suffix_length:
+                for current_size in range(self.suffix_length, len(token)): 
+                    for letters in list(nltk.ngrams(token, n=current_size)):
+                        keys.add("".join(letters))
+       return keys
     
     def _clean_blocks(self, blocks: dict) -> dict:
         return drop_big_blocks_by_size(blocks, self.max_block_size)
