@@ -69,13 +69,15 @@ class ComparisonsBasedBlockPurging(AbstractBlockPurging):
     
     def _set_threshold(self, blocks: dict) -> None:
         
-        sorted_blocks = list(sorted(blocks.items(), key=lambda item: item[1].get_cardinality(self.data.is_dirty_er), reverse=True))
+        sorted_blocks = list(sorted(blocks.items(), key=lambda item: item[1].get_cardinality(self.data.is_dirty_er)))
+
         distinct_comparisons_level = set(b.get_cardinality(self.data.is_dirty_er) for k, b in sorted_blocks)
+        
         block_assignments = np.empty([len(distinct_comparisons_level)])
         comparisons_level = np.empty([len(distinct_comparisons_level)])
         total_comparisons_per_level = np.empty([len(distinct_comparisons_level)])
-        index = -1
         
+        index = -1
         for block_key, block in sorted_blocks:
             if index == -1:
                 index += 1
@@ -91,11 +93,9 @@ class ComparisonsBasedBlockPurging(AbstractBlockPurging):
             block_assignments[index] += block.get_size()
             total_comparisons_per_level[index] += block.get_cardinality(self.data.is_dirty_er)
             self._progress_bar.update(1)
-            
         
         current_bc = 0; current_cc = 0; current_size = 0
         previous_bc = 0; previous_cc = 0; previous_size = 0
-        
         for i in range(len(block_assignments)-1, 0, -1):
             previous_size = current_size
             previous_bc = current_bc
@@ -104,15 +104,11 @@ class ComparisonsBasedBlockPurging(AbstractBlockPurging):
             current_bc = block_assignments[i]
             current_cc = total_comparisons_per_level[i]
             
-            # print("current_bc * previous_cc: ", current_bc * previous_cc)
-            # print("self.smoothing_factor: ", self.smoothing_factor)
-            # print("self.smoothing_factor * current_cc * previous_cc: ", self.smoothing_factor * current_cc * previous_cc)
-            if current_bc * previous_cc < self.smoothing_factor * current_cc * previous_cc:
+            if current_bc * previous_cc < self.smoothing_factor * current_cc * previous_bc:
                 break
                 
         self.max_comparisons_per_block = previous_size
-                        
+        print("Max", self.max_comparisons_per_block)
+        
     def _satisfies_threshold(self, block: Block) -> bool:
-        # print(block.get_cardinality(self.data.is_dirty_er)," <= ", self.max_comparisons_per_block)
-        # print(block.get_cardinality(self.data.is_dirty_er) <= self.max_comparisons_per_block)
         return block.get_cardinality(self.data.is_dirty_er) <= self.max_comparisons_per_block
