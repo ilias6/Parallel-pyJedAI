@@ -9,11 +9,10 @@ from math import log10
 import time
 
 from tqdm.notebook import tqdm
-from datamodel import Data, Block
-from utils.enums import WEIGHTING_SCHEME
-from utils.constants import EMPTY
-from blocks.utils import create_entity_index, drop_single_entity_blocks
-from utils.constants import DISCRETIZATION_FACTOR
+
+# pyJedAI
+from .datamodel import Data, Block
+from .utils import EMPTY, create_entity_index, drop_single_entity_blocks
 
 class BlockFiltering:
     '''

@@ -10,12 +10,9 @@ from tqdm.notebook import tqdm
 from math import log10
 from queue import PriorityQueue
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from datamodel import Data
-from utils.enums import WEIGHTING_SCHEME
-from utils.constants import EMPTY
-from blocks.utils import create_entity_index
-from utils.constants import DISCRETIZATION_FACTOR
+# pyJedAI
+from .datamodel import Data
+from .utils import EMPTY, DISCRETIZATION_FACTOR, create_entity_index
 
 class AbstractComparisonCleaning:
     '''

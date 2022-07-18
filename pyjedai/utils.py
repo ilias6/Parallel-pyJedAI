@@ -2,6 +2,13 @@
 Utility functions for all blocking modules
 '''
 
+from .datamodel import Data, Block
+
+# Constants
+EMPTY = -1
+DISCRETIZATION_FACTOR = 100_000_000
+
+
 def create_entity_index(blocks: dict, is_dirty_er: bool):
     '''
      Creates a dict of entity ids -> block ids
@@ -57,3 +64,13 @@ def print_candidate_pairs(blocks):
         print("- Number of candidates: " + "[\033[1;34m" + \
             str(len(candidates)) + " entities\033[0m]")
         print(candidates)
+
+def print_clusters(clusters: list) -> None:
+    print("Number of clusters: ", len(clusters))
+    for (cluster_id, entity_ids) in zip(range(0, len(clusters)), clusters):
+        print("\nCluster ", "\033[1;32m"+str(cluster_id)+"\033[0m", " contains: " + "[\033[1;34m" + \
+            str(len(entity_ids)) + " entities\033[0m]")
+        print(entity_ids)
+        
+def cora_text_cleaning_method(col):
+    return col.str.lower()

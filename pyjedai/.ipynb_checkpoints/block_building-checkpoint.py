@@ -17,22 +17,16 @@ import sys
 import pandas as pd
 import nltk
 import numpy as np
-# nltk.download('punkt')
 import tqdm
 from tqdm.notebook import tqdm
-
 import math
 import re
 import time
-
 from typing import Dict, List, Callable
 
-info = logging.info
-error = logging.error
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from datamodel import Block, Data
-from blocks.utils import drop_single_entity_blocks, drop_big_blocks_by_size
+# pyJedAI
+from .datamodel import Block, Data
+from .utils import drop_single_entity_blocks, drop_big_blocks_by_size
 
 
 class AbstractBlockBuilding:
