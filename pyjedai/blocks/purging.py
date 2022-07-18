@@ -96,7 +96,7 @@ class ComparisonsBasedBlockPurging(AbstractBlockPurging):
         
         current_bc = 0; current_cc = 0; current_size = 0
         previous_bc = 0; previous_cc = 0; previous_size = 0
-        for i in range(len(block_assignments)-1, 0, -1):
+        for i in range(len(block_assignments)-1, -1, -1):
             previous_size = current_size
             previous_bc = current_bc
             previous_cc = current_cc
