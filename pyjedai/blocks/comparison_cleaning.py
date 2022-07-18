@@ -130,11 +130,9 @@ class AbstractMetablocking(AbstractComparisonCleaning):
                         self._neighbors.add(neighbor_id)
         else:
             if entity_id < self.data.dataset_limit:
-                for original_id in self._blocks[block_key].entities_D2:
-                    self._neighbors.add(original_id)
+                self._neighbors.update(self._blocks[block_key].entities_D2)
             else:
-                for original_id in self._blocks[block_key].entities_D1:
-                    self._neighbors.add(original_id)
+                self._neighbors.update(self._blocks[block_key].entities_D1)
 
     def _discretize_comparison_weight(self, weight: float) -> int:
         return int(weight * DISCRETIZATION_FACTOR)
