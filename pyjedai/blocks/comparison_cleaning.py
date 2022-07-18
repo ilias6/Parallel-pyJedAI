@@ -40,14 +40,19 @@ class AbstractComparisonCleaning:
         TODO: add description
         '''
         start_time = time.time()
+        
         self.data = data
         self._entity_index = create_entity_index(blocks, self.data.is_dirty_er)
         self._num_of_blocks = len(blocks)
         self._blocks: dict = blocks
+        
         self._progress_bar = tqdm(total=self.data.num_of_entities, desc=self._method_name)
+        
         blocks = self._apply_main_processing()
+        
         self.execution_time = time.time() - start_time
         self._progress_bar.close()
+        
         return blocks
 
 class AbstractMetablocking(AbstractComparisonCleaning):
@@ -79,8 +84,8 @@ class AbstractMetablocking(AbstractComparisonCleaning):
         self._counters = np.empty([self.data.num_of_entities], dtype=float)
         self._flags = np.empty([self.data.num_of_entities], dtype=int)
 
-        for block_key in self._blocks.keys():
-            self._block_assignments += self._blocks[block_key].get_size()
+        for block in self._blocks.values():
+            self._block_assignments += block.get_size()
 
         self._set_threshold()
 
