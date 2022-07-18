@@ -51,7 +51,7 @@ class BlockFiltering:
         self.data = data
         pbar = tqdm(total=3, desc="Block Filtering", dynamic_ncols =True)
         # print("dataset_limit: ", dataset_limit)
-        sorted_blocks = self._sort_blocks_cardinality(blocks)
+        sorted_blocks = sort_blocks_cardinality(blocks, self.data.is_dirty_er)
         pbar.update(1)
         entity_index = create_entity_index(sorted_blocks, self.data.is_dirty_er)
         pbar.update(1)
@@ -78,9 +78,7 @@ class BlockFiltering:
         
         return self.blocks
 
-    def _sort_blocks_cardinality(self, blocks: dict) -> dict:
-        return dict(sorted(blocks.items(), key=lambda x: x[1].get_cardinality(self.data.is_dirty_er)))
-
+    
     
 class ComparisonsBasedBlockPurging:
     '''
@@ -108,7 +106,7 @@ class ComparisonsBasedBlockPurging:
             print("Empty dict of blocks was given as input!") #TODO error
             return blocks
         
-        new_blocks = blocks.copy()            
+        new_blocks = blocks.copy()
         self._set_threshold(new_blocks)
         num_of_purged_blocks = 0
         total_comparisons = 0
@@ -130,14 +128,14 @@ class ComparisonsBasedBlockPurging:
     
     def _set_threshold(self, blocks: dict) -> None:
         
-        sorted_blocks = list(sorted(blocks.items(), key=lambda item: item[1].get_cardinality(self.data.is_dirty_er), reverse=True))
-        distinct_comparisons_level = set(b.get_cardinality(self.data.is_dirty_er) for k, b in sorted_blocks)
+        sorted_blocks = sort_blocks_cardinality(blocks, self.data.is_dirty_er)
+        distinct_comparisons_level = set(b.get_cardinality(self.data.is_dirty_er) for k, b in sorted_blocks.items())
         block_assignments = np.empty([len(distinct_comparisons_level)])
         comparisons_level = np.empty([len(distinct_comparisons_level)])
         total_comparisons_per_level = np.empty([len(distinct_comparisons_level)])
         index = -1
         
-        for block_key, block in sorted_blocks:
+        for block_key, block in sorted_blocks.items():
             if index == -1:
                 index += 1
                 comparisons_level[index] = block.get_cardinality(self.data.is_dirty_er)
@@ -171,3 +169,6 @@ class ComparisonsBasedBlockPurging:
                         
     def _satisfies_threshold(self, block: Block) -> bool:
         return block.get_cardinality(self.data.is_dirty_er) <= self.max_comparisons_per_block
+
+def sort_blocks_cardinality(blocks: dict, is_dirty_er: bool) -> dict:
+    return dict(sorted(blocks.items(), key=lambda x: x[1].get_cardinality(is_dirty_er)))

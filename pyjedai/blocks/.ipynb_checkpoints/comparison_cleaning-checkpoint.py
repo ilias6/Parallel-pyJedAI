@@ -40,14 +40,19 @@ class AbstractComparisonCleaning:
         TODO: add description
         '''
         start_time = time.time()
+        
         self.data = data
         self._entity_index = create_entity_index(blocks, self.data.is_dirty_er)
         self._num_of_blocks = len(blocks)
         self._blocks: dict = blocks
+        
         self._progress_bar = tqdm(total=self.data.num_of_entities, desc=self._method_name)
+        
         blocks = self._apply_main_processing()
+        
         self.execution_time = time.time() - start_time
         self._progress_bar.close()
+        
         return blocks
 
 class AbstractMetablocking(AbstractComparisonCleaning):
@@ -79,8 +84,8 @@ class AbstractMetablocking(AbstractComparisonCleaning):
         self._counters = np.empty([self.data.num_of_entities], dtype=float)
         self._flags = np.empty([self.data.num_of_entities], dtype=int)
 
-        for block_key in self._blocks.keys():
-            self._block_assignments += self._blocks[block_key].get_size()
+        for block in self._blocks.values():
+            self._block_assignments += block.get_size()
 
         self._set_threshold()
 
@@ -115,21 +120,15 @@ class AbstractMetablocking(AbstractComparisonCleaning):
     def _normalize_neighbor_entities(self, block_key: str, entity_id: int) -> None:
         self._neighbors.clear()
         if self.data.is_dirty_er:
-            if not self._node_centric:
-                for neighbor_id in self._blocks[block_key].entities_D1:
-                    if neighbor_id < entity_id:
-                        self._neighbors.add(neighbor_id)
-            else:
-                for neighbor_id in self._blocks[block_key].entities_D1:
-                    if neighbor_id != entity_id:
-                        self._neighbors.add(neighbor_id)
+            for neighbor_id in self._blocks[block_key].entities_D1:
+                if (self._node_centric and neighbor_id != entity_id) or \
+                    (neighbor_id < entity_id and not self._node_centric): 
+                    self._neighbors.add(neighbor_id)
         else:
             if entity_id < self.data.dataset_limit:
-                for original_id in self._blocks[block_key].entities_D2:
-                    self._neighbors.add(original_id)
+                self._neighbors.update(self._blocks[block_key].entities_D2)
             else:
-                for original_id in self._blocks[block_key].entities_D1:
-                    self._neighbors.add(original_id)
+                self._neighbors.update(self._blocks[block_key].entities_D1)
 
     def _discretize_comparison_weight(self, weight: float) -> int:
         return int(weight * DISCRETIZATION_FACTOR)

@@ -120,14 +120,10 @@ class AbstractMetablocking(AbstractComparisonCleaning):
     def _normalize_neighbor_entities(self, block_key: str, entity_id: int) -> None:
         self._neighbors.clear()
         if self.data.is_dirty_er:
-            if not self._node_centric:
-                for neighbor_id in self._blocks[block_key].entities_D1:
-                    if neighbor_id < entity_id:
-                        self._neighbors.add(neighbor_id)
-            else:
-                for neighbor_id in self._blocks[block_key].entities_D1:
-                    if neighbor_id != entity_id:
-                        self._neighbors.add(neighbor_id)
+            for neighbor_id in self._blocks[block_key].entities_D1:
+                if (self._node_centric and neighbor_id != entity_id) or \
+                    (neighbor_id < entity_id and not self._node_centric): 
+                    self._neighbors.add(neighbor_id)
         else:
             if entity_id < self.data.dataset_limit:
                 self._neighbors.update(self._blocks[block_key].entities_D2)
