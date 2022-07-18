@@ -18,11 +18,10 @@ class Data:
             ground_truth: pd.DataFrame=None,
             with_header: bool=None
     ) -> None:
-        self.dataset_1 = dataset_1.fillna("")
-        self.dataset_2 = dataset_2.fillna("")  
+        self.dataset_1 = dataset_1
+        self.dataset_2 = dataset_2
         if dataset_2 is not None and (id_column_name_2 is None or attributes_2 is None):
-            print("ERROR")
-            # TODO: error
+            print("ERROR") # TODO: error
         self.entities_d1: pd.DataFrame
         self.entities_d2: pd.DataFrame = None
         self.ground_truth = ground_truth.astype(str)

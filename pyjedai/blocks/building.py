@@ -64,7 +64,7 @@ class AbstractBlockBuilding:
         self.attributes_2 = attributes_2
         self._progress_bar = tqdm(total=data.num_of_entities, desc=self._method_name)        
         for i in range(0, data.num_of_entities_1, 1):
-            record = data.dataset_1.iloc[i, attributes_1] if attributes_1 else data.entities_d1.iloc[i] 
+            record = data.dataset_1.iloc[i, attributes_1] if attributes_1 else data.entities_d1.iloc[i]
             for token in self._tokenize_entity(record):
                 self.blocks.setdefault(token, Block())
                 self.blocks[token].entities_D1.add(i)
@@ -144,7 +144,7 @@ class QGramsBlocking(StandardBlocking):
 
 
 class SuffixArraysBlocking(StandardBlocking):
-     '''
+    '''
     Suffix Arrays Blocking
     ---
     It creates one block for every suffix that appears in the attribute value tokens of at least two entities.

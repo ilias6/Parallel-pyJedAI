@@ -58,12 +58,13 @@ class AbstractBlockBuilding:
         Returns: dict of token -> Block
         '''
         start_time = time.time()
+        
         self.blocks: dict = dict()
         self.attributes_1 = attributes_1
         self.attributes_2 = attributes_2
         self._progress_bar = tqdm(total=data.num_of_entities, desc=self._method_name)        
         for i in range(0, data.num_of_entities_1, 1):
-            record = data.dataset_1.iloc[i, attributes_1] if attributes_1 else data.entities_d1.iloc[i] 
+            record = data.dataset_1.iloc[i, attributes_1] if attributes_1 else data.entities_d1.iloc[i]
             for token in self._tokenize_entity(record):
                 self.blocks.setdefault(token, Block())
                 self.blocks[token].entities_D1.add(i)
@@ -75,8 +76,10 @@ class AbstractBlockBuilding:
                     self.blocks.setdefault(token, Block())
                     self.blocks[token].entities_D2.add(data.dataset_limit+i)
                 self._progress_bar.update(1)
+                
         self.blocks = drop_single_entity_blocks(self.blocks, data.is_dirty_er)
         self.blocks = self._clean_blocks(self.blocks)
+        
         self.execution_time = time.time() - start_time
         self._progress_bar.close()
         
@@ -122,17 +125,18 @@ class QGramsBlocking(StandardBlocking):
                 "The q-gram must be shared by at least two entities."
 
     def __init__(
-            self,
-            qgrams: int=6,
+            self, qgrams: int=6,
     ) -> any:
         super().__init__()
         self.qgrams = qgrams
 
     def _tokenize_entity(self, entity) -> set:
         keys = set()
-        tokens = super()._tokenize_entity(entity)
-        for token in tokens:
-            keys.update(''.join(qg) for qg in nltk.ngrams(token, n=self.qgrams))
+        for token in super()._tokenize_entity(entity):
+            if len(token) < self.qgrams:
+                keys.add(token)
+            else:
+                keys.update(''.join(qg) for qg in nltk.ngrams(token, n=self.qgrams))
         return keys
     
     def _clean_blocks(self, blocks: dict) -> dict:
@@ -140,12 +144,16 @@ class QGramsBlocking(StandardBlocking):
 
 
 class SuffixArraysBlocking(StandardBlocking):
-        
+    '''
+    Suffix Arrays Blocking
+    ---
+    It creates one block for every suffix that appears in the attribute value tokens of at least two entities.
+    '''
     _method_name = "Suffix Arrays Blocking"
     _method_info = _method_name + ": it creates one block for every suffix that appears in the attribute value tokens of at least two entities."
 
     def __init__(
-            self, suffix_length: int = 6, max_block_size = 100
+            self, suffix_length: int = 6, max_block_size : int = 53
     ) -> any:
         super().__init__()
         self.suffix_length = suffix_length
@@ -153,13 +161,12 @@ class SuffixArraysBlocking(StandardBlocking):
         
     def _tokenize_entity(self, entity) -> set:
         keys = set()
-        tokens = super()._tokenize_entity(entity)
-        for token in tokens:
+        for token in super()._tokenize_entity(entity):
             if len(token) < self.suffix_length:
                 keys.add(token)
             else:
                 for length in range(0, len(token) - self.suffix_length + 1):
-                    keys.add(token[:length])
+                    keys.add(token[length:])
         return keys
     
     def _clean_blocks(self, blocks: dict) -> dict:
@@ -167,33 +174,43 @@ class SuffixArraysBlocking(StandardBlocking):
 
     
 class ExtendedSuffixArraysBlocking(StandardBlocking):
+    '''
+    Extended Suffix Arrays Blocking
+    ---
+    It creates one block for every substring (not just suffix) that appears in the tokens of at least two entities..
+    '''
     _method_name = "Extended Suffix Arrays Blocking"
     _method_info = _method_name + ": it creates one block for every substring (not just suffix) that appears in the tokens of at least two entities."
 
     def __init__(
-            self, suffix_length: int = 3, max_block_size = 100
+            self, suffix_length: int = 3, max_block_size : int = 39
     ) -> any:
         super().__init__()
         self.suffix_length = suffix_length
         self.max_block_size = max_block_size
 
     def _tokenize_entity(self, entity) -> set:
-        tokens = []
-        for word in entity.split():
-            if len(word) > self.suffix_length:
-                for token in list(nltk.ngrams(word,n=self.suffix_length)):
-                    tokens.append("".join(token))
-            else:
-                tokens.append("".join(word))
-        return tokens
+       keys = set()
+       for token in super()._tokenize_entity(entity):
+           keys.add(token)
+           if len(token) > self.suffix_length:
+                for current_size in range(self.suffix_length, len(token)): 
+                    for letters in list(nltk.ngrams(token, n=current_size)):
+                        keys.add("".join(letters))
+       return keys
     
     def _clean_blocks(self, blocks: dict) -> dict:
         return drop_big_blocks_by_size(blocks, self.max_block_size)
     
 class ExtendedQGramsBlocking(StandardBlocking):
-    
+    '''
+    Extended Q-Grams Blocking
+    ---
+    It creates one block for every combination of q-grams that represents at least two entities.
+    The q-grams are extracted from any token in the attribute values of any entity.
+    '''
     _method_name = "Extended QGramsBlocking"
-    _method_info = _method_name + ": it creates one block for every substring (not just suffix) that appears in the tokens of at least two entities."
+    _method_info = _method_name + ": it creates one block for every substring (not just suffix) that        appears in the tokens of at least two entities."
     
     def __init__(
         self, qgrams: int = 6, threshold: float = 0.95
@@ -206,33 +223,35 @@ class ExtendedQGramsBlocking(StandardBlocking):
     def _tokenize_entity(self, entity) -> set:
         keys = set()
         for token in super()._tokenize_entity(entity):
-            qgrams = [''.join(qgram) for qgram in nltk.ngrams(token, n=self.qgrams)]
-            
-            if len(qgrams) == 1:
-                keys.update(qgrams)
-            else:
-                if len(qgrams) > self.MAX_QGRAMS:
-                    qgrams = qgrams[:self.MAX_QGRAMS]
+            if len(token) < self.qgrams:
+                keys.add(token)
+            else:    
+                qgrams = [''.join(qgram) for qgram in nltk.ngrams(token, n=self.qgrams)]
+                if len(qgrams) == 1:
+                    keys.update(qgrams)
+                else:
+                    if len(qgrams) > self.MAX_QGRAMS:
+                        qgrams = qgrams[:self.MAX_QGRAMS]
 
-                minimum_length = math.floor(len(qgrams) * self.threshold)
-
-                for i in range(minimum_length, len(qgrams)):
-                    keys.update(self._qgrams_combinations(qgrams, i))
+                    minimum_length = max(1, math.floor(len(qgrams) * self.threshold))
+                    for i in range(minimum_length, len(qgrams) + 1):
+                        keys.update(self._qgrams_combinations(qgrams, i))
         
         return keys
     
-    def _qgrams_combinations(self, sublists: list, sublist_length: int) -> set:
-        
-        if not sublists or len(sublists) < sublist_length:
+    def _qgrams_combinations(self, sublists: list, sublist_length: int) -> list:
+        if sublist_length == 0 or len(sublists) < sublist_length:
             return []
         
         remaining_elements = sublists.copy()
         last_sublist = remaining_elements.pop(len(sublists)-1)
+        
         combinations_exclusive_x = self._qgrams_combinations(remaining_elements, sublist_length)
         combinations_inclusive_x = self._qgrams_combinations(remaining_elements, sublist_length-1)
         
-        resulting_combinations = combinations_exclusive_x.copy()
-        if not resulting_combinations:
+        resulting_combinations = combinations_exclusive_x.copy() if combinations_exclusive_x else []
+
+        if not combinations_inclusive_x: # is empty
             resulting_combinations.append(last_sublist)
         else:
             for combination in combinations_inclusive_x:
