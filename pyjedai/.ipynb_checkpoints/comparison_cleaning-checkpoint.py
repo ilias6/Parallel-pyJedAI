@@ -9,6 +9,7 @@ import time
 from tqdm.notebook import tqdm
 from math import log10
 from queue import PriorityQueue
+from scipy.stats import chisquare, chi2_contingency
 
 # pyJedAI
 from .datamodel import Data
@@ -110,8 +111,12 @@ class AbstractMetablocking(AbstractComparisonCleaning):
                     log10(self._distinct_comparisons / self._comparisons_per_entity[entity_id]) * \
                     log10(self._distinct_comparisons / self._comparisons_per_entity[neighbor_id]))
         elif ws == 'PEARSON_X2':
-            # TODO: ChiSquared
-            pass
+            expected = [int(self._counters[neighbor_id]), int(len(self._entity_index[entity_id])-self._counters[neighbor_id])]
+            observed = [int(len(self._entity_index[neighbor_id])-expected[0]), int(self._num_of_blocks - (expected[0] + expected[1] + (len(self._entity_index[neighbor_id])-expected[0])))]
+            
+            arr = np.array([observed, expected])
+            stat, p, dof, expected = chi2_contingency(arr)      
+            return stat
         else:
             # TODO: Error handling
             print('This weighting scheme does not exist')
