@@ -8,14 +8,12 @@ from networkx import (
     Graph,
 )
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '../src/'))
-from utils.tokenizer import cora_text_cleaning_method
-from utils.utils import print_clusters
-from blocks.utils import print_blocks, print_candidate_pairs
-from evaluation.scores import Evaluation
-from datamodel import Data
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
+from pyjedai.utils import print_clusters, print_blocks, print_candidate_pairs, cora_text_cleaning_method
+from pyjedai.evaluation import Evaluation
+from pyjedai.datamodel import Data
 
-from blocks.building import (
+from pyjedai.block_building import (
     StandardBlocking,
     QGramsBlocking,
     SuffixArraysBlocking,
@@ -28,8 +26,8 @@ from blocks.building import (
 # --------------- Dirty ER --------------- #
 # ---------------------------------------- #
 
-d1 = pd.read_csv("../data/cora/cora.csv", sep='|')
-gt = pd.read_csv("../data/cora/cora_gt.csv", sep='|', header=None)
+d1 = pd.read_csv("../../data/cora/cora.csv", sep='|')
+gt = pd.read_csv("../../data/cora/cora_gt.csv", sep='|', header=None)
 attr = ['Entity Id','author', 'title']
 
 data = Data(
@@ -64,9 +62,9 @@ Evaluation(data).report(blocks)
 # --------------- Clean-Clean ER --------------- #
 # ---------------------------------------------- #
 
-d1 = pd.read_csv("../data/D2/abt.csv", sep='|', engine='python').astype(str)
-d2 = pd.read_csv("../data/D2/buy.csv", sep='|', engine='python').astype(str)
-gt = pd.read_csv("../data/D2/gt.csv", sep='|', engine='python')
+d1 = pd.read_csv("../../data/D2/abt.csv", sep='|', engine='python').astype(str)
+d2 = pd.read_csv("../../data/D2/buy.csv", sep='|', engine='python').astype(str)
+gt = pd.read_csv("../../data/D2/gt.csv", sep='|', engine='python')
 
 data = Data(
     dataset_1=d1,
@@ -75,7 +73,7 @@ data = Data(
     dataset_2=d2,
     attributes_2=['id','name','description'],
     id_column_name_2='id',
-    ground_truth=gt,
+    ground_truth=gt
 )
 
 print("\n\nClean-Clean ER in ABT-BUY dataset:\n")
