@@ -92,17 +92,16 @@ class AbstractJoin:
     def _calc_similarity(self, common_tokens: int, source_frequency: int, tokens_size: int) -> float:
         if common_tokens==0 or source_frequency==0 or tokens_size==0:
             print(common_tokens, source_frequency, tokens_size)
-
             print('cosine', common_tokens / math.sqrt(source_frequency*tokens_size))
             print('dice', common_tokens / (source_frequency+tokens_size))
-            print('jaccard',common_tokens / math.sqrt(source_frequency+tokens_size-common_tokens)  )
+            print('jaccard',common_tokens / (source_frequency+tokens_size-common_tokens)  )
         
         if self.metric == 'cosine':
             return common_tokens / math.sqrt(source_frequency*tokens_size)
         elif self.metric == 'dice':
             return common_tokens / (source_frequency+tokens_size)
         elif self.metric == 'jaccard':
-            return common_tokens / math.sqrt(source_frequency+tokens_size-common_tokens)        
+            return common_tokens / (source_frequency+tokens_size-common_tokens)        
     
     def _create_entity_index_d1(self):
         entity_index_d1 = {}
@@ -148,9 +147,9 @@ class AbstractJoin:
         if self.similarity_threshold <= similarity:
             self.pairs.add_edge(entity_id1, entity_id2, weight=similarity)    
             
-class SchemaAgnosticJoin(AbstractJoin):
+class SchemaAgnosticΕJoin(AbstractJoin):
     '''
-    SchemaAgnosticJoin
+    SchemaAgnosticΕJoin
     '''
     
     _method_name = "Schema Agnostic Join"
@@ -211,8 +210,8 @@ class TopKSchemaAgnosticJoin(AbstractJoin):
         for candidate_id in candidates:
             self.similarity_threshold = minimum_weight
             self._insert_to_graph(
-                candidate_id, 
-                entity_id, 
+                candidate_id,
+                entity_id,
                 self._calc_similarity(
                     self._counters[candidate_id], 
                     self._source_frequency[candidate_id],

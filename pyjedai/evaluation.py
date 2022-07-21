@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import timedelta
 from .datamodel import Data
+import networkx as nx
 
 class Evaluation:
 
@@ -27,6 +28,7 @@ class Evaluation:
         self.false_positives = 0
         self.false_negatives = 0
         gt = self.data.ground_truth
+        
         all_gt_ids = set(self.data._ids_mapping_1.values()) if self.data.is_dirty_er else \
                         set(self.data._ids_mapping_1.values()).union(set(self.data._ids_mapping_2.values()))
         if isinstance(prediction, dict) and isinstance(list(prediction.values())[0], set):
@@ -37,6 +39,16 @@ class Evaluation:
                 id2 = self.data._ids_mapping_1[id2] if self.data.is_dirty_er else self.data._ids_mapping_2[id2]
                 if (id1 in prediction and id2 in prediction[id1]) or   \
                     (id2 in prediction and id1 in prediction[id2]):
+                    self.true_positives += 1
+                else:
+                    self.false_negatives += 1
+        elif isinstance(prediction, nx.Graph):
+            self.total_matching_pairs = prediction.number_of_edges()
+            for _, (id1, id2) in gt.iterrows():
+                id1 = self.data._ids_mapping_1[id1]
+                id2 = self.data._ids_mapping_1[id2] if self.data.is_dirty_er else self.data._ids_mapping_2[id2]
+                if (id1 in prediction and id2 in prediction[id1]) or   \
+                     (id2 in prediction and id1 in prediction[id2]):
                     self.true_positives += 1
                 else:
                     self.false_negatives += 1
@@ -51,6 +63,11 @@ class Evaluation:
                     self.true_positives += 1
                 else:
                     self.false_negatives += 1
+                    
+        if self.total_matching_pairs == 0:
+            print("No matches found at all") # TODO error
+            return
+
         self.false_positives = self.total_matching_pairs - self.true_positives
         cardinality = (self.data.num_of_entities_1*(self.data.num_of_entities_1-1))/2 if self.data.is_dirty_er else self.data.num_of_entities_1 * self.data.num_of_entities_2
         self.true_negatives = cardinality - self.false_negatives - self.false_positives
@@ -65,7 +82,7 @@ class Evaluation:
             int(self.true_positives), int(self.false_positives), int(self.true_negatives),int(self.false_negatives),int(self.total_matching_pairs)
             )
         )
-        
+    
 
     def _create_entity_index(self, groups: any, all_ground_truth_ids: set) -> dict:
         
