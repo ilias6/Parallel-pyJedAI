@@ -9,7 +9,7 @@ from networkx import (
 )
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
-from pyjedai.utils import print_clusters, print_blocks, print_candidate_pairs, cora_text_cleaning_method
+from pyjedai.utils import print_clusters, print_blocks, print_candidate_pairs, text_cleaning_method
 from pyjedai.evaluation import Evaluation
 from pyjedai.datamodel import Data
 
@@ -20,7 +20,6 @@ from pyjedai.block_building import (
     ExtendedSuffixArraysBlocking,
     ExtendedQGramsBlocking
 )
-
 
 # ---------------------------------------- #
 # --------------- Dirty ER --------------- #
@@ -38,7 +37,7 @@ data = Data(
 )
 
 print("\n\nDirty ER in CORA dataset:\n")
-data.process(cora_text_cleaning_method)
+data.process()
 data.print_specs()
 print("\n- StandardBlocking")
 blocks = StandardBlocking().build_blocks(data)
@@ -53,7 +52,7 @@ Evaluation(data).report(blocks)
 print("\n- ExtendedQGramsBlocking")
 blocks = ExtendedQGramsBlocking(
     qgrams=2,
-    threshold=0.9
+    threshold=0.5
 ).build_blocks(data)
 Evaluation(data).report(blocks)
 
@@ -77,7 +76,7 @@ data = Data(
 )
 
 print("\n\nClean-Clean ER in ABT-BUY dataset:\n")
-data.process(cora_text_cleaning_method)
+data.process()
 data.print_specs()
 print("\n- StandardBlocking")
 blocks = StandardBlocking().build_blocks(data)
@@ -85,13 +84,13 @@ Evaluation(data).report(blocks)
 
 print("\n- QGramsBlocking")
 blocks = QGramsBlocking(
-    qgrams=2
+    qgrams=3
 ).build_blocks(data)
 Evaluation(data).report(blocks)
 
 print("\n- ExtendedQGramsBlocking")
 blocks = ExtendedQGramsBlocking(
-    qgrams=2,
+    qgrams=5,
     threshold=0.9
 ).build_blocks(data)
 Evaluation(data).report(blocks)
