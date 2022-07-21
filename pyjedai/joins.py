@@ -54,7 +54,7 @@ class AbstractJoin:
         self.attributes_1 = attributes_1
         self.attributes_2 = attributes_2
         self.data = data
-        self._progress_bar = tqdm(total=self.data.num_of_entities, desc=self._method_name+" ("+self.metric+")")
+        self._progress_bar = tqdm(total=self.data.num_of_entities if not self.data.is_dirty_er else self.data.num_of_entities_1*2, desc=self._method_name+" ("+self.metric+")")
         self._flags = np.empty([self.data.num_of_entities_1])
         self._flags[:] = -1
         self._counters = np.zeros([self.data.num_of_entities_1])
@@ -71,31 +71,42 @@ class AbstractJoin:
             self.attributes_2 = list(self.attributes_2.keys())
         
         candidates = set()
-        for i in range(0, self.data.num_of_entities_2):
-            record = self.data.dataset_2.iloc[i, self.attributes_2] \
-                        if self.attributes_2 else self.data.entities_d2.iloc[i]
-            tokens = self._tokenize_entity(record)
-            for token in tokens:
-                if token in entity_index_d1:
-                    candidates = entity_index_d1[token]
-                    for candidate_id in candidates:
-                        if self._flags[candidate_id] != i+self.data.dataset_limit:
-                            self._counters[candidate_id] = 0
-                            self._flags[candidate_id] = i+self.data.dataset_limit
-                        self._counters[candidate_id] += 1
-            
-            self._process_candidates(candidates, i+self.data.dataset_limit, len(tokens))
-            self._progress_bar.update(1)
+        if self.data.is_dirty_er:
+            for i in range(0, self.data.num_of_entities_1):
+                record = self.data.dataset_1.iloc[i, self.attributes_1] \
+                            if self.attributes_1 else self.data.entities_d1.iloc[i]
+                tokens = self._tokenize_entity(record)
+                for token in tokens:
+                    if token in entity_index_d1:
+                        candidates = entity_index_d1[token]
+                        for candidate_id in candidates:
+                            if self._flags[candidate_id] != i:
+                                self._counters[candidate_id] = 0
+                                self._flags[candidate_id] = i
+                            self._counters[candidate_id] += 1
+
+                self._process_candidates(candidates, i, len(tokens))
+                self._progress_bar.update(1)  
+        else:
+            for i in range(0, self.data.num_of_entities_2):
+                record = self.data.dataset_2.iloc[i, self.attributes_2] \
+                            if self.attributes_2 else self.data.entities_d2.iloc[i]
+                tokens = self._tokenize_entity(record)
+                for token in tokens:
+                    if token in entity_index_d1:
+                        candidates = entity_index_d1[token]
+                        for candidate_id in candidates:
+                            if self._flags[candidate_id] != i+self.data.dataset_limit:
+                                self._counters[candidate_id] = 0
+                                self._flags[candidate_id] = i+self.data.dataset_limit
+                            self._counters[candidate_id] += 1
+
+                self._process_candidates(candidates, i+self.data.dataset_limit, len(tokens))
+                self._progress_bar.update(1)
         
         return self.pairs
     
     def _calc_similarity(self, common_tokens: int, source_frequency: int, tokens_size: int) -> float:
-        if common_tokens==0 or source_frequency==0 or tokens_size==0:
-            print(common_tokens, source_frequency, tokens_size)
-            print('cosine', common_tokens / math.sqrt(source_frequency*tokens_size))
-            print('dice', common_tokens / (source_frequency+tokens_size))
-            print('jaccard',common_tokens / (source_frequency+tokens_size-common_tokens)  )
-        
         if self.metric == 'cosine':
             return common_tokens / math.sqrt(source_frequency*tokens_size)
         elif self.metric == 'dice':
