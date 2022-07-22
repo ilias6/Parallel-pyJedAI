@@ -18,7 +18,7 @@ class AbstractJoin:
         self, 
         metric: str, 
         tokenization: str, 
-        qgrams: int = 2, 
+        qgrams: int = 2,
         similarity_threshold: float = None
     ) -> None:
         self.metric = metric
@@ -32,6 +32,14 @@ class AbstractJoin:
             return set([' '.join(grams) for grams in nltk.ngrams(entity.lower(), n=self.qgrams)])
         elif self.tokenization == 'standard':
             return set(filter(None, re.split('[\\W_]', entity.lower())))
+        elif self.tokenization == 'standard_multiset':        
+            tok_ids_index = {}
+            multiset = set()
+            for tok in set(filter(None, re.split('[\\W_]', entity.lower()))):
+                tok_id =  tok_ids_index[tok] if tok in tok_ids_index else 0
+                multiset.add(tok+str(tok_id))
+                tok_ids_index[tok] = tok_id+1
+            return multiset
         elif self.tokenization == 'qgrams_multiset':
             grams_ids_index = {}
             qgrams = set()
@@ -42,29 +50,39 @@ class AbstractJoin:
             return qgrams
         else:
             print("Tokenization not found")
-            # TODO error             
+            # TODO error
         
     def fit(
         self, data: Data, 
+        reverse_order: bool=False,
         attributes_1: list=None,
         attributes_2: list=None
     ) -> networkx.Graph:
-        
+        self.reverse_order = reverse_order
         self.attributes_1 = attributes_1
         self.attributes_2 = attributes_2
         self.data = data
-        self._progress_bar = tqdm(total=self.data.num_of_entities if not self.data.is_dirty_er else self.data.num_of_entities_1*2, desc=self._method_name+" ("+self.metric+")")
-        self._flags = np.empty([self.data.num_of_entities_1])
+        
+        if reverse_order:
+            num_of_entities = self.data.num_of_entities_2
+        else:
+            num_of_entities = self.data.num_of_entities_1
+        
+        self._progress_bar = tqdm(total=self.data.num_of_entities if not self.data.is_dirty_er else num_of_entities*2, desc=self._method_name+" ("+self.metric+")")
+        self._flags = np.empty([num_of_entities])
         self._flags[:] = -1
-        self._counters = np.zeros([self.data.num_of_entities_1])
+        self._counters = np.zeros([num_of_entities])
         self._sims = np.empty([self.data.num_of_entities_1*self.data.num_of_entities_2])
-        self._source_frequency = np.empty([self.data.num_of_entities_1])
+        self._source_frequency = np.empty([num_of_entities])
 
         self.pairs = networkx.Graph()
         if self.attributes_1 and isinstance(self.attributes_1, dict):
             self.attributes_1 = list(self.attributes_1.keys())
 
-        entity_index_d1 = self._create_entity_index_d1()
+        if reverse_order:
+            entity_index = self._create_entity_index_d2()
+        else:
+            entity_index = self._create_entity_index_d1()
         
         if self.attributes_2 and isinstance(self.attributes_2, dict):
             self.attributes_2 = list(self.attributes_2.keys())
@@ -76,8 +94,8 @@ class AbstractJoin:
                             if self.attributes_1 else self.data.entities_d1.iloc[i]
                 tokens = self._tokenize_entity(record)
                 for token in tokens:
-                    if token in entity_index_d1:
-                        current_candidates = entity_index_d1[token]
+                    if token in entity_index:
+                        current_candidates = entity_index[token]
                         for candidate_id in current_candidates:
                             if self._flags[candidate_id] != i:
                                 self._counters[candidate_id] = 0
@@ -88,24 +106,34 @@ class AbstractJoin:
                 self._process_candidates(candidates, i, len(tokens))
                 self._progress_bar.update(1)  
         else:
-            for i in range(0, self.data.num_of_entities_2):
+            if reverse_order:
+                dataset = self.data.dataset_1
+                entities = self.data.entities_d1
+                num_of_entities = self.data.num_of_entities_1
+                attr = self.attributes_1
+            else:
+                dataset = self.data.dataset_2
+                entities = self.data.entities_d2
+                num_of_entities = self.data.num_of_entities_2
+                attr = self.attributes_2
+                
+            for i in range(0, num_of_entities):
                 candidates = set()
-                record = self.data.dataset_2.iloc[i, self.attributes_2] \
-                            if self.attributes_2 else self.data.entities_d2.iloc[i]
+                record = dataset.iloc[i, attr] \
+                            if attr else entities.iloc[i]
                 tokens = self._tokenize_entity(record)
+                entity_id = i if reverse_order else i+self.data.dataset_limit
                 for token in tokens:
-                    if token in entity_index_d1:
-                        current_candidates = entity_index_d1[token]
+                    if token in entity_index:
+                        current_candidates = entity_index[token]
                         for candidate_id in current_candidates:
-                            if self._flags[candidate_id] != i+self.data.dataset_limit:
+                            if self._flags[candidate_id] != entity_id:
                                 self._counters[candidate_id] = 0
-                                self._flags[candidate_id] = i+self.data.dataset_limit
+                                self._flags[candidate_id] = entity_id
                             self._counters[candidate_id] += 1
                             candidates.add(candidate_id)
-
-                self._process_candidates(candidates, i+self.data.dataset_limit, len(tokens))
+                self._process_candidates(candidates, entity_id, len(tokens))
                 self._progress_bar.update(1)
-                
         return self.pairs
     
     def _calc_similarity(self, common_tokens: int, source_frequency: int, tokens_size: int) -> float:
@@ -128,7 +156,20 @@ class AbstractJoin:
             self._source_frequency[i] = len(tokens)
             self._progress_bar.update(1)
         return entity_index_d1
-        
+    
+    def _create_entity_index_d2(self):
+        entity_index = {}
+        for i in range(0, self.data.num_of_entities_2, 1):
+            record = self.data.dataset_2.iloc[i, self.attributes_2]  \
+                            if self.attributes_2 else self.data.entities_d2.iloc[i]
+            tokens = self._tokenize_entity(record)
+            for token in tokens:
+                entity_index.setdefault(token, set())
+                entity_index[token].add(i)
+            self._source_frequency[i] = len(tokens)
+            self._progress_bar.update(1)
+        return entity_index
+    
 #     def _similarity(self, entity_id1: int, entity_id2: int, attributes: any=None) -> float:
 
 #         similarity: float = 0.0
@@ -179,7 +220,7 @@ class SchemaAgnosticΕJoin(AbstractJoin):
     def _process_candidates(self, candidates: set, entity_id: int, tokens_size: int) -> None:
         for candidate_id in candidates:
             self._insert_to_graph(
-                candidate_id, 
+                candidate_id+self.data.dataset_limit if self.reverse_order else candidate_id, 
                 entity_id, 
                 self._calc_similarity(
                     self._counters[candidate_id], 
