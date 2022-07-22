@@ -8,7 +8,6 @@ import numpy as np
 import math
 from queue import PriorityQueue
 
-
 # pyJedAI
 from .datamodel import Data
 from .utils import EMPTY
@@ -70,47 +69,50 @@ class AbstractJoin:
         if self.attributes_2 and isinstance(self.attributes_2, dict):
             self.attributes_2 = list(self.attributes_2.keys())
         
-        candidates = set()
         if self.data.is_dirty_er:
             for i in range(0, self.data.num_of_entities_1):
+                candidates = set()
                 record = self.data.dataset_1.iloc[i, self.attributes_1] \
                             if self.attributes_1 else self.data.entities_d1.iloc[i]
                 tokens = self._tokenize_entity(record)
                 for token in tokens:
                     if token in entity_index_d1:
-                        candidates = entity_index_d1[token]
-                        for candidate_id in candidates:
+                        current_candidates = entity_index_d1[token]
+                        for candidate_id in current_candidates:
                             if self._flags[candidate_id] != i:
                                 self._counters[candidate_id] = 0
                                 self._flags[candidate_id] = i
                             self._counters[candidate_id] += 1
-
+                            candidates.add(candidate_id)
+                            
                 self._process_candidates(candidates, i, len(tokens))
                 self._progress_bar.update(1)  
         else:
             for i in range(0, self.data.num_of_entities_2):
+                candidates = set()
                 record = self.data.dataset_2.iloc[i, self.attributes_2] \
                             if self.attributes_2 else self.data.entities_d2.iloc[i]
                 tokens = self._tokenize_entity(record)
                 for token in tokens:
                     if token in entity_index_d1:
-                        candidates = entity_index_d1[token]
-                        for candidate_id in candidates:
+                        current_candidates = entity_index_d1[token]
+                        for candidate_id in current_candidates:
                             if self._flags[candidate_id] != i+self.data.dataset_limit:
                                 self._counters[candidate_id] = 0
                                 self._flags[candidate_id] = i+self.data.dataset_limit
                             self._counters[candidate_id] += 1
+                            candidates.add(candidate_id)
 
                 self._process_candidates(candidates, i+self.data.dataset_limit, len(tokens))
                 self._progress_bar.update(1)
-        
+                
         return self.pairs
     
     def _calc_similarity(self, common_tokens: int, source_frequency: int, tokens_size: int) -> float:
         if self.metric == 'cosine':
             return common_tokens / math.sqrt(source_frequency*tokens_size)
         elif self.metric == 'dice':
-            return common_tokens / (source_frequency+tokens_size)
+            return 2 * common_tokens / (source_frequency+tokens_size)
         elif self.metric == 'jaccard':
             return common_tokens / (source_frequency+tokens_size-common_tokens)        
     
