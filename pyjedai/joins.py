@@ -26,13 +26,13 @@ class AbstractJoin:
         self.tokenization = tokenization
         self._source_frequency: np.array
         self.similarity_threshold: float = similarity_threshold
-        
+
     def _tokenize_entity(self, entity: str) -> set:
         if self.tokenization == 'qgrams':
             return set([' '.join(grams) for grams in nltk.ngrams(entity.lower(), n=self.qgrams)])
         elif self.tokenization == 'standard':
             return set(filter(None, re.split('[\\W_]', entity.lower())))
-        elif self.tokenization == 'standard_multiset':        
+        elif self.tokenization == 'standard_multiset':
             tok_ids_index = {}
             multiset = set()
             for tok in set(filter(None, re.split('[\\W_]', entity.lower()))):
@@ -63,12 +63,19 @@ class AbstractJoin:
         self.attributes_2 = attributes_2
         self.data = data
         
+        if reverse_order and data.is_dirty_er:
+            print("Can't have reverse order in Dity ER") #TODO
+        
         if reverse_order:
             num_of_entities = self.data.num_of_entities_2
         else:
             num_of_entities = self.data.num_of_entities_1
         
-        self._progress_bar = tqdm(total=self.data.num_of_entities if not self.data.is_dirty_er else num_of_entities*2, desc=self._method_name+" ("+self.metric+")")
+        self._progress_bar = tqdm(
+            total=self.data.num_of_entities if not self.data.is_dirty_er else num_of_entities*2,
+            desc=self._method_name+" ("+self.metric+")"
+        )
+        
         self._flags = np.empty([num_of_entities])
         self._flags[:] = -1
         self._counters = np.zeros([num_of_entities])
@@ -134,6 +141,7 @@ class AbstractJoin:
                             candidates.add(candidate_id)
                 self._process_candidates(candidates, entity_id, len(tokens))
                 self._progress_bar.update(1)
+        self._progress_bar.close()
         return self.pairs
     
     def _calc_similarity(self, common_tokens: int, source_frequency: int, tokens_size: int) -> float:
@@ -171,9 +179,7 @@ class AbstractJoin:
         return entity_index
     
 #     def _similarity(self, entity_id1: int, entity_id2: int, attributes: any=None) -> float:
-
 #         similarity: float = 0.0
-
 #         if isinstance(attributes, dict):
 #             for attribute, weight in self.attributes.items():
 #                 similarity += weight*self._metric(
@@ -195,8 +201,8 @@ class AbstractJoin:
 #                 self.data.entities.iloc[entity_id1].str.cat(sep=' '),
 #                 self.data.entities.iloc[entity_id2].str.cat(sep=' ')
 #             )
-
 #         return similarity
+
     def _insert_to_graph(self, entity_id1, entity_id2, similarity):
         if self.similarity_threshold <= similarity:
             self.pairs.add_edge(entity_id1, entity_id2, weight=similarity)    
@@ -220,7 +226,8 @@ class SchemaAgnosticΕJoin(AbstractJoin):
     def _process_candidates(self, candidates: set, entity_id: int, tokens_size: int) -> None:
         for candidate_id in candidates:
             self._insert_to_graph(
-                candidate_id+self.data.dataset_limit if self.reverse_order else candidate_id, 
+                candidate_id+self.data.dataset_limit if self.reverse_order and not self.data.is_dirty_er \
+                                else candidate_id,
                 entity_id, 
                 self._calc_similarity(
                     self._counters[candidate_id], 

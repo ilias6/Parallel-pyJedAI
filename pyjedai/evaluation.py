@@ -41,8 +41,6 @@ class Evaluation:
                 if (id1 in prediction and id2 in prediction[id1]) or   \
                     (id2 in prediction and id1 in prediction[id2]):
                     self.true_positives += 1
-                else:
-                    self.false_negatives += 1
         elif isinstance(prediction, nx.Graph):
             self.total_matching_pairs = prediction.number_of_edges()
             for _, (id1, id2) in gt.iterrows():
@@ -51,8 +49,6 @@ class Evaluation:
                 if (id1 in prediction and id2 in prediction[id1]) or   \
                      (id2 in prediction and id1 in prediction[id2]):
                     self.true_positives += 1
-                else:
-                    self.false_negatives += 1
         else: # blocks, clusters evaluation
             entity_index: dict = self._create_entity_index(prediction, all_gt_ids)
             for _, (id1, id2) in gt.iterrows():
@@ -62,18 +58,18 @@ class Evaluation:
                     id2 in entity_index and     \
                         self._are_matching(entity_index, id1, id2):
                     self.true_positives += 1
-                else:
-                    self.false_negatives += 1
                     
         if self.total_matching_pairs == 0:
             print("No matches found at all") # TODO error
             return
 
+        self.num_of_true_duplicates = len(gt) 
+        self.false_negatives = self.num_of_true_duplicates - self.true_positives
         self.false_positives = self.total_matching_pairs - self.true_positives
         cardinality = (self.data.num_of_entities_1*(self.data.num_of_entities_1-1))/2 if self.data.is_dirty_er else self.data.num_of_entities_1 * self.data.num_of_entities_2
         self.true_negatives = cardinality - self.false_negatives - self.false_positives
         self.precision = self.true_positives / self.total_matching_pairs
-        self.recall = self.true_positives / len(gt)
+        self.recall = self.true_positives / self.num_of_true_duplicates
         self.f1 = 2*((self.precision*self.recall)/(self.precision+self.recall))
         if to_df:
             pd.set_option("display.precision", 2)
@@ -214,9 +210,8 @@ def write(prediction: any, data: Data) -> pd.DataFrame:
             for candiadate_id in candidates:
                 pairs_df.append({'id1':entity_id, 'id2':candiadate_id})
     elif isinstance(prediction, nx.Graph): # graph
-        for edge in graph.edges:
+        for edge in prediction.edges:
             pairs_df.append({'id1':edge[0], 'id2':edge[1]})
-        
     else: # error
         print("error")
                             
