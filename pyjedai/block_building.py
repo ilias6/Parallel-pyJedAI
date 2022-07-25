@@ -29,7 +29,8 @@ class AbstractBlockBuilding:
     def build_blocks(
             self, data: Data,
             attributes_1: list=None,
-            attributes_2: list=None,
+            attributes_2: list=None, 
+            tqdm_disable: bool = False
     ) -> dict:
         '''
         Main method of Standard Blocking
@@ -37,12 +38,14 @@ class AbstractBlockBuilding:
         Input: Dirty/Clean-1 dataframe, Clean-2 dataframe
         Returns: dict of token -> Block
         '''
+        self.tqdm_disable = tqdm_disable
         start_time = time.time()
-        
         self.blocks: dict = dict()
         self.attributes_1 = attributes_1
         self.attributes_2 = attributes_2
-        self._progress_bar = tqdm(total=data.num_of_entities, desc=self._method_name)        
+        self._progress_bar = tqdm(
+            total=data.num_of_entities, desc=self._method_name, disable=self.tqdm_disable
+        )        
         for i in range(0, data.num_of_entities_1, 1):
             record = data.dataset_1.iloc[i, attributes_1] if attributes_1 else data.entities_d1.iloc[i]
             for token in self._tokenize_entity(record):
@@ -105,7 +108,7 @@ class QGramsBlocking(StandardBlocking):
                 "The q-gram must be shared by at least two entities."
 
     def __init__(
-            self, qgrams: int = 6,
+            self, qgrams: int = 6
     ) -> any:
         super().__init__()
         self.qgrams = qgrams
@@ -132,8 +135,9 @@ class SuffixArraysBlocking(StandardBlocking):
     _method_name = "Suffix Arrays Blocking"
     _method_info = _method_name + ": it creates one block for every suffix that appears in the attribute value tokens of at least two entities."
 
-    def __init__(
-            self, suffix_length: int = 6, max_block_size : int = 53
+    def __init__(self,
+        suffix_length: int = 6, 
+        max_block_size : int = 53 
     ) -> any:
         super().__init__()
         self.suffix_length = suffix_length
@@ -162,8 +166,9 @@ class ExtendedSuffixArraysBlocking(StandardBlocking):
     _method_name = "Extended Suffix Arrays Blocking"
     _method_info = _method_name + ": it creates one block for every substring (not just suffix) that appears in the tokens of at least two entities."
 
-    def __init__(
-            self, suffix_length: int = 6, max_block_size : int = 39
+    def __init__(self, 
+        suffix_length: int = 6, 
+        max_block_size : int = 39
     ) -> any:
         super().__init__()
         self.suffix_length = suffix_length

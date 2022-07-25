@@ -56,8 +56,11 @@ class AbstractJoin:
         self, data: Data, 
         reverse_order: bool=False,
         attributes_1: list=None,
-        attributes_2: list=None
+        attributes_2: list=None,
+        tqdm_disable: bool = False
     ) -> networkx.Graph:
+        start_time = time.time()
+        self.tqdm_disable = tqdm_disable
         self.reverse_order = reverse_order
         self.attributes_1 = attributes_1
         self.attributes_2 = attributes_2
@@ -73,7 +76,7 @@ class AbstractJoin:
         
         self._progress_bar = tqdm(
             total=self.data.num_of_entities if not self.data.is_dirty_er else num_of_entities*2,
-            desc=self._method_name+" ("+self.metric+")"
+            desc=self._method_name+" ("+self.metric+")", disable=self.tqdm_disable
         )
         
         self._flags = np.empty([num_of_entities])
@@ -141,7 +144,8 @@ class AbstractJoin:
                             candidates.add(candidate_id)
                 self._process_candidates(candidates, entity_id, len(tokens))
                 self._progress_bar.update(1)
-        self._progress_bar.close()
+        self._progress_bar.close() 
+        self.execution_time = time.time() - start_time
         return self.pairs
     
     def _calc_similarity(self, common_tokens: int, source_frequency: int, tokens_size: int) -> float:

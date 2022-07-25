@@ -31,26 +31,23 @@ class AbstractComparisonCleaning:
     def process(
             self,
             blocks: dict,
-            data: Data
+            data: Data,
+            tqdm_disable: bool = False
     ) -> dict:
         '''
         TODO: add description
         '''
         start_time = time.time()
-        
+        self.tqdm_disable = tqdm_disable
         self.data = data
         self._entity_index = create_entity_index(blocks, self.data.is_dirty_er)
         self._num_of_blocks = len(blocks)
         self._blocks: dict = blocks
         self._limit = self.data.num_of_entities if self.data.is_dirty_er or self._node_centric else self.data.dataset_limit
-        
-        self._progress_bar = tqdm(total=self._limit, desc=self._method_name)
-        
+        self._progress_bar = tqdm(total=self._limit, desc=self._method_name, disable=self.tqdm_disable)
         blocks = self._apply_main_processing()
-        
         self.execution_time = time.time() - start_time
         self._progress_bar.close()
-        
         return blocks
 
 class AbstractMetablocking(AbstractComparisonCleaning):
