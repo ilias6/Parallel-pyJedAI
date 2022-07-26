@@ -51,9 +51,9 @@ class AbstractJoin:
         else:
             print("Tokenization not found")
             # TODO error
-        
+
     def fit(
-        self, data: Data, 
+        self, data: Data,
         reverse_order: bool=False,
         attributes_1: list=None,
         attributes_2: list=None,
@@ -66,6 +66,11 @@ class AbstractJoin:
         self.attributes_2 = attributes_2
         self.data = data
         
+        if attributes_1:
+            isolated_attr_dataset_1 = data.dataset_1[attributes_1].apply(" ".join, axis=1)
+        if attributes_2:
+            isolated_attr_dataset_2 = data.dataset_2[attributes_1].apply(" ".join, axis=1)
+            
         if reverse_order and data.is_dirty_er:
             print("Can't have reverse order in Dity ER") #TODO
         
@@ -100,7 +105,7 @@ class AbstractJoin:
         if self.data.is_dirty_er:
             for i in range(0, self.data.num_of_entities_1):
                 candidates = set()
-                record = self.data.dataset_1.iloc[i, self.attributes_1] \
+                record = isolated_attr_dataset_1.iloc[i] \
                             if self.attributes_1 else self.data.entities_d1.iloc[i]
                 tokens = self._tokenize_entity(record)
                 for token in tokens:

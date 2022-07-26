@@ -83,6 +83,8 @@ class BlockFiltering:
 class BlockPurging:
     '''
     BlockPurging
+    ---
+    Discards the blocks exceeding a certain number of comparisons.
     '''
     _method_name = "Block Purging"
     _method_info = ": it discards the blocks exceeding a certain number of comparisons."

@@ -22,7 +22,9 @@ from .utils import (
 
 class EntityMatching:
     '''
-    TODO
+    Entity Matching
+    ---
+    Calculates similarity from 0. to 1. for all blocks
     '''
     _method_name: str = "Entity Matching"
     _method_info: str = ": Calculates similarity from 0. to 1. for all blocks"

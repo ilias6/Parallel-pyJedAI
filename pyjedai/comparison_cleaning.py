@@ -1,6 +1,3 @@
-'''
-Comparison cleaning methods
-'''
 import numpy as np
 import sys
 import time
@@ -13,10 +10,6 @@ from .datamodel import Data
 from .utils import create_entity_index, chi_square
 
 class AbstractComparisonCleaning:
-    '''
-    TODO: add comment
-    '''
-    _progress_bar = None
 
     def __init__(self) -> None:
         self.data: Data
@@ -24,6 +17,7 @@ class AbstractComparisonCleaning:
         self._num_of_blocks: int
         self._valid_entities: set() = set()
         self._entity_index: dict
+        self._progress_bar: tqdm
         self._weighting_scheme: str
         self._blocks: dict() # initial blocks
         self.blocks = dict() # blocks after CC
