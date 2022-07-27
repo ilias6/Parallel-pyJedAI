@@ -13,7 +13,7 @@ from .datamodel import Data
 from .utils import EMPTY
 
 class AbstractJoin:
-    
+
     def __init__(
         self, 
         metric: str, 
