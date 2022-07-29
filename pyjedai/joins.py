@@ -147,7 +147,8 @@ class AbstractJoin:
                                 self._flags[candidate_id] = entity_id
                             self._counters[candidate_id] += 1
                             candidates.add(candidate_id)
-                self._process_candidates(candidates, entity_id, len(tokens))
+                if 0 < len(candidates):
+                    self._process_candidates(candidates, entity_id, len(tokens))
                 self._progress_bar.update(1)
         self._progress_bar.close() 
         self.execution_time = time.time() - start_time
@@ -280,7 +281,7 @@ class TopKSchemaAgnosticJoin(AbstractJoin):
         for candidate_id in candidates:
             self.similarity_threshold = minimum_weight
             self._insert_to_graph(
-                candidate_id,
+                candidate_id + self.data.dataset_limit if self.reverse_order else candidate_id,
                 entity_id,
                 self._calc_similarity(
                     self._counters[candidate_id], 
