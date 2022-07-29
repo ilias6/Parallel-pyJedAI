@@ -191,7 +191,7 @@ def write(prediction: any, data: Data) -> pd.DataFrame:
                     id1 = data._gt_to_ids_reversed_1[lcluster[i1]]
                     id2 = data._gt_to_ids_reversed_1[lcluster[i2]] if data.is_dirty_er \
                             else data._gt_to_ids_reversed_2[lcluster[i2]]
-                    pairs_df.append({'id1':id1, 'id2':id2})
+                    pairs_df = pd.concat([pairs_df, pd.DataFrame([{'id1':id1, 'id2':id2}], index=[0])], ignore_index=True)
     elif 'Block' in str(type(list(prediction.values())[0])): # blocks evaluation
         for _, block in prediction.items():
             if data.is_dirty_er:
@@ -201,14 +201,14 @@ def write(prediction: any, data: Data) -> pd.DataFrame:
                         id1 = data._gt_to_ids_reversed_1[lblock[i1]]
                         id2 = data._gt_to_ids_reversed_1[lblock[i2]] if data.is_dirty_er \
                             else data._gt_to_ids_reversed_2[lblock[i2]]
-                        pairs_df.append({'id1':id1, 'id2':id2})
+                        pairs_df = pd.concat([pairs_df, pd.DataFrame([{'id1':id1, 'id2':id2}], index=[0])], ignore_index=True)
             else:
                 for i1 in block.entities_D1:
                     for i2 in block.entities_D2:
                         id1 = data._gt_to_ids_reversed_1[i1]
                         id2 = data._gt_to_ids_reversed_1[i2] if data.is_dirty_er \
                             else data._gt_to_ids_reversed_2[i2]
-                        pd.concat([pairs_df, pd.DataFrame([{'id1':id1, 'id2':id2}], index=[0])]).reset_index(drop=True)
+                        pairs_df = pd.concat([pairs_df, pd.DataFrame([{'id1':id1, 'id2':id2}], index=[0])], ignore_index=True)
                         
                         
     elif isinstance(prediction, dict) and isinstance(list(prediction.values())[0], set):# candidate pairs
@@ -217,13 +217,13 @@ def write(prediction: any, data: Data) -> pd.DataFrame:
             for candiadate_id in candidates:
                 id2 = data._gt_to_ids_reversed_1[candiadate_id] if data.is_dirty_er \
                         else data._gt_to_ids_reversed_2[candiadate_id]
-                pairs_df.append({'id1':id1, 'id2':id2})
+                pairs_df = pd.concat([pairs_df, pd.DataFrame([{'id1':id1, 'id2':id2}], index=[0])], ignore_index=True)
     elif isinstance(prediction, nx.Graph): # graph
         for edge in prediction.edges:
             id1 = data._gt_to_ids_reversed_1[edge[0]]
             id2 = data._gt_to_ids_reversed_1[edge[1]] if data.is_dirty_er \
                         else data._gt_to_ids_reversed_2[edge[1]]
-            pairs_df.append({'id1':id1, 'id2':id2})
+            pairs_df = pd.concat([pairs_df, pd.DataFrame([{'id1':id1, 'id2':id2}], index=[0])], ignore_index=True)
     else: # error
         print("error")
                             
