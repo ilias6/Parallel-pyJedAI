@@ -29,18 +29,13 @@ data.process()
 data.print_specs()
 
 def test_standard_blocking_der():
-    assert StandardBlocking().build_blocks(data) is not None
+    assert StandardBlocking().build_blocks(data, tqdm_disable=True) is not None
 
 def test_qgrams_blocking_der():
-    assert QGramsBlocking(
-        qgrams=2
-    ).build_blocks(data) is not None
+    assert QGramsBlocking().build_blocks(data, tqdm_disable=True) is not None
 
 def test_extended_qgrams_blocking_der():
-    assert ExtendedQGramsBlocking(
-        qgrams=2,
-        threshold=0.5
-    ).build_blocks(data) is not None
+    assert ExtendedQGramsBlocking().build_blocks(data, tqdm_disable=True) is not None
 
 # ---------------------------------------------- #
 # --------------- Clean-Clean ER --------------- #
@@ -65,10 +60,10 @@ data.process()
 data.print_specs()
 
 def test_standard_blocking_der():
-    assert StandardBlocking().build_blocks(data) is not None
+    assert StandardBlocking().build_blocks(data, tqdm_disable=True) is not None
 
 def test_qgrams_blocking_der():
-    assert QGramsBlocking().build_blocks(data) is not None
+    assert QGramsBlocking().build_blocks(data, tqdm_disable=True) is not None
 
 def test_extended_qgrams_blocking_der():
-    assert ExtendedQGramsBlocking().build_blocks(data) is not None
+    assert ExtendedQGramsBlocking().build_blocks(data, tqdm_disable=True) is not None
