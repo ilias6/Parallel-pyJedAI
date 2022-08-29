@@ -6,3 +6,4 @@ examples/scripts/.ipynb_checkpoints/
 data/1M*
 data/2M*
 .vscode/
+tests/__pycache__/
