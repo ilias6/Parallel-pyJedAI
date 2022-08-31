@@ -20,7 +20,7 @@ class Evaluation:
         self.total_matching_pairs = 0
         self.data: Data= data
         
-    def report(self, prediction: any, execution_time: int=None, to_df=False) -> any:
+    def report(self, prediction: any, configuration: dict=None, to_df=False) -> any:
         self.true_positives = 0
         self.true_negatives = 0
         self.false_positives = 0
@@ -81,13 +81,19 @@ class Evaluation:
             }, orient='index').T
             return results
         else:
-            print("+-----------------------------+\n > Evaluation\n+-----------------------------+\nPrecision: {:9.2f}% \nRecall:    {:9.2f}%\nF1-score:  {:9.2f}%".format(self.precision*100, self.recall*100, self.f1*100))
-            if execution_time:
-                print("\nTotal execution time: ", str(timedelta(seconds=execution_time)))
-            print("\nTrue positives: {:d}\nFalse positives: {:d}\nTrue negatives: {:d}\nFalse negatives: {:d}\n\nTotal comparisons: {:d}".format(
+            print("# " + (configuration['name'] if configuration else "") + " Evaluation \n---")
+            if configuration:
+                print(
+                    "Method name: " + configuration['name'] +
+                    "\nParameters: \n" + ''.join([' {0}: {1}\n'.format(k, v) for k, v in configuration['parameters'].items()]) +
+                    "Runtime: {:2.4f} seconds".format(configuration['runtime'])
+                )
+            print("-\nScores:\n Precision: {:9.2f}% \n Recall:    {:9.2f}%\n F1-score:  {:9.2f}%".format(self.precision*100, self.recall*100, self.f1*100))
+            print("-\nClassification report:\n True positives: {:d}\n False positives: {:d}\n True negatives: {:d}\n False negatives: {:d}\n Total comparisons: {:d}".format(
                 int(self.true_positives), int(self.false_positives), int(self.true_negatives),int(self.false_negatives),int(self.total_matching_pairs)
                 )
             )
+            print("---")
     
 
     def _create_entity_index(self, groups: any, all_ground_truth_ids: set) -> dict:

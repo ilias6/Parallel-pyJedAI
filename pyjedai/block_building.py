@@ -7,6 +7,7 @@ from tqdm.notebook import tqdm
 
 from .datamodel import Block, Data
 from .utils import drop_big_blocks_by_size, drop_single_entity_blocks
+from .logs import warning, info, log, fatal, debug, error
 
 class AbstractBlockBuilding:
     """Abstract class for the block building method
@@ -17,9 +18,14 @@ class AbstractBlockBuilding:
 
     def __init__(self) -> any:
         self.blocks: dict
+        self._progress_bar: tqdm
+        self.attributes_1: list
+        self.attributes_2: list
+        self.execution_time: float
 
     def build_blocks(
-            self, data: Data,
+            self,
+            data: Data,
             attributes_1: list = None,
             attributes_2: list = None,
             tqdm_disable: bool = False
@@ -36,16 +42,14 @@ class AbstractBlockBuilding:
             tqdm_disable (bool, optional): Disables all tqdm at processing. Defaults to False.
 
         Returns:
-            dict: Blocks that is returned as a dictionary of keys to sets of Block classes.
+            dict: Blocks as a dictionary of keys to sets of Block objects (Block contains two sets).
         """
 
-        start_time = time.time()
-        self.tqdm_disable = tqdm_disable
-        self.blocks: dict = dict()
-        self.attributes_1 = attributes_1
-        self.attributes_2 = attributes_2
+        _start_time = time.time()
+        self.blocks = dict()
+        self.data, self.attributes_1, self.attributes_2 = data, attributes_1, attributes_2
         self._progress_bar = tqdm(
-            total=data.num_of_entities, desc=self._method_name, disable=self.tqdm_disable
+            total=data.num_of_entities, desc=self._method_name, disable=tqdm_disable
         )
 
         if attributes_1:
@@ -69,17 +73,34 @@ class AbstractBlockBuilding:
                     self.blocks[token].entities_D2.add(data.dataset_limit+i)
                 self._progress_bar.update(1)
 
-        self.blocks = drop_single_entity_blocks(self.blocks, data.is_dirty_er)
-        self.blocks = self._clean_blocks(self.blocks)
-        self.execution_time = time.time() - start_time
+        self.blocks = self._clean_blocks(drop_single_entity_blocks(self.blocks, data.is_dirty_er))
+        self.execution_time = time.time() - _start_time
         self._progress_bar.close()
         return self.blocks
 
     def _tokenize_entity(self, entity: str) -> list:
         pass
 
+    def method_configuration(self):
+        return {
+            "name" : self._method_name,
+            "parameters" : self._configuration(),
+            "runtime": self.execution_time
+        }
+
     def __str__(self) -> str:
         pass
+
+    def report(self) -> None:
+        print(
+            "Method name: " + self._method_name +
+            "\nParameters: \n" + ''.join(['- {0}: {1}\n'.format(k, v) for k,v in self._configuration().items()]) +
+            "Attributes from D1: " + ', '.join(c for c in (self.attributes_1 if self.attributes_1 is not None \
+                else self.data.dataset_1.columns)) +
+            ("\nAttributes from D2: " + ', '.join(c for c in (self.attributes_2 if self.attributes_2 is not None \
+                else self.data.dataset_2.columns)) if not self.data.is_dirty_er else "") +
+            "\nRuntime: {:2.4f} seconds".format(self.execution_time)
+        )
 
 class StandardBlocking(AbstractBlockBuilding):
     """ Creates one block for every token in \
@@ -94,10 +115,23 @@ class StandardBlocking(AbstractBlockBuilding):
         super().__init__()
 
     def _tokenize_entity(self, entity: str) -> set:
+        """Produces a list of workds of a given string
+
+        Args:
+            entity (str): String representation  of an entity
+
+        Returns:
+            list: List of words
+        """
         return set(filter(None, re.split('[\\W_]', entity.lower())))
 
     def _clean_blocks(self, blocks: dict) -> dict:
+        """No cleaning"""
         return blocks
+
+    def _configuration(self) -> dict:
+        """No configuration"""
+        return {}
 
 class QGramsBlocking(StandardBlocking):
     """ Creates one block for every q-gram that is extracted \
@@ -128,6 +162,10 @@ class QGramsBlocking(StandardBlocking):
     def _clean_blocks(self, blocks: dict) -> dict:
         return blocks
 
+    def _configuration(self) -> dict:
+        return {
+            "Q-Gramms" : self.qgrams
+        }
 
 class SuffixArraysBlocking(StandardBlocking):
     """ It creates one block for every suffix that appears \
@@ -144,8 +182,7 @@ class SuffixArraysBlocking(StandardBlocking):
             max_block_size: int = 53
     ) -> any:
         super().__init__()
-        self.suffix_length = suffix_length
-        self.max_block_size = max_block_size
+        self.suffix_length, self.max_block_size = suffix_length, max_block_size
 
     def _tokenize_entity(self, entity) -> set:
         keys = set()
@@ -160,6 +197,11 @@ class SuffixArraysBlocking(StandardBlocking):
     def _clean_blocks(self, blocks: dict) -> dict:
         return drop_big_blocks_by_size(blocks, self.max_block_size)
 
+    def _configuration(self) -> dict:
+        return {
+            "Suffix length" : self.suffix_length,
+            "Maximum Block Size" : self.max_block_size
+        }
 
 class ExtendedSuffixArraysBlocking(StandardBlocking):
     """ It creates one block for every substring \
@@ -176,8 +218,7 @@ class ExtendedSuffixArraysBlocking(StandardBlocking):
             max_block_size: int = 39
     ) -> any:
         super().__init__()
-        self.suffix_length = suffix_length
-        self.max_block_size = max_block_size
+        self.suffix_length, self.max_block_size = suffix_length, max_block_size
 
     def _tokenize_entity(self, entity) -> set:
         keys = set()
@@ -191,7 +232,13 @@ class ExtendedSuffixArraysBlocking(StandardBlocking):
 
     def _clean_blocks(self, blocks: dict) -> dict:
         return drop_big_blocks_by_size(blocks, self.max_block_size)
-    
+
+    def _configuration(self) -> dict:
+        return {
+            "Suffix length" : self.suffix_length,
+            "Maximum Block Size" : self.max_block_size
+        }
+
 class ExtendedQGramsBlocking(StandardBlocking):
     """It creates one block for every combination of q-grams that represents at least two entities.
     The q-grams are extracted from any token in the attribute values of any entity.
@@ -212,6 +259,14 @@ class ExtendedQGramsBlocking(StandardBlocking):
         self.qgrams = qgrams
 
     def _tokenize_entity(self, entity) -> set:
+        """TODO: _summary_
+
+        Args:
+            entity (_type_): _description_
+
+        Returns:
+            set: _description_
+        """
         keys = set()
         for token in super()._tokenize_entity(entity):
             if len(token) < self.qgrams:
@@ -252,3 +307,9 @@ class ExtendedQGramsBlocking(StandardBlocking):
 
     def _clean_blocks(self, blocks: dict) -> dict:
         return blocks
+
+    def _configuration(self) -> dict:
+        return {
+            "Q-Gramms" : self.qgrams,
+            "Threshold" : self.threshold
+        }
