@@ -126,13 +126,13 @@ class BlockPurging:
     
     def _set_threshold(self, blocks: dict) -> None:
         sorted_blocks = sort_blocks_cardinality(blocks, self.data.is_dirty_er)
-        
+
         distinct_comparisons_level = set(b.get_cardinality(self.data.is_dirty_er) for k, b in sorted_blocks.items())
-        
+
         block_assignments = np.empty([len(distinct_comparisons_level)])
         comparisons_level = np.empty([len(distinct_comparisons_level)])
         total_comparisons_per_level = np.empty([len(distinct_comparisons_level)])
-        
+
         index = -1
         for block_key, block in sorted_blocks.items():
             if index == -1:
@@ -145,12 +145,11 @@ class BlockPurging:
                 comparisons_level[index] = block.get_cardinality(self.data.is_dirty_er)
                 block_assignments[index] = block_assignments[index-1]
                 total_comparisons_per_level[index] = total_comparisons_per_level[index-1]
-            
+
             block_assignments[index] += block.get_size()
             total_comparisons_per_level[index] += block.get_cardinality(self.data.is_dirty_er)
             self._progress_bar.update(1)
-            
-        
+
         current_bc = 0; current_cc = 0; current_size = 0
         previous_bc = 0; previous_cc = 0; previous_size = 0
         for i in range(len(block_assignments)-1, 0, -1):
@@ -162,9 +161,9 @@ class BlockPurging:
             current_cc = total_comparisons_per_level[i]
             if current_bc * previous_cc < self.smoothing_factor * current_cc * previous_bc:
                 break
-                
+
         self.max_comparisons_per_block = previous_size
-                        
+
     def _satisfies_threshold(self, block: Block) -> bool:
         return block.get_cardinality(self.data.is_dirty_er) <= self.max_comparisons_per_block
 

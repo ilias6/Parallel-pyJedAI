@@ -1,12 +1,15 @@
+"""Evaluation module
+This file contains all the methods for evaluating every module in pyjedai.
+"""
 import matplotlib.pyplot as plt
 import seaborn as sns
-from datetime import timedelta
 from .datamodel import Data
 import networkx as nx
 import pandas as pd
 
 class Evaluation:
-
+    """Evaluation class. Contains multiple methods for all the fitted & predicted data.
+    """
     def __init__(self, data) -> None:
         self.f1: float
         self.recall: float
@@ -18,15 +21,23 @@ class Evaluation:
         self.false_positives: int
         self.false_negatives: int
         self.total_matching_pairs = 0
-        self.data: Data= data
-        
-    def report(self, prediction: any, configuration: dict=None, to_df=False) -> any:
-        self.true_positives = 0
-        self.true_negatives = 0
-        self.false_positives = 0
-        self.false_negatives = 0
+        self.data: Data = data
+
+    def report(self, prediction: any, configuration: dict = None, to_df=False, verbose=True) -> any:
+        """Calculates the F1, Recall, Presicion and produces a classification report.
+
+        Args:
+            prediction (any): Blocks dict, Candidate Pairs dict, Graph produced by a workflow step.
+            configuration (dict, optional): Configuaration of the method evaluated. Defaults to None.
+            to_df (bool, optional): Return report as a dataframe. Defaults to False.
+            verbose (bool, optional): Logs scores and classification report. Defaults to True.
+
+        Returns:
+            any: pd.DataFrame, dict or str
+        """
+        self.true_positives = self.true_negatives = self.false_positives = self.false_negatives = 0
         gt = self.data.ground_truth
-        
+
         all_gt_ids = set(self.data._ids_mapping_1.values()) if self.data.is_dirty_er else \
                         set(self.data._ids_mapping_1.values()).union(set(self.data._ids_mapping_2.values()))
         if isinstance(prediction, dict) and isinstance(list(prediction.values())[0], set):
@@ -55,12 +66,13 @@ class Evaluation:
                     id2 in entity_index and     \
                         self._are_matching(entity_index, id1, id2):
                     self.true_positives += 1
-                    
+
         if self.total_matching_pairs == 0:
+            # raise 
             print("No matches found at all") # TODO error
             return
 
-        self.num_of_true_duplicates = len(gt) 
+        self.num_of_true_duplicates = len(gt)
         self.false_negatives = self.num_of_true_duplicates - self.true_positives
         self.false_positives = self.total_matching_pairs - self.true_positives
         cardinality = (self.data.num_of_entities_1*(self.data.num_of_entities_1-1))/2 if self.data.is_dirty_er else self.data.num_of_entities_1 * self.data.num_of_entities_2
@@ -68,6 +80,7 @@ class Evaluation:
         self.precision = self.true_positives / self.total_matching_pairs
         self.recall = self.true_positives / self.num_of_true_duplicates
         self.f1 = 2*((self.precision*self.recall)/(self.precision+self.recall))
+        
         if to_df:
             pd.set_option("display.precision", 2)
             results = pd.DataFrame.from_dict({
@@ -80,7 +93,8 @@ class Evaluation:
                 'False Negatives': self.false_negatives
             }, orient='index').T
             return results
-        else:
+        
+        if verbose:
             print("# " + (configuration['name'] if configuration else "") + " Evaluation \n---")
             if configuration:
                 print(
@@ -94,10 +108,8 @@ class Evaluation:
                 )
             )
             print("---")
-    
 
     def _create_entity_index(self, groups: any, all_ground_truth_ids: set) -> dict:
-        
         if len(groups) < 1:
             print("error")
             # TODO: error
@@ -110,11 +122,9 @@ class Evaluation:
             print("Not supported type")
             # TODO: error
     
-    
     def _create_entity_index_from_clusters(
         self, clusters: list, all_ground_truth_ids: set
     ) -> dict:
-       
         entity_index = dict()
         for cluster, cluster_id in zip(clusters, range(0, len(clusters))):
             cluster_entities_d1 = 0
@@ -132,13 +142,13 @@ class Evaluation:
                 self.total_matching_pairs += len(cluster)*(len(cluster)-1)/2
             else:
                 self.total_matching_pairs += cluster_entities_d1*cluster_entities_d2
-                    
+
         return entity_index
-    
+
     def _create_entity_index_from_blocks(
-        self, blocks: dict, all_ground_truth_ids: set
+        self, blocks: dict
     ) -> dict:
-        
+
         entity_index = dict()
         for block_id, block in blocks.items():          
             for entity_id in block.entities_D1:
@@ -156,38 +166,41 @@ class Evaluation:
                 self.total_matching_pairs += len(block.entities_D1)*len(block.entities_D2)
 
         return entity_index
-    
-    
+
     def _are_matching(self, entity_index, id1, id2) -> bool:
         '''
         id1 and id2 consist a matching pair if:
         - Blocks: intersection > 0 (comparison of sets)
         - Clusters: cluster-id-j == cluster-id-i (comparison of integers)
         '''
-        
+
         if len(entity_index) < 1:
             print("error") # TODO: error
             return None
         if isinstance(list(entity_index.values())[0], set): # Blocks case
-            return (len(entity_index[id1].intersection(entity_index[id2])) > 0)
+            return len(entity_index[id1].intersection(entity_index[id2])) > 0
         return entity_index[id1] == entity_index[id2] # Clusters case
-    
-    
+
     def confusion_matrix(self):
         heatmap = [
             [int(self.true_positives), int(self.false_positives)],
             [int(self.false_negatives), int(self.true_negatives)]
         ]
         # plt.colorbar(heatmap)
-        sns.heatmap(heatmap, annot=True, cmap='Blues', xticklabels=['Non-Matching', 'Matching'], yticklabels=['Non-Matching', 'Matching'], fmt='g')
+        sns.heatmap(
+            heatmap,
+            annot=True,
+            cmap='Blues',
+            xticklabels=['Non-Matching', 'Matching'],
+            yticklabels=['Non-Matching', 'Matching'],
+            fmt='g'
+        )
         plt.title("Confusion Matrix", fontsize=12, fontweight='bold')
         plt.xlabel("Predicted pairs", fontsize=10, fontweight='bold')
         plt.ylabel("Real matching pairs", fontsize=10, fontweight='bold')
         plt.show()
-        
 
 def write(prediction: any, data: Data) -> pd.DataFrame:
-    pairs = {}
     pairs_df = pd.DataFrame(columns=['id1', 'id2'])
     if isinstance(prediction, list): # clusters evaluation
         for cluster in prediction:
@@ -215,8 +228,6 @@ def write(prediction: any, data: Data) -> pd.DataFrame:
                         id2 = data._gt_to_ids_reversed_1[i2] if data.is_dirty_er \
                             else data._gt_to_ids_reversed_2[i2]
                         pairs_df = pd.concat([pairs_df, pd.DataFrame([{'id1':id1, 'id2':id2}], index=[0])], ignore_index=True)
-                        
-                        
     elif isinstance(prediction, dict) and isinstance(list(prediction.values())[0], set):# candidate pairs
         for entity_id, candidates in prediction:
             id1 = data._gt_to_ids_reversed_1[entity_id]                                            
@@ -232,6 +243,5 @@ def write(prediction: any, data: Data) -> pd.DataFrame:
             pairs_df = pd.concat([pairs_df, pd.DataFrame([{'id1':id1, 'id2':id2}], index=[0])], ignore_index=True)
     else: # error
         print("error")
-                            
-    
+
     return pairs_df

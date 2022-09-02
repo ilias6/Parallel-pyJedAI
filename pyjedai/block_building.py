@@ -259,14 +259,6 @@ class ExtendedQGramsBlocking(StandardBlocking):
         self.qgrams = qgrams
 
     def _tokenize_entity(self, entity) -> set:
-        """TODO: _summary_
-
-        Args:
-            entity (_type_): _description_
-
-        Returns:
-            set: _description_
-        """
         keys = set()
         for token in super()._tokenize_entity(entity):
             if len(token) < self.qgrams:
