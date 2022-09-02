@@ -1,11 +1,13 @@
 """Evaluation module
 This file contains all the methods for evaluating every module in pyjedai.
 """
+from typing import Type
 import matplotlib.pyplot as plt
 import seaborn as sns
 from .datamodel import Data
 import networkx as nx
 import pandas as pd
+from warnings import warn
 
 class Evaluation:
     """Evaluation class. Contains multiple methods for all the fitted & predicted data.
@@ -28,13 +30,18 @@ class Evaluation:
 
         Args:
             prediction (any): Blocks dict, Candidate Pairs dict, Graph produced by a workflow step.
-            configuration (dict, optional): Configuaration of the method evaluated. Defaults to None.
+            configuration (dict, optional):
+                Configuaration of the method evaluated. Defaults to None.
             to_df (bool, optional): Return report as a dataframe. Defaults to False.
             verbose (bool, optional): Logs scores and classification report. Defaults to True.
 
         Returns:
             any: pd.DataFrame, dict or str
         """
+        if self.data.ground_truth is None:
+            raise AttributeError("Can not proceed to evaluation without a ground-truth file.\
+                Data object mush have initialized with the ground-truth file")
+
         self.true_positives = self.true_negatives = self.false_positives = self.false_negatives = 0
         gt = self.data.ground_truth
 
@@ -68,18 +75,20 @@ class Evaluation:
                     self.true_positives += 1
 
         if self.total_matching_pairs == 0:
-            # raise 
-            print("No matches found at all") # TODO error
-            return
-
-        self.num_of_true_duplicates = len(gt)
-        self.false_negatives = self.num_of_true_duplicates - self.true_positives
-        self.false_positives = self.total_matching_pairs - self.true_positives
-        cardinality = (self.data.num_of_entities_1*(self.data.num_of_entities_1-1))/2 if self.data.is_dirty_er else self.data.num_of_entities_1 * self.data.num_of_entities_2
-        self.true_negatives = cardinality - self.false_negatives - self.false_positives
-        self.precision = self.true_positives / self.total_matching_pairs
-        self.recall = self.true_positives / self.num_of_true_duplicates
-        self.f1 = 2*((self.precision*self.recall)/(self.precision+self.recall))
+            warn("Evaluation: No matches found", Warning)
+            self.num_of_true_duplicates = self.false_negatives \
+                = self.false_positives = self.total_matching_pairs \
+                    = self.true_positives = self.true_negatives \
+                        = self.recall = self.f1 = self.precision = 0
+        else:
+            self.num_of_true_duplicates = len(gt)
+            self.false_negatives = self.num_of_true_duplicates - self.true_positives
+            self.false_positives = self.total_matching_pairs - self.true_positives
+            cardinality = (self.data.num_of_entities_1*(self.data.num_of_entities_1-1))/2 if self.data.is_dirty_er else self.data.num_of_entities_1 * self.data.num_of_entities_2
+            self.true_negatives = cardinality - self.false_negatives - self.false_positives
+            self.precision = self.true_positives / self.total_matching_pairs
+            self.recall = self.true_positives / self.num_of_true_duplicates
+            self.f1 = 2*((self.precision*self.recall)/(self.precision+self.recall))
         
         if to_df:
             pd.set_option("display.precision", 2)
@@ -93,7 +102,7 @@ class Evaluation:
                 'False Negatives': self.false_negatives
             }, orient='index').T
             return results
-        
+
         if verbose:
             print("# " + (configuration['name'] if configuration else "") + " Evaluation \n---")
             if configuration:
@@ -104,26 +113,25 @@ class Evaluation:
                 )
             print("-\nScores:\n Precision: {:9.2f}% \n Recall:    {:9.2f}%\n F1-score:  {:9.2f}%".format(self.precision*100, self.recall*100, self.f1*100))
             print("-\nClassification report:\n True positives: {:d}\n False positives: {:d}\n True negatives: {:d}\n False negatives: {:d}\n Total comparisons: {:d}".format(
-                int(self.true_positives), int(self.false_positives), int(self.true_negatives),int(self.false_negatives),int(self.total_matching_pairs)
-                )
+                int(self.true_positives), int(self.false_positives), int(self.true_negatives), \
+                int(self.false_negatives), int(self.total_matching_pairs))
             )
             print("---")
 
     def _create_entity_index(self, groups: any, all_ground_truth_ids: set) -> dict:
         if len(groups) < 1:
-            print("error")
-            # TODO: error
-        
+            raise ValueError("No groups found")
         if isinstance(groups, list): # clusters evaluation             
             return self._create_entity_index_from_clusters(groups, all_ground_truth_ids)
         elif 'Block' in str(type(list(groups.values())[0])): # blocks evaluation
-            return self._create_entity_index_from_blocks(groups, all_ground_truth_ids)
+            return self._create_entity_index_from_blocks(groups)
         else:
-            print("Not supported type")
-            # TODO: error
-    
+            raise TypeError("Not supported type. Available types are: list and Block")
+
     def _create_entity_index_from_clusters(
-        self, clusters: list, all_ground_truth_ids: set
+            self,
+            clusters: list,
+            all_ground_truth_ids: set
     ) -> dict:
         entity_index = dict()
         for cluster, cluster_id in zip(clusters, range(0, len(clusters))):
@@ -146,20 +154,20 @@ class Evaluation:
         return entity_index
 
     def _create_entity_index_from_blocks(
-        self, blocks: dict
+            self,
+            blocks: dict
     ) -> dict:
-
         entity_index = dict()
         for block_id, block in blocks.items():          
             for entity_id in block.entities_D1:
                 entity_index.setdefault(entity_id, set())
                 entity_index[entity_id].add(block_id)
-                
+
             if not self.data.is_dirty_er:
                 for entity_id in block.entities_D2:
                     entity_index.setdefault(entity_id, set())
                     entity_index[entity_id].add(block_id)
-                    
+
             if self.data.is_dirty_er:
                 self.total_matching_pairs += len(block.entities_D1)*(len(block.entities_D1)-1)/2
             else:
@@ -175,8 +183,7 @@ class Evaluation:
         '''
 
         if len(entity_index) < 1:
-            print("error") # TODO: error
-            return None
+            raise ValueError("No entities found in the provided index")
         if isinstance(list(entity_index.values())[0], set): # Blocks case
             return len(entity_index[id1].intersection(entity_index[id2])) > 0
         return entity_index[id1] == entity_index[id2] # Clusters case
@@ -200,7 +207,22 @@ class Evaluation:
         plt.ylabel("Real matching pairs", fontsize=10, fontweight='bold')
         plt.show()
 
-def write(prediction: any, data: Data) -> pd.DataFrame:
+def write(
+        prediction: any,
+        data: Data
+    ) -> pd.DataFrame:
+    """creates a dataframe for the evaluation report
+
+    Args:
+        prediction (any): Predicted pairs, blocks, candidate pairs or graph
+        data (Data): initial dataset
+
+    Returns:
+        pd.DataFrame: Dataframe containg evaluation scores and stats
+    """
+    if data.ground_truth is None:
+        raise AttributeError("Can not proceed to evaluation without a ground-truth file. \
+            Data object mush have initialized with the ground-truth file")
     pairs_df = pd.DataFrame(columns=['id1', 'id2'])
     if isinstance(prediction, list): # clusters evaluation
         for cluster in prediction:
@@ -210,7 +232,10 @@ def write(prediction: any, data: Data) -> pd.DataFrame:
                     id1 = data._gt_to_ids_reversed_1[lcluster[i1]]
                     id2 = data._gt_to_ids_reversed_1[lcluster[i2]] if data.is_dirty_er \
                             else data._gt_to_ids_reversed_2[lcluster[i2]]
-                    pairs_df = pd.concat([pairs_df, pd.DataFrame([{'id1':id1, 'id2':id2}], index=[0])], ignore_index=True)
+                    pairs_df = pd.concat([
+                        pairs_df,
+                        pd.DataFrame([{'id1':id1, 'id2':id2}],
+                        index=[0])], ignore_index=True)
     elif 'Block' in str(type(list(prediction.values())[0])): # blocks evaluation
         for _, block in prediction.items():
             if data.is_dirty_er:
@@ -241,7 +266,7 @@ def write(prediction: any, data: Data) -> pd.DataFrame:
             id2 = data._gt_to_ids_reversed_1[edge[1]] if data.is_dirty_er \
                         else data._gt_to_ids_reversed_2[edge[1]]
             pairs_df = pd.concat([pairs_df, pd.DataFrame([{'id1':id1, 'id2':id2}], index=[0])], ignore_index=True)
-    else: # error
-        print("error")
+    else:
+        raise TypeError("Not supported type")
 
     return pairs_df
