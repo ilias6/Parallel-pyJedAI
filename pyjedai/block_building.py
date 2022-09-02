@@ -22,6 +22,7 @@ class AbstractBlockBuilding:
         self.attributes_1: list
         self.attributes_2: list
         self.execution_time: float
+        self.data: Data
 
     def build_blocks(
             self,
@@ -78,23 +79,19 @@ class AbstractBlockBuilding:
         self._progress_bar.close()
         return self.blocks
 
-    def _tokenize_entity(self, entity: str) -> list:
-        pass
-
-    def method_configuration(self):
+    def method_configuration(self) -> dict:
         return {
             "name" : self._method_name,
             "parameters" : self._configuration(),
             "runtime": self.execution_time
         }
 
-    def __str__(self) -> str:
-        pass
-
     def report(self) -> None:
+        """Prints Block Building method configuration
+        """
         print(
             "Method name: " + self._method_name +
-            "\nParameters: \n" + ''.join(['- {0}: {1}\n'.format(k, v) for k,v in self._configuration().items()]) +
+            "\nParameters: \n" + ''.join(['- {0}: {1}\n'.format(k, v) for k, v in self._configuration().items()]) +
             "Attributes from D1: " + ', '.join(c for c in (self.attributes_1 if self.attributes_1 is not None \
                 else self.data.dataset_1.columns)) +
             ("\nAttributes from D2: " + ', '.join(c for c in (self.attributes_2 if self.attributes_2 is not None \
