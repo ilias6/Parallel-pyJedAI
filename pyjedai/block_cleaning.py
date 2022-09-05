@@ -17,7 +17,10 @@ class BlockFiltering:
     _method_info = "Retains every entity in a subset of its smallest blocks."
 
     def __init__(self, ratio: float = 0.8) -> None:
-        self.ratio = ratio
+        if ratio > 1.0 or ratio < 0.0:
+            raise AttributeError("Ratio is a number between 0.0 and 1.0")
+        else:
+            self.ratio = ratio
         self.blocks: dict
         self.tqdm_disable: bool
         self.data: Data
@@ -95,7 +98,7 @@ class BlockFiltering:
         print(
             "Method name: " + self._method_name +
             "\nMethod info: " + self._method_info +
-            "\nParameters: \n" + ''.join(['- {0}: {1}\n'.format(k, v) for k, v in self._configuration().items()]) +
+            "\nParameters: \n" + ''.join(['\t{0}: {1}\n'.format(k, v) for k, v in self._configuration().items()]) +
             "\nRuntime: {:2.4f} seconds".format(self.execution_time)
         )
 
