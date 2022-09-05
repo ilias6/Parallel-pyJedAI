@@ -108,11 +108,11 @@ class Evaluation:
             if configuration:
                 print(
                     "Method name: " + configuration['name'] +
-                    "\nParameters: \n" + ''.join([' {0}: {1}\n'.format(k, v) for k, v in configuration['parameters'].items()]) +
+                    "\nParameters: \n" + ''.join(['\t{0}: {1}\n'.format(k, v) for k, v in configuration['parameters'].items()]) +
                     "Runtime: {:2.4f} seconds".format(configuration['runtime'])
                 )
-            print("-\nScores:\n Precision: {:9.2f}% \n Recall:    {:9.2f}%\n F1-score:  {:9.2f}%".format(self.precision*100, self.recall*100, self.f1*100))
-            print("-\nClassification report:\n True positives: {:d}\n False positives: {:d}\n True negatives: {:d}\n False negatives: {:d}\n Total comparisons: {:d}".format(
+            print("Scores:\n\tPrecision: {:9.2f}% \n\tRecall:    {:9.2f}%\n\tF1-score:  {:9.2f}%".format(self.precision*100, self.recall*100, self.f1*100))
+            print("Classification report:\n\tTrue positives: {:d}\n\tFalse positives: {:d}\n\tTrue negatives: {:d}\n\tFalse negatives: {:d}\n\tTotal comparisons: {:d}".format(
                 int(self.true_positives), int(self.false_positives), int(self.true_negatives), \
                 int(self.false_negatives), int(self.total_matching_pairs))
             )

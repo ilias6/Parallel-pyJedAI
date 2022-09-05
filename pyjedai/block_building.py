@@ -91,10 +91,11 @@ class AbstractBlockBuilding:
         """
         print(
             "Method name: " + self._method_name +
-            "\nParameters: \n" + ''.join(['- {0}: {1}\n'.format(k, v) for k, v in self._configuration().items()]) +
-            "Attributes from D1: " + ', '.join(c for c in (self.attributes_1 if self.attributes_1 is not None \
+            "\nMethod info: " + self._method_info +
+            ("\nParameters: \n" + ''.join(['\t{0}: {1}\n'.format(k, v) for k, v in self._configuration().items()]) if self._configuration().items() else "\nParameters: Parameter-Free method\n") +
+            "Attributes from D1:\n\t" + ', '.join(c for c in (self.attributes_1 if self.attributes_1 is not None \
                 else self.data.dataset_1.columns)) +
-            ("\nAttributes from D2: " + ', '.join(c for c in (self.attributes_2 if self.attributes_2 is not None \
+            ("\nAttributes from D2:\n\t" + ', '.join(c for c in (self.attributes_2 if self.attributes_2 is not None \
                 else self.data.dataset_2.columns)) if not self.data.is_dirty_er else "") +
             "\nRuntime: {:2.4f} seconds".format(self.execution_time)
         )
@@ -105,8 +106,7 @@ class StandardBlocking(AbstractBlockBuilding):
     """
 
     _method_name = "Standard Blocking"
-    _method_info = _method_name + ": it creates one block for every token in the attribute \
-                                    values of at least two entities."
+    _method_info = "Creates one block for every token in the attribute values of at least two entities."
 
     def __init__(self) -> any:
         super().__init__()
@@ -137,9 +137,9 @@ class QGramsBlocking(StandardBlocking):
     """
 
     _method_name = "Q-Grams Blocking"
-    _method_info = _method_name + ": it creates one block for every q-gram that is extracted \
-                                    from any token in the attribute values of any entity.\n \
-                                    The q-gram must be shared by at least two entities."
+    _method_info = "Creates one block for every q-gram that is extracted " + \
+                    "from any token in the attribute values of any entity. " + \
+                    "The q-gram must be shared by at least two entities."
 
     def __init__(
             self, qgrams: int = 6
@@ -170,7 +170,7 @@ class SuffixArraysBlocking(StandardBlocking):
     """
 
     _method_name = "Suffix Arrays Blocking"
-    _method_info = _method_name + ": it creates one block for every suffix that appears in the \
+    _method_info = "Creates one block for every suffix that appears in the \
         attribute value tokens of at least two entities."
 
     def __init__(
@@ -206,7 +206,7 @@ class ExtendedSuffixArraysBlocking(StandardBlocking):
     """
 
     _method_name = "Extended Suffix Arrays Blocking"
-    _method_info = _method_name + ": it creates one block for every substring (not just suffix) \
+    _method_info = "Creates one block for every substring (not just suffix) \
         that appears in the tokens of at least two entities."
 
     def __init__(
@@ -242,7 +242,7 @@ class ExtendedQGramsBlocking(StandardBlocking):
     """
 
     _method_name = "Extended QGramsBlocking"
-    _method_info = _method_name + ": it creates one block for every substring (not just suffix)\
+    _method_info = "Creates one block for every substring (not just suffix)\
         that appears in the tokens of at least two entities."
 
     def __init__(

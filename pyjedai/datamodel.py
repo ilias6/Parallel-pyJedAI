@@ -3,15 +3,14 @@ import pandas as pd
 class Data:
 
     def __init__(
-            self, 
+            self,
             dataset_1: pd.DataFrame,
             attributes_1: list,
             id_column_name_1: str,
             dataset_2: pd.DataFrame=None,
             attributes_2: list=None,
             id_column_name_2: str=None,
-            ground_truth: pd.DataFrame=None,
-            with_header: bool=None
+            ground_truth: pd.DataFrame=None
     ) -> None:
         self.dataset_1 = dataset_1
         self.dataset_2 = dataset_2

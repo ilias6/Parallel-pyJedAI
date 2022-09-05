@@ -14,7 +14,7 @@ class BlockFiltering:
     """
 
     _method_name = "Block Filtering"
-    _method_info = ": it retains every entity in a subset of its smallest blocks."
+    _method_info = "Retains every entity in a subset of its smallest blocks."
 
     def __init__(self, ratio: float = 0.8) -> None:
         self.ratio = ratio
@@ -35,7 +35,8 @@ class BlockFiltering:
             data: Data = None,
             tqdm_disable: bool = False
     ) -> dict:
-        """Main function of Block Filtering
+        """ 
+        TODO __summary__
 
         Args:
             blocks (dict, optional): dict of keys to Blocks. Defaults to None.
@@ -47,9 +48,9 @@ class BlockFiltering:
         """
         start_time, self.tqdm_disable, self.data = time(), tqdm_disable, data
         self._progress_bar = tqdm(
-            total=3, 
-            desc=self._method_name, 
-            dynamic_ncols =True, 
+            total=3,
+            desc=self._method_name,
+            dynamic_ncols=True,
             disable=self.tqdm_disable
         )
         sorted_blocks = sort_blocks_cardinality(blocks, self.data.is_dirty_er)
@@ -75,6 +76,8 @@ class BlockFiltering:
         return self.blocks
 
     def method_configuration(self) -> dict:
+        """Returns configuration details
+        """
         return {
             "name" : self._method_name,
             "parameters" : self._configuration(),
@@ -91,6 +94,7 @@ class BlockFiltering:
         """
         print(
             "Method name: " + self._method_name +
+            "\nMethod info: " + self._method_info +
             "\nParameters: \n" + ''.join(['- {0}: {1}\n'.format(k, v) for k, v in self._configuration().items()]) +
             "\nRuntime: {:2.4f} seconds".format(self.execution_time)
         )
@@ -100,7 +104,7 @@ class BlockPurging:
     """
 
     _method_name = "Block Purging"
-    _method_info = ": it discards the blocks exceeding a certain number of comparisons."
+    _method_info = "Discards the blocks exceeding a certain number of comparisons."
 
     def __init__(self, smoothing_factor: float = 1.025) -> any:
         self.smoothing_factor: float = smoothing_factor
@@ -116,7 +120,8 @@ class BlockPurging:
             data: Data,
             tqdm_disable: bool = False
     ) -> dict:
-        """TODO: _summary_
+        """
+        TODO: _summary_
 
         Args:
             blocks (dict): _description_
@@ -135,7 +140,7 @@ class BlockPurging:
         all_keys = list(new_blocks.keys())
         for key in all_keys:
             if new_blocks[key].get_cardinality(self.data.is_dirty_er) > self.max_comparisons_per_block:
-                new_blocks.pop(key)
+                del new_blocks[key]
             self._progress_bar.update(1)
         self.execution_time = time() - start_time
         self._progress_bar.close()
@@ -143,7 +148,8 @@ class BlockPurging:
         return new_blocks
 
     def _set_threshold(self, blocks: dict) -> None:
-        """ TODO _summary_
+        """ 
+        TODO _summary_
 
         Args:
             blocks (dict): _description_
@@ -151,8 +157,9 @@ class BlockPurging:
         sorted_blocks = sort_blocks_cardinality(blocks, self.data.is_dirty_er)
         distinct_comparisons_level = set(b.get_cardinality(self.data.is_dirty_er) \
                                         for _, b in sorted_blocks.items())
-        block_assignments = comparisons_level = total_comparisons_per_level \
-            = np.empty([len(distinct_comparisons_level)])
+        block_assignments = np.empty([len(distinct_comparisons_level)])
+        comparisons_level = np.empty([len(distinct_comparisons_level)])
+        total_comparisons_per_level = np.empty([len(distinct_comparisons_level)])
         index = -1
         for _, block in sorted_blocks.items():
             if index == -1:
@@ -204,8 +211,10 @@ class BlockPurging:
         """
         print(
             "Method name: " + self._method_name +
-            "\nParameters: \n" + ''.join(['- {0}: {1}\n'.format(k, v) for k, v in self._configuration().items()]) +
-            "\nRuntime: {:2.4f} seconds".format(self.execution_time)
+            "\nMethod info: " + self._method_info +
+            "\nParameters: \n" + ''.join(
+                ['\t{0}: {1}\n'.format(k, v) for k, v in self._configuration().items()]) +
+            "Runtime: {:2.4f} seconds".format(self.execution_time)
         )
 
 def sort_blocks_cardinality(blocks: dict, is_dirty_er: bool) -> dict:
