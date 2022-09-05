@@ -126,12 +126,10 @@ class BlockPurging:
         Returns:
             dict: _description_
         """
-        self.tqdm_disable, self.data, start_time  = tqdm_disable, data, time()
+        self.tqdm_disable, self.data, start_time = tqdm_disable, data, time()
         self._progress_bar = tqdm(total=2*len(blocks), desc=self._method_name, disable=self.tqdm_disable)
-
         if not blocks:
             raise AttributeError("Empty dict of blocks was given as input!")
-                
         new_blocks = blocks.copy()
         self._set_threshold(new_blocks)
         all_keys = list(new_blocks.keys())
@@ -145,9 +143,14 @@ class BlockPurging:
         return new_blocks
 
     def _set_threshold(self, blocks: dict) -> None:
-        sorted_blocks, distinct_comparisons_level \
-            = sort_blocks_cardinality(blocks, self.data.is_dirty_er), \
-                set(b.get_cardinality(self.data.is_dirty_er) for k, b in sorted_blocks.items())
+        """ TODO _summary_
+
+        Args:
+            blocks (dict): _description_
+        """
+        sorted_blocks = sort_blocks_cardinality(blocks, self.data.is_dirty_er)
+        distinct_comparisons_level = set(b.get_cardinality(self.data.is_dirty_er) \
+                                        for _, b in sorted_blocks.items())
         block_assignments = comparisons_level = total_comparisons_per_level \
             = np.empty([len(distinct_comparisons_level)])
         index = -1
