@@ -38,8 +38,7 @@ class BlockFiltering:
             data: Data = None,
             tqdm_disable: bool = False
     ) -> dict:
-        """ 
-        TODO __summary__
+        """Main method of Block Filtering
 
         Args:
             blocks (dict, optional): dict of keys to Blocks. Defaults to None.
@@ -123,8 +122,7 @@ class BlockPurging:
             data: Data,
             tqdm_disable: bool = False
     ) -> dict:
-        """
-        TODO: _summary_
+        """Main method of Block Purging
 
         Args:
             blocks (dict): _description_

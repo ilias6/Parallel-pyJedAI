@@ -20,7 +20,7 @@ class EntityMatching:
 
     def __init__(
             self,
-            metric: str,
+            metric: str = 'sorensen_dice',
             qgram: int = 2, # jaccard
             embedings: str = None,
             attributes: any = None,

@@ -17,7 +17,6 @@ import logging as log
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
-
 """ Test Datamodel
 """
 from pyjedai.datamodel import Data
