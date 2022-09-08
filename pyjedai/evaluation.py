@@ -16,7 +16,6 @@ class Evaluation:
         self.f1: float
         self.recall: float
         self.precision: float
-        self.accuracy: float
         self.num_of_comparisons: int
         self.true_positives: int
         self.true_negatives: int
