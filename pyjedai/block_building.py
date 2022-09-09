@@ -1,13 +1,14 @@
+from typing import List
 import nltk
 import math
 import re
 import time
 import logging as log
 from tqdm.notebook import tqdm
+import numpy as np
 
 from .datamodel import Block, Data
 from .utils import drop_big_blocks_by_size, drop_single_entity_blocks
-from .logs import warning, info, log, fatal, debug, error
 
 class AbstractBlockBuilding:
     """Abstract class for the block building method
@@ -170,8 +171,8 @@ class SuffixArraysBlocking(StandardBlocking):
     """
 
     _method_name = "Suffix Arrays Blocking"
-    _method_info = "Creates one block for every suffix that appears in the \
-        attribute value tokens of at least two entities."
+    _method_info = "Creates one block for every suffix that appears in the " + \
+        "attribute value tokens of at least two entities."
 
     def __init__(
             self,
@@ -206,8 +207,8 @@ class ExtendedSuffixArraysBlocking(StandardBlocking):
     """
 
     _method_name = "Extended Suffix Arrays Blocking"
-    _method_info = "Creates one block for every substring (not just suffix) \
-        that appears in the tokens of at least two entities."
+    _method_info = "Creates one block for every substring (not just suffix) " + \
+        "that appears in the tokens of at least two entities."
 
     def __init__(
             self,
@@ -242,8 +243,8 @@ class ExtendedQGramsBlocking(StandardBlocking):
     """
 
     _method_name = "Extended QGramsBlocking"
-    _method_info = "Creates one block for every substring (not just suffix)\
-        that appears in the tokens of at least two entities."
+    _method_info = "Creates one block for every substring (not just suffix) " + \
+        "that appears in the tokens of at least two entities."
 
     def __init__(
             self,
@@ -301,4 +302,110 @@ class ExtendedQGramsBlocking(StandardBlocking):
         return {
             "Q-Gramms" : self.qgrams,
             "Threshold" : self.threshold
+        }
+
+from gensim.models.fasttext import load_facebook_model
+import gensim.downloader as api
+from transformers import BertTokenizer, BertModel
+from transformers import DistilBertTokenizer, DistilBertModel
+from transformers import RobertaTokenizer, RobertaModel
+from transformers import XLNetTokenizer, XLNetModel
+from sentence_transformers import SentenceTransformer
+from transformers import AlbertTokenizer, AlbertModel
+import transformers
+transformers.logging.set_verbosity_error()
+import torch
+
+class EmbeddingsNNBlockBuilding(StandardBlocking):
+    """Block building via creation of embeddings and a Nearest Neighbor Approach.
+    """
+    
+    _method_name = "Embeddings-NN Block Buildingg"
+    _method_info = "Creates a set of candidate pais for every entity id " + \
+        "based on Embeddings creariot and Similarity search among the vectors."
+    
+    def __init__(
+        self,
+        vectorizer: str,
+        similarity_search: str
+    ) -> None:
+        self.vectorizer, self.similarity_search = vectorizer, similarity_search
+        self.embeddings: np.array
+        
+    def build_blocks(
+            self,
+            data: Data,
+            vector_size: int = 300,
+            attributes_1: list = None,
+            attributes_2: list = None,
+            tqdm_disable: bool = False
+    ) -> dict:
+        _start_time = time.time()
+        self.blocks = dict()
+        self.data, self.attributes_1, self.attributes_2, self.vector_size = data, attributes_1, attributes_2, vector_size
+        self._progress_bar = tqdm(
+            total=data.num_of_entities, desc=self._method_name, disable=tqdm_disable
+        )
+        if attributes_1:
+            isolated_attr_dataset_1 = data.dataset_1[attributes_1].apply(" ".join, axis=1)
+        if attributes_2:
+            isolated_attr_dataset_2 = data.dataset_2[attributes_1].apply(" ".join, axis=1)
+        
+        if self.vectorizer in ['word2vec', 'fasttext', 'doc2vec']:
+            vectors_1 = []
+            if self.vectorizer == 'fasttext':
+                gensim_vectorizer = load_facebook_model('wiki.simple.bin')
+                vocabulary = gensim_vectorizer
+            elif self.vectorizer == 'word2vec':
+                gensim_vectorizer = api.load('word2vec-google-news-300')
+                vocabulary = gensim_vectorizer.vw
+
+            for i in range(0, data.num_of_entities_1, 1):
+                record = isolated_attr_dataset_1.iloc[i] if attributes_1 \
+                            else data.entities_d1.iloc[i]
+                vectors_1.append(
+                    self._create_vector(self._tokenize_entity(record), vocabulary)
+                )
+                self._progress_bar.update(1)
+
+            if not data.is_dirty_er:
+                vectors_2 = []
+                for i in range(0, data.num_of_entities_2, 1):
+                    record = isolated_attr_dataset_2.iloc[i] if attributes_2 \
+                                else data.entities_d2.iloc[i]
+                    vectors_2.append(
+                        self._create_vector(self._tokenize_entity(record), vocabulary)
+                    )
+                    self._progress_bar.update(1)
+        elif self.vectorizer in ['bert', 'distilbert', 'roberta', 'xlnet', 'albert']:
+            pass
+        else:
+            raise AttributeError("Not available vectorizer")
+
+        if self.similarity_search == 'faiss':
+            pass
+        # elif similarity_search == 'falconn':
+        # elif similarity_search == 'scann':
+        else:
+            raise AttributeError("Not available method")
+
+        self._progress_bar.close()
+        self.execution_time = time.time() - _start_time
+        return self.blocks
+
+    def _create_vector(self, tokens: List[str], vocabulary) -> np.array:
+        num_of_tokens = 0
+        vector = np.zeros(self.vector_size)
+        for token in tokens:
+            if token in vocabulary:
+                vector += vocabulary[token]
+                num_of_tokens += 1
+        if num_of_tokens > 0:
+            vector /= num_of_tokens
+        return vector
+
+    def _configuration(self) -> dict:
+        return {
+            "Vectorizer" : self.vectorizer,
+            "Similarity-Search" : self.similarity_search
         }
