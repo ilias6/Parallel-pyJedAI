@@ -79,7 +79,7 @@ class EntityMatching:
         self.pairs = Graph()
         all_blocks = list(blocks.values())
         self._progress_bar = tqdm(
-            total=len(blocks), 
+            total=len(blocks),
             desc=self._method_name+" ("+self.metric+")",
             disable=self.tqdm_disable
         )
