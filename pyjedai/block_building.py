@@ -315,12 +315,13 @@ from transformers import AlbertTokenizer, AlbertModel
 import transformers
 transformers.logging.set_verbosity_error()
 import torch
+import faiss
 
 class EmbeddingsNNBlockBuilding(StandardBlocking):
     """Block building via creation of embeddings and a Nearest Neighbor Approach.
     """
     
-    _method_name = "Embeddings-NN Block Buildingg"
+    _method_name = "Embeddings-NN Block Building"
     _method_info = "Creates a set of candidate pais for every entity id " + \
         "based on Embeddings creariot and Similarity search among the vectors."
     
@@ -331,18 +332,26 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
     ) -> None:
         self.vectorizer, self.similarity_search = vectorizer, similarity_search
         self.embeddings: np.array
+        self.vectors_1: np.array
+        self.vectors_2: np.array = None
+        self.vector_size: int
+        self.num_of_clusters: int
+        self.top_k: int
         
     def build_blocks(
             self,
             data: Data,
             vector_size: int = 300,
+            num_of_clusters: int = 5,
+            top_k: int = 30,
             attributes_1: list = None,
             attributes_2: list = None,
             tqdm_disable: bool = False
     ) -> dict:
         _start_time = time.time()
         self.blocks = dict()
-        self.data, self.attributes_1, self.attributes_2, self.vector_size = data, attributes_1, attributes_2, vector_size
+        self.data, self.attributes_1, self.attributes_2, self.vector_size, self.num_of_clusters, self.top_k \
+            = data, attributes_1, attributes_2, vector_size, num_of_clusters, top_k
         self._progress_bar = tqdm(
             total=data.num_of_entities, desc=self._method_name, disable=tqdm_disable
         )
@@ -351,7 +360,7 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
         if attributes_2:
             isolated_attr_dataset_2 = data.dataset_2[attributes_1].apply(" ".join, axis=1)
 
-        if self.vectorizer in ['word2vec', 'fasttext', 'doc2vec']:
+        if self.vectorizer in ['word2vec', 'fasttext', 'doc2vec', 'glove']:
             """More pre-trained embeddings: https://github.com/RaRe-Technologies/gensim-data
             """
             vectors_1 = []
@@ -364,7 +373,10 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
             elif self.vectorizer == 'word2vec':
                 gensim_vectorizer = api.load('word2vec-google-news-300')
                 vocabulary = gensim_vectorizer
-
+            elif self.vectorizer == 'glove':
+                gensim_vectorizer = api.load('glove-wiki-gigaword-300')
+                vocabulary = gensim_vectorizer
+                
             for i in range(0, data.num_of_entities_1, 1):
                 record = isolated_attr_dataset_1.iloc[i] if attributes_1 \
                             else data.entities_d1.iloc[i]
@@ -372,8 +384,7 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
                     self._create_vector(self._tokenize_entity(record), vocabulary)
                 )
                 self._progress_bar.update(1)
-            self.vectors_1 = np.array(vectors_1)
-            print(vectors_1)
+            self.vectors_1 = np.array(vectors_1).astype('float32')
             if not data.is_dirty_er:
                 vectors_2 = []
                 for i in range(0, data.num_of_entities_2, 1):
@@ -383,14 +394,35 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
                         self._create_vector(self._tokenize_entity(record), vocabulary)
                     )
                     self._progress_bar.update(1)
-                self.vectors_2 = np.array(vectors_2)
+                self.vectors_2 = np.array(vectors_2).astype('float32')
+            else:
+                pass
+                # TODO: Dirty FAISS
         elif self.vectorizer in ['bert', 'distilbert', 'roberta', 'xlnet', 'albert']:
             pass
         else:
             raise AttributeError("Not available vectorizer")
 
         if self.similarity_search == 'faiss':
-            pass
+            if self.data.is_dirty_er:
+                pass
+            else:
+                # Vectors 1 questioned to vecrors 2
+                quantiser = faiss.IndexFlatL2(self.vectors_1.shape[1])
+                index = faiss.IndexIVFFlat(
+                    quantiser,
+                    self.vectors_1.shape[1],
+                    self.num_of_clusters,
+                    faiss.METRIC_L2
+                )
+                index.train(self.vectors_1)  # train on the vectors of dataset 1
+                index.add(self.vectors_1)   # add the vectors and update the index
+                _, indices = index.search(self.vectors_2, self.top_k)
+                self.blocks = {
+                    i+self.data.dataset_limit : set(x for x in indices[i] if x != -1) \
+                            for i in range(0, indices.shape[0])
+                }
+
         # elif similarity_search == 'falconn':
         # elif similarity_search == 'scann':
         else:
@@ -414,5 +446,7 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
     def _configuration(self) -> dict:
         return {
             "Vectorizer" : self.vectorizer,
-            "Similarity-Search" : self.similarity_search
+            "Similarity-Search" : self.similarity_search,
+            "Top-K" : self.top_k,
+            "Vector size": self.vector_size
         }

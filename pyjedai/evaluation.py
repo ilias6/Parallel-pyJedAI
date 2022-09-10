@@ -1,6 +1,7 @@
 """Evaluation module
 This file contains all the methods for evaluating every module in pyjedai.
 """
+from decimal import DivisionByZero
 from typing import Type
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -22,6 +23,7 @@ class Evaluation:
         self.false_positives: int
         self.false_negatives: int
         self.total_matching_pairs = 0
+        self.num_of_true_duplicates: int
         self.data: Data = data
 
     def report(self, prediction: any, configuration: dict = None, to_df=False, verbose=True) -> any:
@@ -87,8 +89,13 @@ class Evaluation:
             self.true_negatives = cardinality - self.false_negatives - self.false_positives
             self.precision = self.true_positives / self.total_matching_pairs
             self.recall = self.true_positives / self.num_of_true_duplicates
-            self.f1 = 2*((self.precision*self.recall)/(self.precision+self.recall))
-        
+            if self.precision == 0.0 or self.recall == 0.0:
+                print(self.recall)
+                print(self.precision)
+                raise DivisionByZero("Recall or Precision is equal to zero. Can't calculate F1 score.")
+            else:
+                self.f1 = 2*((self.precision*self.recall)/(self.precision+self.recall))
+
         if to_df:
             pd.set_option("display.precision", 2)
             results = pd.DataFrame.from_dict({

@@ -40,7 +40,7 @@ def create_embeddings(text, vectorizer, log, log_file, output_path, output_index
            #voc = model.wv
             model = load_facebook_model('wiki.simple.bin')
             voc = model.wv
-           
+
        vectors = []
        for nos, sentence in enumerate(text2):
            if nos % 1000 == 0:
