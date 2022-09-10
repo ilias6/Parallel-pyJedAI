@@ -350,15 +350,20 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
             isolated_attr_dataset_1 = data.dataset_1[attributes_1].apply(" ".join, axis=1)
         if attributes_2:
             isolated_attr_dataset_2 = data.dataset_2[attributes_1].apply(" ".join, axis=1)
-        
+
         if self.vectorizer in ['word2vec', 'fasttext', 'doc2vec']:
+            """More pre-trained embeddings: https://github.com/RaRe-Technologies/gensim-data
+            """
             vectors_1 = []
             if self.vectorizer == 'fasttext':
-                gensim_vectorizer = load_facebook_model('wiki.simple.bin')
+                # gensim_vectorizer = load_facebook_model('wiki.simple.bin')
+                #glove_vectors = api.load("glove-wiki-gigaword-300")
+                #cn_vectors = api.load("conceptnet-numberbatch-17-06-300")
+                gensim_vectorizer = api.load('fasttext-wiki-news-subwords-300')
                 vocabulary = gensim_vectorizer
             elif self.vectorizer == 'word2vec':
                 gensim_vectorizer = api.load('word2vec-google-news-300')
-                vocabulary = gensim_vectorizer.vw
+                vocabulary = gensim_vectorizer
 
             for i in range(0, data.num_of_entities_1, 1):
                 record = isolated_attr_dataset_1.iloc[i] if attributes_1 \
@@ -367,7 +372,8 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
                     self._create_vector(self._tokenize_entity(record), vocabulary)
                 )
                 self._progress_bar.update(1)
-
+            self.vectors_1 = np.array(vectors_1)
+            print(vectors_1)
             if not data.is_dirty_er:
                 vectors_2 = []
                 for i in range(0, data.num_of_entities_2, 1):
@@ -377,6 +383,7 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
                         self._create_vector(self._tokenize_entity(record), vocabulary)
                     )
                     self._progress_bar.update(1)
+                self.vectors_2 = np.array(vectors_2)
         elif self.vectorizer in ['bert', 'distilbert', 'roberta', 'xlnet', 'albert']:
             pass
         else:
