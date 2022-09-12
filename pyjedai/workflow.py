@@ -190,9 +190,9 @@ class WorkFlow:
             axs[0, 1].set_title("Recall", fontsize=12)            
             axs[1, 0].plot(method_names, self.f1, linewidth=2.0, label="F1-Score", marker='x', markersize=10)
             axs[1, 0].set_ylabel("Scores %", fontsize=12)
-            axs[1, 0].set_title("Recall", fontsize=12)
+            axs[1, 0].set_title("F1-Score", fontsize=12)
             # axs[0, 0].legend(loc='lower right')
-            axs[1, 1].plot(method_names, exec_time, linewidth=2.0, label="F1-Score", marker='.', markersize=10, color='r')
+            axs[1, 1].plot(method_names, exec_time, linewidth=2.0, label="Time", marker='.', markersize=10, color='r')
             axs[1, 1].set_ylabel("Time (sec)", fontsize=12)
             axs[1, 1].set_title("Execution time", fontsize=12)
             fig.autofmt_xdate()
@@ -200,9 +200,12 @@ class WorkFlow:
             fig, axs = plt.subplots(nrows=2, ncols=1, figsize=(10, 8))
             fig.suptitle(self.name + " Visualization", fontweight='bold', fontsize=14)
             fig.subplots_adjust(top=0.88)
-            if precision: axs[0].plot(method_names, self.precision, linewidth=2.0, label="Precision", marker='o', markersize=10)
-            if recall: axs[0].plot(method_names, self.recall, linewidth=2.0, label="Recall", marker='*', markersize=10)
-            if f1: axs[0].plot(method_names, self.f1, linewidth=2.0, label="F1-Score", marker='x', markersize=10)
+            if precision:
+                axs[0].plot(method_names, self.precision, linewidth=2.0, label="Precision", marker='o', markersize=10)
+            if recall:
+                axs[0].plot(method_names, self.recall, linewidth=2.0, label="Recall", marker='*', markersize=10)
+            if f1:
+                axs[0].plot(method_names, self.f1, linewidth=2.0, label="F1-Score", marker='x', markersize=10)
             axs[0].set_xlabel("Models", fontsize=12)
             axs[0].set_ylabel("Scores %", fontsize=12)
             axs[0].set_title("Performance per step", fontsize=12)
@@ -244,12 +247,12 @@ def compare_workflows(workflows: List[WorkFlow], with_visualization=True) -> pd.
         axs[0, 1].set_ylabel("Scores %", fontsize=12)
         axs[0, 1].set_title("Recall", fontsize=12)
         axs[1, 0].set_ylabel("Scores %", fontsize=12)
-        axs[1, 0].set_title("Recall", fontsize=12)
+        axs[1, 0].set_title("F1-Score", fontsize=12)
         axs[1, 1].set_ylabel("Time (sec)", fontsize=12)
         axs[1, 1].set_title("Execution time", fontsize=12)
     for w in workflows:
         workflow_df.loc[len(workflow_df)] = [w.name, w.f1[-1], w.recall[-1], w.precision[-1], w.workflow_exec_time]
-    
+
     if with_visualization:
         axs[0, 0].bar(workflow_df['Name'], workflow_df['Precision'], label=workflow_df['Name'], color='b')
         axs[0, 1].bar(workflow_df['Name'], workflow_df['Recall'], label=workflow_df['Name'], color='g')

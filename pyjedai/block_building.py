@@ -320,15 +320,21 @@ import faiss
 class EmbeddingsNNBlockBuilding(StandardBlocking):
     """Block building via creation of embeddings and a Nearest Neighbor Approach.
     """
-    
+
     _method_name = "Embeddings-NN Block Building"
     _method_info = "Creates a set of candidate pais for every entity id " + \
         "based on Embeddings creariot and Similarity search among the vectors."
-    
+
+    _gensim_mapping_download = {
+        'fasttext' : 'fasttext-wiki-news-subwords-300',
+        'glove' : 'glove-wiki-gigaword-300',
+        'word2vec' : 'word2vec-google-news-300'
+    }
+
     def __init__(
-        self,
-        vectorizer: str,
-        similarity_search: str
+            self,
+            vectorizer: str,
+            similarity_search: str
     ) -> None:
         self.vectorizer, self.similarity_search = vectorizer, similarity_search
         self.embeddings: np.array
@@ -337,7 +343,7 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
         self.vector_size: int
         self.num_of_clusters: int
         self.top_k: int
-        
+
     def build_blocks(
             self,
             data: Data,
@@ -348,6 +354,9 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
             attributes_2: list = None,
             tqdm_disable: bool = False
     ) -> dict:
+        """
+        TODO
+        """
         _start_time = time.time()
         self.blocks = dict()
         self.data, self.attributes_1, self.attributes_2, self.vector_size, self.num_of_clusters, self.top_k \
@@ -360,23 +369,12 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
         if attributes_2:
             isolated_attr_dataset_2 = data.dataset_2[attributes_1].apply(" ".join, axis=1)
 
+        vectors_1 = []
+
         if self.vectorizer in ['word2vec', 'fasttext', 'doc2vec', 'glove']:
             """More pre-trained embeddings: https://github.com/RaRe-Technologies/gensim-data
             """
-            vectors_1 = []
-            if self.vectorizer == 'fasttext':
-                # gensim_vectorizer = load_facebook_model('wiki.simple.bin')
-                #glove_vectors = api.load("glove-wiki-gigaword-300")
-                #cn_vectors = api.load("conceptnet-numberbatch-17-06-300")
-                gensim_vectorizer = api.load('fasttext-wiki-news-subwords-300')
-                vocabulary = gensim_vectorizer
-            elif self.vectorizer == 'word2vec':
-                gensim_vectorizer = api.load('word2vec-google-news-300')
-                vocabulary = gensim_vectorizer
-            elif self.vectorizer == 'glove':
-                gensim_vectorizer = api.load('glove-wiki-gigaword-300')
-                vocabulary = gensim_vectorizer
-                
+            vocabulary = api.load(self._gensim_mapping_download[self.vectorizer])
             for i in range(0, data.num_of_entities_1, 1):
                 record = isolated_attr_dataset_1.iloc[i] if attributes_1 \
                             else data.entities_d1.iloc[i]
@@ -395,39 +393,84 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
                     )
                     self._progress_bar.update(1)
                 self.vectors_2 = np.array(vectors_2).astype('float32')
-            else:
-                pass
-                # TODO: Dirty FAISS
         elif self.vectorizer in ['bert', 'distilbert', 'roberta', 'xlnet', 'albert']:
-            pass
+            if self.vectorizer == 'bert':
+                tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+                model = BertModel.from_pretrained("bert-base-uncased")
+            elif self.vectorizer == 'distilbert':
+                tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
+                model = DistilBertModel.from_pretrained("distilbert-base-uncased")
+            elif self.vectorizer == 'roberta':
+                tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
+                model = RobertaModel.from_pretrained('roberta-base')
+            elif self.vectorizer == 'xlnet':
+                tokenizer = XLNetTokenizer.from_pretrained('xlnet-base-cased')
+                model = XLNetModel.from_pretrained('xlnet-base-cased')
+            elif self.vectorizer == 'albert':
+                tokenizer = AlbertTokenizer.from_pretrained('albert-base-v2')
+                model = AlbertModel.from_pretrained("albert-base-v2")
+                
+            for i in range(0, 100, 1):
+                record = isolated_attr_dataset_1.iloc[i] if attributes_1 \
+                            else data.entities_d1.iloc[i]
+                encoded_input = tokenizer(
+                    record,
+                    return_tensors='pt',
+                    truncation=True,
+                    max_length=100,
+                    padding='max_length'
+                )
+                output = model(**encoded_input)
+                vector = output.last_hidden_state[:, 0, :]
+                vectors_1.append(vector.detach().numpy().astype('float32'))
+                self._progress_bar.update(1)
+            self.vectors_1 = vectors_1
+            if not data.is_dirty_er:
+                vectors_2 = []
+                for i in range(0, 100, 1):
+                    record = isolated_attr_dataset_2.iloc[i] if attributes_2 \
+                                else data.entities_d2.iloc[i]
+                    encoded_input = tokenizer(
+                        record,
+                        return_tensors='pt',
+                        truncation=True,
+                        max_length=100,
+                        padding='max_length'
+                    )
+                    output = model(**encoded_input)
+                    vector = output.last_hidden_state[:, 0, :]
+                    vectors_2.append(vector)
+                    self._progress_bar.update(1)
+                self.vectors_2 = np.array(vectors_2).astype('float32')
         else:
             raise AttributeError("Not available vectorizer")
 
         if self.similarity_search == 'faiss':
+            quantiser = faiss.IndexFlatL2(self.vectors_1.shape[1])
+            index = faiss.IndexIVFFlat(
+                quantiser,
+                self.vectors_1.shape[1],
+                self.num_of_clusters,
+                faiss.METRIC_L2
+            )
+            index.train(self.vectors_1)  # train on the vectors of dataset 1
+            index.add(self.vectors_1)   # add the vectors and update the index
+            _, indices = index.search(self.vectors_1 if self.data.is_dirty_er else self.vectors_2, self.top_k)
             if self.data.is_dirty_er:
-                pass
+                self.blocks = {
+                    i : set(x for x in indices[i] if x not in [-1, i]) \
+                            for i in range(0, indices.shape[0])
+                }
             else:
-                # Vectors 1 questioned to vecrors 2
-                quantiser = faiss.IndexFlatL2(self.vectors_1.shape[1])
-                index = faiss.IndexIVFFlat(
-                    quantiser,
-                    self.vectors_1.shape[1],
-                    self.num_of_clusters,
-                    faiss.METRIC_L2
-                )
-                index.train(self.vectors_1)  # train on the vectors of dataset 1
-                index.add(self.vectors_1)   # add the vectors and update the index
-                _, indices = index.search(self.vectors_2, self.top_k)
                 self.blocks = {
                     i+self.data.dataset_limit : set(x for x in indices[i] if x != -1) \
                             for i in range(0, indices.shape[0])
                 }
 
-        # elif similarity_search == 'falconn':
-        # elif similarity_search == 'scann':
+        # TODO elif similarity_search == 'falconn':
+        # TODO elif similarity_search == 'scann':
         else:
             raise AttributeError("Not available method")
-
         self._progress_bar.close()
         self.execution_time = time.time() - _start_time
         return self.blocks
