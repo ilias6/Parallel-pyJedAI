@@ -18,3 +18,4 @@ strsimpy==0.2.1
 tqdm==4.64.0
 transformers==4.21.3
 sentence-transformers==2.2.2
+faiss-cpu==1.7.2
