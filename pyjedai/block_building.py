@@ -410,7 +410,7 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
                 tokenizer = AlbertTokenizer.from_pretrained('albert-base-v2')
                 model = AlbertModel.from_pretrained("albert-base-v2")
                 
-            for i in range(0, 100, 1):
+            for i in range(0, data.num_of_entities_1, 1):
                 record = isolated_attr_dataset_1.iloc[i] if attributes_1 \
                             else data.entities_d1.iloc[i]
                 encoded_input = tokenizer(
@@ -422,12 +422,14 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
                 )
                 output = model(**encoded_input)
                 vector = output.last_hidden_state[:, 0, :]
-                vectors_1.append(vector.detach().numpy().astype('float32'))
+                vector = vector.detach().numpy()
+                self.vector_size = vector.shape[0]
+                vectors_1.append(vector.reshape(-1))
                 self._progress_bar.update(1)
-            self.vectors_1 = vectors_1
+            self.vectors_1 = np.array(vectors_1).astype('float32')
             if not data.is_dirty_er:
                 vectors_2 = []
-                for i in range(0, 100, 1):
+                for i in range(0, data.num_of_entities_2, 1):
                     record = isolated_attr_dataset_2.iloc[i] if attributes_2 \
                                 else data.entities_d2.iloc[i]
                     encoded_input = tokenizer(
@@ -439,7 +441,9 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
                     )
                     output = model(**encoded_input)
                     vector = output.last_hidden_state[:, 0, :]
-                    vectors_2.append(vector)
+                    vector = vector.detach().numpy()
+                    self.vector_size = vector.shape[0]
+                    vectors_2.append(vector.reshape(-1))
                     self._progress_bar.update(1)
                 self.vectors_2 = np.array(vectors_2).astype('float32')
         else:
