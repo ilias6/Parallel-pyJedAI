@@ -423,7 +423,7 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
                 output = model(**encoded_input)
                 vector = output.last_hidden_state[:, 0, :]
                 vector = vector.detach().numpy()
-                self.vector_size = vector.shape[0]
+                self.vector_size = vector.shape[1]
                 vectors_1.append(vector.reshape(-1))
                 self._progress_bar.update(1)
             self.vectors_1 = np.array(vectors_1).astype('float32')
@@ -442,7 +442,7 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
                     output = model(**encoded_input)
                     vector = output.last_hidden_state[:, 0, :]
                     vector = vector.detach().numpy()
-                    self.vector_size = vector.shape[0]
+                    self.vector_size = vector.shape[1]
                     vectors_2.append(vector.reshape(-1))
                     self._progress_bar.update(1)
                 self.vectors_2 = np.array(vectors_2).astype('float32')
