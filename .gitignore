@@ -7,3 +7,38 @@ data/1M*
 data/2M*
 .vscode/
 tests/__pycache__/
+*.zip
+dev-only/logos/di_pyjedai.drawio
+dev-only/logos/di_pyjedai.drawio (1).png
+dev-only/logos/di_pyjedai.drawio.png
+dev-only/logos/di_pyjedai.drawio.sm.png
+dev-only/logos/logo.drawio
+dev-only/logos/logo.drawio.png
+dev-only/logos/media.drawio
+dev-only/logos/media.drawio (1).png
+dev-only/logos/media.drawio (2).png
+dev-only/logos/media.drawio.png
+dev-only/logos/pyjedai.logo (1) (1).drawio
+dev-only/logos/pyjedai.logo (1).drawio
+dev-only/logos/pyjedai.logo.drawio
+dev-only/logos/pyjedai.logo.drawio (1).png
+dev-only/logos/pyjedai.logo.drawio.png
+dev-only/logos/pyjedai.logo.small.drawio.png
+dev-only/logos/pyjedai.logo.w.drawio (1).png
+dev-only/logos/pyjedai.logo.w.drawio.png
+dev-only/vectorization.py
+dev-only/vectorization.py
+data/big/50Kduplicates.csv
+data/big/50K.csv
+data/big/300Kduplicates.csv
+data/big/300K.csv
+data/big/2Mduplicates.csv
+data/big/2M.csv
+data/big/200Kduplicates.csv
+data/big/200K.csv
+data/big/1Mduplicates.csv
+data/big/1M.csv
+data/big/10Kduplicates.csv
+data/big/10K.csv
+data/big/100Kduplicates.csv
+data/big/100K.csv
