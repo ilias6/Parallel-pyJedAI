@@ -1,5 +1,5 @@
 from turtle import color
-from typing import List
+from typing import List, Tuple
 import pandas as pd
 from time import time
 import matplotlib.pyplot as plt
@@ -235,6 +235,9 @@ class WorkFlow:
         self.precision.append(evaluation.precision*100)
         self.configurations.append(configuration)
         self.runtime.append(configuration['runtime'])
+        
+    def get_final_scores(self) -> Tuple[float, float, float]:
+        return self.f1[-1], self.precision[-1], self.recall[-1]
 
 def compare_workflows(workflows: List[WorkFlow], with_visualization=True) -> pd.DataFrame:
     workflow_df = pd.DataFrame(columns=['Name', 'F1', 'Recall', 'Precision', 'Runtime (sec)'])
