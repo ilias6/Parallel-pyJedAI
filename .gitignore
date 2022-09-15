@@ -42,3 +42,9 @@ data/big/10Kduplicates.csv
 data/big/10K.csv
 data/big/100Kduplicates.csv
 data/big/100K.csv
+data/rdf/restaurants/restaurant1.nt
+data/rdf/restaurants/restaurant1.nt.csv
+data/rdf/restaurants/restaurant1_restaurant2_goldstandard.rdf
+data/rdf/restaurants/restaurant1_restaurant2_goldstandard.rdf.csv
+data/rdf/restaurants/restaurant2.nt
+data/rdf/restaurants/restaurant2.nt.csv
