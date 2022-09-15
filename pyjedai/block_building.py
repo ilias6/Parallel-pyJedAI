@@ -330,6 +330,13 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
         'glove' : 'glove-wiki-gigaword-300',
         'word2vec' : 'word2vec-google-news-300'
     }
+    _sentence_transformer_mapping = {
+        'smpnet' : 'all-mpnet-base-v2',
+        'st5' : 'gtr-t5-large',
+        'sdistilroberta' : 'all-distilroberta-v1',
+        'sminilm' : 'all-MiniLM-L12-v2',
+        'glove' : 'average_word_embeddings_glove.6B.300d'
+    }
 
     def __init__(
             self,
@@ -370,10 +377,11 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
             isolated_attr_dataset_2 = data.dataset_2[attributes_1].apply(" ".join, axis=1)
 
         vectors_1 = []
-
         if self.vectorizer in ['word2vec', 'fasttext', 'doc2vec', 'glove']:
-            """More pre-trained embeddings: https://github.com/RaRe-Technologies/gensim-data
-            """
+            # ------------------- #
+            # Gensim Embeddings
+            # More: https://github.com/RaRe-Technologies/gensim-data
+            # ------------------- #
             vocabulary = api.load(self._gensim_mapping_download[self.vectorizer])
             for i in range(0, data.num_of_entities_1, 1):
                 record = isolated_attr_dataset_1.iloc[i] if attributes_1 \
@@ -394,6 +402,9 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
                     self._progress_bar.update(1)
                 self.vectors_2 = np.array(vectors_2).astype('float32')
         elif self.vectorizer in ['bert', 'distilbert', 'roberta', 'xlnet', 'albert']:
+            # ---------------------------- #
+            # Pre-trained Word Embeddings
+            # ---------------------------- #
             if self.vectorizer == 'bert':
                 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
                 model = BertModel.from_pretrained("bert-base-uncased")
@@ -409,7 +420,6 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
             elif self.vectorizer == 'albert':
                 tokenizer = AlbertTokenizer.from_pretrained('albert-base-v2')
                 model = AlbertModel.from_pretrained("albert-base-v2")
-                
             for i in range(0, data.num_of_entities_1, 1):
                 record = isolated_attr_dataset_1.iloc[i] if attributes_1 \
                             else data.entities_d1.iloc[i]
@@ -423,9 +433,9 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
                 output = model(**encoded_input)
                 vector = output.last_hidden_state[:, 0, :]
                 vector = vector.detach().numpy()
-                self.vector_size = vector.shape[1]
                 vectors_1.append(vector.reshape(-1))
                 self._progress_bar.update(1)
+            self.vector_size = vectors_1[0].shape[0]
             self.vectors_1 = np.array(vectors_1).astype('float32')
             if not data.is_dirty_er:
                 vectors_2 = []
@@ -442,9 +452,31 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
                     output = model(**encoded_input)
                     vector = output.last_hidden_state[:, 0, :]
                     vector = vector.detach().numpy()
-                    self.vector_size = vector.shape[1]
                     vectors_2.append(vector.reshape(-1))
                     self._progress_bar.update(1)
+                self.vectors_2 = np.array(vectors_2).astype('float32')
+        elif self.vectorizer in ['smpnet', 'st5', 'glove', 'sdistilroberta', 'sminilm']:
+            # ---------------------------- #
+            # Pre-trained Sentence Embeddings
+            # ---------------------------- #
+            model = SentenceTransformer(self._sentence_transformer_mapping[self.vectorizer])
+            for i in range(0, data.num_of_entities_1, 1):
+                record = isolated_attr_dataset_1.iloc[i] if attributes_1 \
+                            else data.entities_d1.iloc[i]
+                vector = model.encode(record)
+                vectors_1.append(vector)
+                self._progress_bar.update(1)
+            self.vector_size = len(vectors_1[0])
+            self.vectors_1 = np.array(vectors_1).astype('float32')
+            if not data.is_dirty_er:
+                vectors_2 = []
+                for i in range(0, data.num_of_entities_2, 1):
+                    record = isolated_attr_dataset_2.iloc[i] if attributes_2 \
+                                else data.entities_d2.iloc[i]
+                    vector = model.encode(record)
+                    vectors_2.append(vector)
+                    self._progress_bar.update(1)
+                self.vector_size = vectors_2[0].shape[1]
                 self.vectors_2 = np.array(vectors_2).astype('float32')
         else:
             raise AttributeError("Not available vectorizer")
