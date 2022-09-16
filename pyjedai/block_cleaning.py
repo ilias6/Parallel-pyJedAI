@@ -1,8 +1,11 @@
-import numpy as np
 from time import time
+
+import numpy as np
 from tqdm.notebook import tqdm
-from .datamodel import Data, Block
+
+from .datamodel import Block, Data
 from .utils import create_entity_index, drop_single_entity_blocks
+
 
 class BlockFiltering:
     """Retains every entity in a subset of its smallest blocks.
@@ -149,7 +152,7 @@ class BlockPurging:
         return new_blocks
 
     def _set_threshold(self, blocks: dict) -> None:
-        """ 
+        """
         TODO _summary_
 
         Args:
