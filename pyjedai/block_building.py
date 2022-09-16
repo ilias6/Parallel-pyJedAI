@@ -106,7 +106,8 @@ class StandardBlocking(AbstractBlockBuilding):
     """
 
     _method_name = "Standard Blocking"
-    _method_info = "Creates one block for every token in the attribute values of at least two entities."
+    _method_info = "Creates one block for every token in " + \
+        "the attribute values of at least two entities."
 
     def __init__(self) -> any:
         super().__init__()

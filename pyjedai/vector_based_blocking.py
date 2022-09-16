@@ -180,7 +180,8 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
             # ---------------------------- #
             # Pre-trained Sentence Embeddings
             # ---------------------------- #
-            model = SentenceTransformer(self._sentence_transformer_mapping[self.vectorizer])
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            model = SentenceTransformer(self._sentence_transformer_mapping[self.vectorizer], device=device)
             for i in range(0, data.num_of_entities_1, 1):
                 record = isolated_attr_dataset_1.iloc[i] if attributes_1 \
                             else data.entities_d1.iloc[i]
