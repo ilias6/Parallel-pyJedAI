@@ -1,13 +1,15 @@
-import faiss
-import numpy as np
-import torch
-from tqdm.notebook import tqdm
+import sys
+import warnings
 from time import time
 from typing import List
 
+import faiss
 import gensim.downloader as api
+import numpy as np
+import torch
 import transformers
 from sentence_transformers import SentenceTransformer
+from tqdm.notebook import tqdm
 from transformers import (AlbertModel, AlbertTokenizer, BertModel,
                           BertTokenizer, DistilBertModel, DistilBertTokenizer,
                           RobertaModel, RobertaTokenizer, XLNetModel,
@@ -15,10 +17,17 @@ from transformers import (AlbertModel, AlbertTokenizer, BertModel,
 
 transformers.logging.set_verbosity_error()
 
-
 from .block_building import StandardBlocking
 from .datamodel import Data
 
+LINUX_ENV=False
+try:
+    if 'linux' in sys.platform:
+        import falconn
+        import scann
+        LINUX_ENV=True
+except:
+    warnings.warn(ImportWarning, "Can't use FALCONN/SCANN in windows environment")
 
 class EmbeddingsNNBlockBuilding(StandardBlocking):
     """Block building via creation of embeddings and a Nearest Neighbor Approach.
@@ -227,9 +236,35 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
                     i+self.data.dataset_limit : set(x for x in indices[i] if x != -1) \
                             for i in range(0, indices.shape[0])
                 }
+        elif self.similarity_search == 'falconn':
+            if not LINUX_ENV:
+                raise ImportError("Can't use FALCONN in windows environment. Use FAISS instead.")
+            # TODO FALCONN
+        elif self.similarity_search == 'scann'  and LINUX_ENV:
+            if not LINUX_ENV:
+                raise ImportError("Can't use SCANN in windows environment. Use FAISS instead.")
 
-        # TODO elif similarity_search == 'falconn':
-        # TODO elif similarity_search == 'scann':
+            searcher = scann.scann_ops_pybind.builder(self.vectors_1, num_neighbors=self.top_k, distance_measure="dot_product") \
+                            .tree(num_leaves=2000, num_leaves_to_search=100, training_sample_size=250000) \
+                            .score_ah(2, anisotropic_quantization_threshold=0.2) \
+                            .reorder(100) \
+                            .build()
+
+            neighbors, distances = searcher.search_batched(
+                self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
+                final_num_neighbors=self.top_k
+            )
+            print(neighbors.shape, distances.shape)
+            if self.data.is_dirty_er:
+                self.blocks = {
+                    i : set(x for x in neighbors[i] if x not in [-1, i]) \
+                            for i in range(0, neighbors.shape[0])
+                }
+            else:
+                self.blocks = {
+                    i+self.data.dataset_limit : set(x for x in neighbors[i] if x != -1) \
+                            for i in range(0, neighbors.shape[0])
+                }
         else:
             raise AttributeError("Not available method")
         self._progress_bar.close()
