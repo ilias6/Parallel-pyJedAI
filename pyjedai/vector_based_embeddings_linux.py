@@ -8,9 +8,9 @@ from networkx import (
     Graph,
 )
 
-from evaluation import Evaluation
-from datamodel import Data
-from vector_based_blocking import EmbeddingsNNBlockBuilding
+from .evaluation import Evaluation
+from .datamodel import Data
+from .vector_based_blocking import EmbeddingsNNBlockBuilding
 
 d1 = pd.read_csv("../../data/D2/abt.csv", sep='|', engine='python').astype(str)
 d2 = pd.read_csv("../../data/D2/buy.csv", sep='|', engine='python').astype(str)
