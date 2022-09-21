@@ -1,15 +1,24 @@
 [![pyJedAI Tests](https://github.com/Nikoletos-K/pyJedAI-Dev/actions/workflows/tests.yml/badge.svg)](https://github.com/Nikoletos-K/pyJedAI-Dev/actions/workflows/tests.yml)
 
-__This repo is the development repo for [pyJedAI](https://github.com/Nikoletos-K/pyJedAI).__
+# Development repo for [pyJedAI](https://github.com/Nikoletos-K/pyJedAI)
+Contains all the files of pyjedai. This repo is for experiments. Commit only here.
 
-> Development to production process:
-> 1. Assure that all tests are passing in dev.
-> 2. Pass each feature seperatelly.
-> 3. Update and run demo notebooks
+#### Usefull links
+__PyPI__: [https://pypi.org/project/pyjedai/](https://pypi.org/project/pyjedai/)
+
+__Brainstorming-sheet__: [google-sheet](https://docs.google.com/spreadsheets/d/17AseLUaQrdLWbE5gDQI-Lu-JhnqdYO7o0PNG10vzAVg/edit?usp=sharing)
 
 
-<details open>
-<summary><b>PyPI upload manual</b>  </summary>
+## Development to production process:
+1. Assure that all tests are passing in dev.
+2. Pass each feature seperatelly.
+3. Update and run demo notebooks
+
+
+## Other details
+
+<details>
+<summary>PyPI upload manual</summary>
 
 1. Move all new files (production repo `/tests/*` and `/pyjedai/*`) to the `/pyJedAI-Dev/pypi/pyjedai/.`
 2. Go to `/pyJedAI-Dev/pypi/pyjedai/.` folder and run:
