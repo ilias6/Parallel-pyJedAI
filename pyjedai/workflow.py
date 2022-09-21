@@ -1,12 +1,15 @@
-from turtle import color
-from typing import List, Tuple
-import pandas as pd
+from itertools import count
 from time import time
+from turtle import color
+from typing import Callable, List, Tuple
+
 import matplotlib.pyplot as plt
+import optuna
+import pandas as pd
+from networkx import Graph
 # import plotly.express as px
 from tqdm.notebook import tqdm
-from itertools import count
-from networkx import Graph
+
 from .datamodel import Data
 from .evaluation import Evaluation
 
@@ -41,16 +44,22 @@ class WorkFlow:
         self.name: str = name if name else "Workflow-" + str(self._id)
         self._workflow_bar: tqdm
 
-    def run(self, data: Data, verbose=False, tqdm_disable=False, workflow_tqdm_enable=False) -> pd.DataFrame:
+    def run(
+            self,
+            data: Data,
+            verbose=False,
+            tqdm_disable=False,
+            workflow_tqdm_enable=False
+        ) -> pd.DataFrame:
         """Main function for creating an Entity resolution workflow.
 
         Args:
-            data (Data): _description_
-            verbose (bool, optional): _description_. Defaults to False.
-            tqdm_disable (bool, optional): _description_. Defaults to False.
+            data (Data): Dataset module.
+            verbose (bool, optional): Print detailed report for each step. Defaults to False.
+            tqdm_disable (bool, optional): Tqdm progress bar. Defaults to False.
 
         Returns:
-            pd.DataFrame: _description_
+            pd.DataFrame: Dataframe with scores, params and times for each step. 
         """
         steps = [self.block_building, self.entity_matching, self.clustering, self.joins, self.block_cleaning, self.comparison_cleaning]
         num_of_steps = sum(x is not None for x in steps)
@@ -169,9 +178,8 @@ class WorkFlow:
             f1: bool = True,
             recall: bool = True,
             precision: bool = True,
-            # runtime:bool = True,
             separate: bool = False
-    ):
+    ) -> None:
         method_names = [conf['name'] for conf in self.configurations]
         exec_time = []
         prev = 0
@@ -264,3 +272,4 @@ def compare_workflows(workflows: List[WorkFlow], with_visualization=True) -> pd.
     fig.autofmt_xdate()
     plt.show()
     return workflow_df
+
