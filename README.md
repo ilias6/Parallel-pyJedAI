@@ -14,8 +14,23 @@ __Brainstorming-sheet__: [google-sheet](https://docs.google.com/spreadsheets/d/1
 2. Pass each feature seperatelly.
 3. Update and run demo notebooks
 
+## Visualizations
 
-## Other details
+<details>
+<summary>Embeddings with NN approach [ongoing]</summary>
+
+![pyJedAI](https://user-images.githubusercontent.com/47646955/189627063-8536a4fd-cc0e-45ec-a038-cff1a3746570.jpg)
+
+</details>
+
+<details>
+<summary>Reading Process</summary>
+
+![pyJedAI](https://user-images.githubusercontent.com/47646955/190148478-2221e67c-b694-4116-aa64-3d6a6a88be7e.jpg)
+
+</details>
+
+## Useful info
 
 <details>
 <summary>PyPI upload manual</summary>
@@ -31,20 +46,19 @@ __Brainstorming-sheet__: [google-sheet](https://docs.google.com/spreadsheets/d/1
 
 [Link to instructions](https://packaging.python.org/en/latest/tutorials/packaging-projects/)
 
-
 </details>
-
 <details>
-<summary>Embeddings with NN approach [ongoing]</summary>
+<summary>Conda Virtual Environment</summary>
 
-![pyJedAI](https://user-images.githubusercontent.com/47646955/189627063-8536a4fd-cc0e-45ec-a038-cff1a3746570.jpg)
+1. Create env: `conda create --name {env_name} {python==3.7.5}`
+2. Activate env: `conda activate {env_name}`
+3. Disable env: `conda deactivate`
+3. Install all dependencies: `pip install -r requirements.txt`
+4. List of packages in current env: `conda list`
+5. Delete env: `conda env remove -n env_name`
+
+[Link to instructions](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/)
 
 </details>
 
-<details>
-<summary>Reading Process</summary>
-
-![pyJedAI](https://user-images.githubusercontent.com/47646955/190148478-2221e67c-b694-4116-aa64-3d6a6a88be7e.jpg)
-
-</details>
 
