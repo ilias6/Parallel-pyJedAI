@@ -308,12 +308,13 @@ class OptimizeWorkflow:
             Returns:
                  One or more from F1,Recall,Precision
         """
-        if target_score  == 'f1':
-            return f1
-        elif target_score  == 'recall':
-            return recall
-        else:
-            return precision
+        pass
+        # if target_score  == 'f1':
+        #     return f1
+        # elif target_score  == 'recall':
+        #     return recall
+        # else:
+        #     return precision
 
     def run(
             self,
