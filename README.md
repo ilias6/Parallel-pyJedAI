@@ -15,7 +15,7 @@ __Brainstorming-sheet__: [google-sheet](https://docs.google.com/spreadsheets/d/1
 3. Update and run demo notebooks
 
 
-## Other details
+## Useful info
 
 <details>
 <summary>PyPI upload manual</summary>
@@ -31,9 +31,20 @@ __Brainstorming-sheet__: [google-sheet](https://docs.google.com/spreadsheets/d/1
 
 [Link to instructions](https://packaging.python.org/en/latest/tutorials/packaging-projects/)
 
+</details>
+<details>
+<summary>Conda Virtual Environment</summary>
+
+1. Create env: `conda create --name {env_name} {python==3.7.5}`
+2. Activate env: `conda activate {env_name}`
+3. Disable env: `conda deactivate`
+3. Install all dependencies: `pip install -r requirements.txt`
+4. List of packages in current env: `conda list`
+5. Delete env: `conda env remove -n env_name`
+
+[Link to instructions](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/)
 
 </details>
-
 <details>
 <summary>Embeddings with NN approach [ongoing]</summary>
 
