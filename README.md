@@ -14,6 +14,21 @@ __Brainstorming-sheet__: [google-sheet](https://docs.google.com/spreadsheets/d/1
 2. Pass each feature seperatelly.
 3. Update and run demo notebooks
 
+## Visualizations
+
+<details>
+<summary>Embeddings with NN approach [ongoing]</summary>
+
+![pyJedAI](https://user-images.githubusercontent.com/47646955/189627063-8536a4fd-cc0e-45ec-a038-cff1a3746570.jpg)
+
+</details>
+
+<details>
+<summary>Reading Process</summary>
+
+![pyJedAI](https://user-images.githubusercontent.com/47646955/190148478-2221e67c-b694-4116-aa64-3d6a6a88be7e.jpg)
+
+</details>
 
 ## Useful info
 
@@ -45,17 +60,5 @@ __Brainstorming-sheet__: [google-sheet](https://docs.google.com/spreadsheets/d/1
 [Link to instructions](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/)
 
 </details>
-<details>
-<summary>Embeddings with NN approach [ongoing]</summary>
 
-![pyJedAI](https://user-images.githubusercontent.com/47646955/189627063-8536a4fd-cc0e-45ec-a038-cff1a3746570.jpg)
-
-</details>
-
-<details>
-<summary>Reading Process</summary>
-
-![pyJedAI](https://user-images.githubusercontent.com/47646955/190148478-2221e67c-b694-4116-aa64-3d6a6a88be7e.jpg)
-
-</details>
 
