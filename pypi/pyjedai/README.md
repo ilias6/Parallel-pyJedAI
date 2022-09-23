@@ -24,15 +24,15 @@ An open-source library that leverages Python’s data science ecosystem to build
 
 # What is it?
 
-pyJedAI is a python framework, aiming to offer experts and simple users, robust and fast solutions for multiple types of Entity Resolution problems. It is builded using state-of-the-art python frameworks, like pandas, numpy etc. pyJedAI constitutes the sole open-source Link Discovery tool that is capable of exploiting the latest breakthroughs in Deep Learning and NPL techniques, which are publicly available through the Python data science ecosystem. This applies to both blocking and matching, thus ensuring high time efficiency, high scalability as well as high effectiveness, without requiring any labelled instances from the user.
+pyJedAI is a python framework, aiming to offer experts and non-experts users, robust and fast solutions for multiple types of Entity Resolution problems. It is builded using state-of-the-art python frameworks. pyJedAI constitutes the sole open-source Link Discovery tool that is capable of exploiting the latest breakthroughs in Deep Learning and NLP techniques, which are publicly available through the Python data science ecosystem. This applies to both blocking and matching, thus ensuring high time efficiency, high scalability as well as high effectiveness, without requiring any labelled instances from the user.
 
 ### Main Features
 
 - Input data type independent. Both structured and semi-structured data can be processed.
-- Offers a plethora of implemented algorithms.
+- Various implemented algorithms.
 - Easy-to-use.
-- Utilizes some of the most famous and cuttind-edge machine learning packages.
-- Supervised and un-supervised ML techniques.
+- Utilizes some of the famous and cutting-edge machine learning packages.
+- Offers Supervised and un-supervised ML techniques.
 
 __Open demos are available in:__
 
@@ -47,12 +47,12 @@ __Open demos are available in:__
 
 # Install
 
-Install the latest version of pyjedai:
+Install the latest version of pyjedai __[requires python >= 3.9]__:
 ```
 pip install pyjedai
 ```
 
-The source code is currently hosted on GitHub at: [https://github.com/Nikoletos-K/pyJedAI](https://github.com/Nikoletos-K/pyJedAI)
+The source code is currently hosted on GitHub at: [https://github.com/Nikoletos-K/pyJedAI](https://github.com/Nikoletos-K/pyJedAI).
 
 
 # Dependencies
