@@ -49,18 +49,15 @@ class WorkFlow:
             self,
             data: Data,
             verbose=False,
-            tqdm_disable=False,
+            workflow_step_tqdm_disable=True,
             workflow_tqdm_enable=False
-        ) -> pd.DataFrame:
+        ) -> None:
         """Main function for creating an Entity resolution workflow.
 
         Args:
             data (Data): Dataset module.
             verbose (bool, optional): Print detailed report for each step. Defaults to False.
-            tqdm_disable (bool, optional): Tqdm progress bar. Defaults to False.
-
-        Returns:
-            pd.DataFrame: Dataframe with scores, params and times for each step. 
+            workflow_step_tqdm_disable (bool, optional): Tqdm progress bar. Defaults to False.
         """
         steps = [self.block_building, self.entity_matching, self.clustering, self.joins, self.block_cleaning, self.comparison_cleaning]
         num_of_steps = sum(x is not None for x in steps)
@@ -84,7 +81,7 @@ class WorkFlow:
                             if "attributes_1" in self.block_building else None,
             attributes_2=self.block_building["attributes_2"] \
                             if "attributes_2" in self.block_building else None,
-            tqdm_disable=tqdm_disable
+            tqdm_disable=workflow_step_tqdm_disable
         )
         pj_eval.report(
             block_building_blocks, block_building_method.method_configuration(), verbose=verbose
@@ -104,7 +101,7 @@ class WorkFlow:
                                                     if "params" in block_cleaning \
                                                     else block_cleaning['method']()
                 block_cleaning_blocks = block_cleaning_method.process(
-                    bblocks, data, tqdm_disable=tqdm_disable
+                    bblocks, data, tqdm_disable=workflow_step_tqdm_disable
                 )
                 self.final_pairs = bblocks = block_cleaning_blocks
                 pj_eval.report(
@@ -124,7 +121,7 @@ class WorkFlow:
                 block_cleaning_blocks if block_cleaning_blocks is not None \
                     else block_building_blocks,
                 data,
-                tqdm_disable=tqdm_disable
+                tqdm_disable=workflow_step_tqdm_disable
             )
             pj_eval.report(
                 comparison_cleaning_blocks,
@@ -143,7 +140,7 @@ class WorkFlow:
             comparison_cleaning_blocks if comparison_cleaning_blocks is not None \
                 else block_building_blocks,
             data,
-            tqdm_disable=tqdm_disable
+            tqdm_disable=workflow_step_tqdm_disable
         )
         pj_eval.report(
             em_graph, entity_matching_method.method_configuration(), verbose=verbose
@@ -259,10 +256,13 @@ def compare_workflows(workflows: List[WorkFlow], with_visualization=True) -> pd.
         fig.subplots_adjust(top=0.88)
         axs[0, 0].set_ylabel("Scores %", fontsize=12)
         axs[0, 0].set_title("Precision", fontsize=12)
+        axs[0, 0].set_ylim([0, 100])
         axs[0, 1].set_ylabel("Scores %", fontsize=12)
         axs[0, 1].set_title("Recall", fontsize=12)
+        axs[0, 1].set_ylim([0, 100])
         axs[1, 0].set_ylabel("Scores %", fontsize=12)
         axs[1, 0].set_title("F1-Score", fontsize=12)
+        axs[1, 0].set_ylim([0, 100])
         axs[1, 1].set_ylabel("Time (sec)", fontsize=12)
         axs[1, 1].set_title("Execution time", fontsize=12)
     for w in workflows:

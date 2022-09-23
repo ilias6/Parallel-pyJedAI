@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyjedai"
-version = "0.0.2"
+version = "0.0.3"
 description = "An open-source library that builds powerful end-to-end Entity Resolution workflows."
 readme = "README.md"
 authors = [
@@ -18,6 +18,19 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: Implementation",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: Unix",
+    "Operating System :: iOS",
+    "Topic :: Database",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules"
 ]
 keywords = ["deduplication", "entity-resolution", "link-discovery"]
 requires-python = ">=3.9"
@@ -54,3 +67,4 @@ dev = ["pip-tools", "pytest"]
 "Homepage" = "https://github.com/Nikoletos-K/pyJedAI"
 "Documentation" = "https://github.com/Nikoletos-K/pyJedAI/wiki"
 "Bug Tracker" = "https://github.com/Nikoletos-K/pyJedAI/issues"
+"Source code" = "https://github.com/Nikoletos-K/pyJedAI"
