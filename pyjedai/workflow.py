@@ -11,7 +11,7 @@ from networkx import Graph
 from tqdm.notebook import tqdm
 
 from .datamodel import Data
-from .evaluation import Evaluation
+from .evaluation import Evaluation, write
 
 plt.style.use('seaborn-whitegrid')
 
@@ -43,6 +43,7 @@ class WorkFlow:
         self._id: int = next(self._id)
         self.name: str = name if name else "Workflow-" + str(self._id)
         self._workflow_bar: tqdm
+        self.final_pairs = None
 
     def run(
             self,
@@ -77,7 +78,7 @@ class WorkFlow:
         block_building_method = self.block_building['method'](**self.block_building["params"]) \
                                                     if "params" in self.block_building \
                                                     else self.block_building['method']()
-        block_building_blocks = block_building_method.build_blocks(
+        self.final_pairs = block_building_blocks = block_building_method.build_blocks(
             data,
             attributes_1=self.block_building["attributes_1"] \
                             if "attributes_1" in self.block_building else None,
@@ -105,7 +106,7 @@ class WorkFlow:
                 block_cleaning_blocks = block_cleaning_method.process(
                     bblocks, data, tqdm_disable=tqdm_disable
                 )
-                bblocks = block_cleaning_blocks
+                self.final_pairs = bblocks = block_cleaning_blocks
                 pj_eval.report(
                     bblocks, block_cleaning_method.method_configuration(), verbose=verbose
                 )
@@ -119,7 +120,7 @@ class WorkFlow:
             comparison_cleaning_method = self.comparison_cleaning['method'](**self.comparison_cleaning["params"]) \
                                             if "params" in self.comparison_cleaning \
                                             else self.comparison_cleaning['method']()
-            comparison_cleaning_blocks = comparison_cleaning_method.process(
+            self.final_pairs = comparison_cleaning_blocks = comparison_cleaning_method.process(
                 block_cleaning_blocks if block_cleaning_blocks is not None \
                     else block_building_blocks,
                 data,
@@ -138,7 +139,7 @@ class WorkFlow:
         entity_matching_method = self.entity_matching['method'](**self.entity_matching["params"]) \
                                         if "params" in self.entity_matching \
                                         else self.entity_matching['method']()
-        em_graph = entity_matching_method.predict(
+        self.final_pairs = em_graph = entity_matching_method.predict(
             comparison_cleaning_blocks if comparison_cleaning_blocks is not None \
                 else block_building_blocks,
             data,
@@ -156,7 +157,7 @@ class WorkFlow:
             clustering_method = self.clustering['method'](**self.clustering["params"]) \
                                             if "params" in self.entity_matching \
                                             else self.clustering['method']()
-            components = clustering_method.process(em_graph)
+            self.final_pairs = components = clustering_method.process(em_graph)
             pj_eval.report(
                 components, clustering_method.method_configuration(), verbose=verbose
             )
@@ -236,6 +237,9 @@ class WorkFlow:
         workflow_df['Algorithm'] = [c['name'] for c in self.configurations]
         workflow_df['Params'] = [c['parameters'] for c in self.configurations]
         return workflow_df
+
+    def export_pairs(self) -> pd.DataFrame:
+        return write(self.final_pairs, self.data)
 
     def _save_step(self, evaluation: Evaluation, configuration: dict) -> None:
         self.f1.append(evaluation.f1*100)
