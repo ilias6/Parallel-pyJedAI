@@ -66,6 +66,7 @@ class WorkFlow:
             desc=self.name,
             disable=not workflow_tqdm_enable
         )
+        self.data = data
         self._init_experiment()
         start_time = time()
         pj_eval = Evaluation(data)

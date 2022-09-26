@@ -1,8 +1,9 @@
 <div align="center">
-<br>
-<img align="center" src="https://github.com/Nikoletos-K/pyJedAI/blob/main/documentation/pyjedai.logo.drawio.png?raw=true" alt="pyJedAI" width="400"/>
+    <br>
+    <img align="center" src="https://github.com/Nikoletos-K/pyJedAI/blob/main/documentation/pyjedai.logo.drawio.png?raw=true" alt="pyJedAI" width="400"/>
 </div>
-<br><br>
+<br>
+<br>
 <div align="center">
 An open-source library that leverages Python’s data science ecosystem to build <br> powerful end-to-end Entity Resolution workflows.
 </div>
@@ -33,16 +34,21 @@ pyJedAI is a python framework, aiming to offer experts and novice users, robust 
 - Utilizes some of the famous and cutting-edge machine learning packages.
 - Offers supervised and un-supervised ML techniques.
 
-__Open demos are available in:__
+__Open demo python notebook:__
 
 <div align="center">
-<a href="https://nbviewer.org/github/Nikoletos-K/pyJedAI/blob/main/Demo.ipynb">
-<img align="center" src="https://nbviewer.org/static/img/nav_logo.svg" width=120/> 
-</a>  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-<a href="https://github.com/Nikoletos-K/pyJedAI/blob/main/Demo.ipynb">
-<img align="center" src="https://miro.medium.com/max/1400/1*Edn_LpbSpLeNKfWkEdG2Jg.png" width=120/> 
-</a>
+    <a href="https://nbviewer.org/github/Nikoletos-K/pyJedAI/blob/main/tutorials/Demo.ipynb">
+        <img align="center" src="https://nbviewer.org/static/img/nav_logo.svg" width=120/> 
+    </a>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <a href="https://github.com/Nikoletos-K/pyJedAI/blob/main/tutorials/Demo.ipynb">
+        <img align="center" src="https://miro.medium.com/max/1400/1*Edn_LpbSpLeNKfWkEdG2Jg.png" width=120/> 
+    </a>
 </div>
+
+<br> 
+
+For more tutorials go to [pyJedAI/tutorials](https://github.com/Nikoletos-K/pyJedAI/tree/main/tutorials).
 
 # Install
 
@@ -51,7 +57,7 @@ Install the latest version of pyjedai __[requires python >= 3.9]__:
 pip install pyjedai
 ```
 
-The source code is currently hosted on GitHub at: [https://github.com/Nikoletos-K/pyJedAI](https://github.com/Nikoletos-K/pyJedAI).
+The source code is currently hosted on GitHub at: [github.com/Nikoletos-K/pyJedAI](https://github.com/Nikoletos-K/pyJedAI).
 
 
 # Dependencies
@@ -70,6 +76,8 @@ The source code is currently hosted on GitHub at: [https://github.com/Nikoletos-
 <img align="center" src="https://raw.githubusercontent.com/RDFLib/OWL-RL/master/OWL-RL.png" width=70/> 
 </div>
 
+<br>
+<br>
 
 See the full list of dependencies and all versions used, in this [file](https://github.com/Nikoletos-K/pyJedAI/blob/main/requirements.txt).
 

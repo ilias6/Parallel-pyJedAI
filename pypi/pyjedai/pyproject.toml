@@ -13,7 +13,7 @@ authors = [
     { name = "Konstantinos Nikoletos", email = "nikoletos.kon@gmail.com" },
     { name = "George Papadakis", email = "gpapadis84@gmail.com" },
 ]
-license = "Apache Software License 2.0"
+license = {text = "Apache Software License 2.0"}
 classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python",
@@ -67,4 +67,4 @@ dev = ["pip-tools", "pytest"]
 "Homepage" = "https://github.com/Nikoletos-K/pyJedAI"
 "Documentation" = "https://github.com/Nikoletos-K/pyJedAI/wiki"
 "Bug Tracker" = "https://github.com/Nikoletos-K/pyJedAI/issues"
-"Source code" = "https://github.com/Nikoletos-K/pyJedAI"
+"Source code" = "https://github.com/Nikoletos-K/pyJedAI/tree/main/pyjedai"

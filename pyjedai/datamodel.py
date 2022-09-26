@@ -90,10 +90,10 @@ class Data:
         """
         print("Type of Entity Resolution: ", "Dirty" if self.is_dirty_er else "Clean-Clean" )
         print("Number of entities in D1: ", self.num_of_entities_1)
-        print("Attributes provided  for D1: ", self.attributes_1)
+        print("Attributes provided for D1: ", self.attributes_1)
         if not self.is_dirty_er: 
             print("\nNumber of entities in D2: ", self.num_of_entities_2)
-            print("Attributes provided  for D2: ", self.attributes_2)
+            print("Attributes provided for D2: ", self.attributes_2)
         print("\nTotal number of entities: ", self.num_of_entities)
         if self.ground_truth is not None:
             print("Number of matching pairs in ground-truth: ", len(self.ground_truth))
