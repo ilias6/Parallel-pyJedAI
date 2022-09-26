@@ -6,7 +6,6 @@
 <div align="center">
 An open-source library that leverages Python’s data science ecosystem to build <br> powerful end-to-end Entity Resolution workflows.
 </div>
-<br>
 
 ---
 
@@ -22,17 +21,17 @@ An open-source library that leverages Python’s data science ecosystem to build
 --->
 
 
-# What is it?
+# Overview
 
-pyJedAI is a python framework, aiming to offer experts and non-experts users, robust and fast solutions for multiple types of Entity Resolution problems. It is builded using state-of-the-art python frameworks. pyJedAI constitutes the sole open-source Link Discovery tool that is capable of exploiting the latest breakthroughs in Deep Learning and NLP techniques, which are publicly available through the Python data science ecosystem. This applies to both blocking and matching, thus ensuring high time efficiency, high scalability as well as high effectiveness, without requiring any labelled instances from the user.
+pyJedAI is a python framework, aiming to offer experts and novice users, robust and fast solutions for multiple types of Entity Resolution problems. It is builded using state-of-the-art python frameworks. pyJedAI constitutes the sole open-source Link Discovery tool that is capable of exploiting the latest breakthroughs in Deep Learning and NLP techniques, which are publicly available through the Python data science ecosystem. This applies to both blocking and matching, thus ensuring high time efficiency, high scalability as well as high effectiveness, without requiring any labelled instances from the user.
 
-### Main Features
+### Key-Features
 
-- Input data type independent. Both structured and semi-structured data can be processed.
+- Input data-type independent. Both structured and semi-structured data can be processed.
 - Various implemented algorithms.
 - Easy-to-use.
 - Utilizes some of the famous and cutting-edge machine learning packages.
-- Offers Supervised and un-supervised ML techniques.
+- Offers supervised and un-supervised ML techniques.
 
 __Open demos are available in:__
 
@@ -74,24 +73,19 @@ The source code is currently hosted on GitHub at: [https://github.com/Nikoletos-
 
 See the full list of dependencies and all versions used, in this [file](https://github.com/Nikoletos-K/pyJedAI/blob/main/requirements.txt).
 
-# Bugs
+# Bugs, Discussions & News
 
-Please report any bugs that you find [here](https://github.com/Nikoletos-K/pyJedAI/issues).
-
-# Discussions & News
-
-[GitHub Discussions](https://github.com/Nikoletos-K/pyJedAI/discussions) is the discussion forum for general questions and discussions and our recommended starting point.
+[GitHub Discussions](https://github.com/Nikoletos-K/pyJedAI/discussions) is the discussion forum for general questions and discussions and our recommended starting point. Please report any bugs that you find [here](https://github.com/Nikoletos-K/pyJedAI/issues).
 
 # Team & Authors
 
-
-<img align="right" src="https://www.di.uoa.gr/themes/corporate_lite/logo_en.png" alt="pyJedAI" width="250"/>
+<img align="right" src="https://www.di.uoa.gr/themes/corporate_lite/logo_en.png" alt="pyJedAI" width="400"/>
 
 - [Konstantinos Nikoletos](https://nikoletos-k.github.io)
 - [George Papadakis](https://gpapadis.wordpress.com)
 - [Manolis Koubarakis](https://cgi.di.uoa.gr/~koubarak/)
 
-<br>
+Research and development is made under the supervision of Pr. Manolis Koubarakis. This is a research project by the [AI-Team](https://ai.di.uoa.gr) of the Department of Informatics and Telecommunications at the University of Athens.
 
 # License
 
