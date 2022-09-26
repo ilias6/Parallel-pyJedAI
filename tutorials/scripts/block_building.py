@@ -8,12 +8,14 @@ from networkx import (
     Graph,
 )
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
-from pyjedai.utils import print_clusters, print_blocks, print_candidate_pairs, text_cleaning_method
-from pyjedai.evaluation import Evaluation
-from pyjedai.datamodel import Data
+sys.path.append(os.path.join(os.path.dirname(__file__), '../src/'))
+from utils.tokenizer import cora_text_cleaning_method
+from utils.utils import print_clusters
+from blocks.utils import print_blocks, print_candidate_pairs
+from evaluation.scores import Evaluation
+from datamodel import Data
 
-from pyjedai.block_building import (
+from blocks.building import (
     StandardBlocking,
     QGramsBlocking,
     SuffixArraysBlocking,
@@ -21,12 +23,13 @@ from pyjedai.block_building import (
     ExtendedQGramsBlocking
 )
 
+
 # ---------------------------------------- #
 # --------------- Dirty ER --------------- #
 # ---------------------------------------- #
 
-d1 = pd.read_csv("../../data/cora/cora.csv", sep='|')
-gt = pd.read_csv("../../data/cora/cora_gt.csv", sep='|', header=None)
+d1 = pd.read_csv("../data/cora/cora.csv", sep='|')
+gt = pd.read_csv("../data/cora/cora_gt.csv", sep='|', header=None)
 attr = ['Entity Id','author', 'title']
 
 data = Data(
@@ -37,7 +40,7 @@ data = Data(
 )
 
 print("\n\nDirty ER in CORA dataset:\n")
-data.process()
+data.process(cora_text_cleaning_method)
 data.print_specs()
 print("\n- StandardBlocking")
 blocks = StandardBlocking().build_blocks(data)
@@ -52,7 +55,7 @@ Evaluation(data).report(blocks)
 print("\n- ExtendedQGramsBlocking")
 blocks = ExtendedQGramsBlocking(
     qgrams=2,
-    threshold=0.5
+    threshold=0.9
 ).build_blocks(data)
 Evaluation(data).report(blocks)
 
@@ -61,9 +64,9 @@ Evaluation(data).report(blocks)
 # --------------- Clean-Clean ER --------------- #
 # ---------------------------------------------- #
 
-d1 = pd.read_csv("../../data/D2/abt.csv", sep='|', engine='python').astype(str)
-d2 = pd.read_csv("../../data/D2/buy.csv", sep='|', engine='python').astype(str)
-gt = pd.read_csv("../../data/D2/gt.csv", sep='|', engine='python')
+d1 = pd.read_csv("../data/D2/abt.csv", sep='|', engine='python').astype(str)
+d2 = pd.read_csv("../data/D2/buy.csv", sep='|', engine='python').astype(str)
+gt = pd.read_csv("../data/D2/gt.csv", sep='|', engine='python')
 
 data = Data(
     dataset_1=d1,
@@ -72,11 +75,11 @@ data = Data(
     dataset_2=d2,
     attributes_2=['id','name','description'],
     id_column_name_2='id',
-    ground_truth=gt
+    ground_truth=gt,
 )
 
 print("\n\nClean-Clean ER in ABT-BUY dataset:\n")
-data.process()
+data.process(cora_text_cleaning_method)
 data.print_specs()
 print("\n- StandardBlocking")
 blocks = StandardBlocking().build_blocks(data)
@@ -84,13 +87,13 @@ Evaluation(data).report(blocks)
 
 print("\n- QGramsBlocking")
 blocks = QGramsBlocking(
-    qgrams=3
+    qgrams=2
 ).build_blocks(data)
 Evaluation(data).report(blocks)
 
 print("\n- ExtendedQGramsBlocking")
 blocks = ExtendedQGramsBlocking(
-    qgrams=5,
+    qgrams=2,
     threshold=0.9
 ).build_blocks(data)
 Evaluation(data).report(blocks)
