@@ -71,6 +71,15 @@ __Brainstorming-sheet__: [google-sheet](https://docs.google.com/spreadsheets/d/1
 [Link to instructions](https://machinelearningmastery.com/profiling-python-code/)
 
 </details>
+<details>
+<summary>Optimization ideas</summary>
 
+1. Avoid pd.itterows()
+2. Avoid looping in a set -> transform it first with list()
+3. PyPy      
+
+[Link to instructions](https://machinelearningmastery.com/profiling-python-code/)
+
+</details>
 
 
