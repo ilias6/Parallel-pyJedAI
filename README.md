@@ -61,4 +61,16 @@ __Brainstorming-sheet__: [google-sheet](https://docs.google.com/spreadsheets/d/1
 
 </details>
 
+<details>
+<summary>Code profiling</summary>
+
+1. Run with profiler: `python -m cProfile _profiling.py`
+2. Save stats: `python -m cProfile -o _profiling.stats _profiling.py`
+3. View stats: `python -m pstats _profiling.stats`
+
+[Link to instructions](https://machinelearningmastery.com/profiling-python-code/)
+
+</details>
+
+
 
