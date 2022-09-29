@@ -81,5 +81,8 @@ __Brainstorming-sheet__: [google-sheet](https://docs.google.com/spreadsheets/d/1
 [Link to instructions](https://machinelearningmastery.com/profiling-python-code/)
 
 </details>
+<details>
+<summary>Mercury</summary>
 
+</details>
 
