@@ -32,7 +32,7 @@ pyJedAI is a python framework, aiming to offer experts and novice users, robust 
 - Various implemented algorithms.
 - Easy-to-use.
 - Utilizes some of the famous and cutting-edge machine learning packages.
-- Offers supervised and un-supervised ML techniques.
+- Offers supervised and unsupervised ML techniques.
 
 __Open demo python notebook:__
 
@@ -52,7 +52,7 @@ For more tutorials go to [pyJedAI/tutorials](https://github.com/Nikoletos-K/pyJe
 
 # Install
 
-Install the latest version of pyjedai __[requires python >= 3.9]__:
+Install the latest version of pyjedai __[requires python >= 3.7]__:
 ```
 pip install pyjedai
 ```
@@ -99,4 +99,4 @@ Research and development is made under the supervision of Pr. Manolis Koubarakis
 
 Released under the Apache-2.0 license [(see LICENSE.txt)](https://github.com/Nikoletos-K/pyJedAI/blob/main/LICENSE).
 
-Copyright © 2022 pyJedAI Developers
+Copyright © 2022 AI-Team (University of Athens)
