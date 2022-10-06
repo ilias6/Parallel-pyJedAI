@@ -107,6 +107,7 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
             isolated_attr_dataset_2 = data.dataset_2[attributes_1].apply(" ".join, axis=1)
 
         vectors_1 = []
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if self.vectorizer in ['word2vec', 'fasttext', 'doc2vec', 'glove']:
             # ------------------- #
             # Gensim Embeddings
@@ -150,6 +151,9 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
             elif self.vectorizer == 'albert':
                 tokenizer = AlbertTokenizer.from_pretrained('albert-base-v2')
                 model = AlbertModel.from_pretrained("albert-base-v2")
+
+            model = model.to(device)
+
             for i in range(0, data.num_of_entities_1, 1):
                 record = isolated_attr_dataset_1.iloc[i] if attributes_1 \
                             else data.entities_d1.iloc[i]
@@ -159,7 +163,7 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
                     truncation=True,
                     max_length=100,
                     padding='max_length'
-                )
+                ).to(device)
                 output = model(**encoded_input)
                 vector = output.last_hidden_state[:, 0, :]
                 vector = vector.detach().numpy()
@@ -189,7 +193,6 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
             # ---------------------------- #
             # Pre-trained Sentence Embeddings
             # ---------------------------- #
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             model = SentenceTransformer(self._sentence_transformer_mapping[self.vectorizer], device=device)
             for i in range(0, data.num_of_entities_1, 1):
                 record = isolated_attr_dataset_1.iloc[i] if attributes_1 \

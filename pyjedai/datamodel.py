@@ -2,7 +2,7 @@ import pandas as pd
 from pandas import DataFrame, concat
 
 class Data:
-    """Class that is the contains the corpus of the dataset that will be processed with pyjedai. \
+    """The corpus of the dataset that will be processed with pyjedai. \
         Contains all the information of the dataset and will be passed to each step \
         of the ER workflow.
     """

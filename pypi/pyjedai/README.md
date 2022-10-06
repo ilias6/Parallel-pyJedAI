@@ -1,6 +1,6 @@
 <div align="center">
     <br>
-    <img align="center" src="https://github.com/Nikoletos-K/pyJedAI/blob/main/documentation/pyjedai.logo.drawio.png?raw=true" alt="pyJedAI" width="400"/>
+    <img align="center" src="https://github.com/AI-team-UoA/pyJedAI/blob/main/documentation/pyjedai.logo.drawio.png?raw=true" alt="pyJedAI" width="400"/>
 </div>
 <br>
 <br>
@@ -10,7 +10,7 @@ An open-source library that leverages Python’s data science ecosystem to build
 
 ---
 
-[![Tests](https://github.com/Nikoletos-K/pyJedAI/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Nikoletos-K/pyJedAI/actions/workflows/tests.yml)
+[![Tests](https://github.com/AI-team-UoA/pyJedAI/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/AI-team-UoA/pyJedAI/actions/workflows/tests.yml)
 [![Linux](https://svgshare.com/i/Zhy.svg)](https://svgshare.com/i/Zhy.svg)
 [![macOS](https://svgshare.com/i/ZjP.svg)](https://svgshare.com/i/ZjP.svg)
 [![Windows](https://svgshare.com/i/ZhY.svg)](https://svgshare.com/i/ZhY.svg)
@@ -32,23 +32,23 @@ pyJedAI is a python framework, aiming to offer experts and novice users, robust 
 - Various implemented algorithms.
 - Easy-to-use.
 - Utilizes some of the famous and cutting-edge machine learning packages.
-- Offers supervised and unsupervised ML techniques.
+<!-- - Offers supervised and unsupervised ML techniques. -->
 
 __Open demo python notebook:__
 
 <div align="center">
-    <a href="https://nbviewer.org/github/Nikoletos-K/pyJedAI/blob/main/tutorials/Demo.ipynb">
+    <a href="https://nbviewer.org/github/AI-team-UoA/pyJedAI/blob/main/tutorials/Demo.ipynb">
         <img align="center" src="https://nbviewer.org/static/img/nav_logo.svg" width=120/> 
     </a>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-    <a href="https://github.com/Nikoletos-K/pyJedAI/blob/main/tutorials/Demo.ipynb">
+    <a href="https://github.com/AI-team-UoA/pyJedAI/blob/main/tutorials/Demo.ipynb">
         <img align="center" src="https://miro.medium.com/max/1400/1*Edn_LpbSpLeNKfWkEdG2Jg.png" width=120/> 
     </a>
 </div>
 
 <br> 
 
-For more tutorials go to [pyJedAI/tutorials](https://github.com/Nikoletos-K/pyJedAI/tree/main/tutorials).
+For more tutorials go to [pyJedAI/tutorials](https://github.com/AI-team-UoA/pyJedAI/tree/main/tutorials).
 
 # Install
 
@@ -57,7 +57,7 @@ Install the latest version of pyjedai __[requires python >= 3.7]__:
 pip install pyjedai
 ```
 
-The source code is currently hosted on GitHub at: [github.com/Nikoletos-K/pyJedAI](https://github.com/Nikoletos-K/pyJedAI).
+The source code is currently hosted on GitHub at: [AI-team-UoA/pyJedAI](https://github.com/AI-team-UoA/pyJedAI).
 
 
 # Dependencies
@@ -79,11 +79,11 @@ The source code is currently hosted on GitHub at: [github.com/Nikoletos-K/pyJedA
 <br>
 <br>
 
-See the full list of dependencies and all versions used, in this [file](https://github.com/Nikoletos-K/pyJedAI/blob/main/requirements.txt).
+See the full list of dependencies and all versions used, in this [file](https://github.com/AI-team-UoA/pyJedAI/blob/main/requirements.txt).
 
 # Bugs, Discussions & News
 
-[GitHub Discussions](https://github.com/Nikoletos-K/pyJedAI/discussions) is the discussion forum for general questions and discussions and our recommended starting point. Please report any bugs that you find [here](https://github.com/Nikoletos-K/pyJedAI/issues).
+[GitHub Discussions](https://github.com/AI-team-UoA/pyJedAI/discussions) is the discussion forum for general questions and discussions and our recommended starting point. Please report any bugs that you find [here](https://github.com/AI-team-UoA/pyJedAI/issues).
 
 # Team & Authors
 
@@ -97,6 +97,6 @@ Research and development is made under the supervision of Pr. Manolis Koubarakis
 
 # License
 
-Released under the Apache-2.0 license [(see LICENSE.txt)](https://github.com/Nikoletos-K/pyJedAI/blob/main/LICENSE).
+Released under the Apache-2.0 license [(see LICENSE.txt)](https://github.com/AI-team-UoA/pyJedAI/blob/main/LICENSE).
 
-Copyright © 2022 AI-Team (University of Athens)
+2022-2023 | AI-Team @ University of Athens
