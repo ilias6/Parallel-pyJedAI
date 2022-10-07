@@ -59,7 +59,10 @@ class EntityMatching:
         elif self.metric == 'overlap_coefficient':
             self._metric = OverlapCoefficient().distance
 
-    def predict(self, blocks: dict, data: Data, tqdm_disable: bool = False) -> Graph:
+    def predict(self,
+                blocks: dict,
+                data: Data,
+                tqdm_disable: bool = False) -> Graph:
         """Main method of entity matching. Inputs a set of blocks and outputs a graph \
             that contains of the entity ids (nodes) and the similarity scores between them (edges).
 

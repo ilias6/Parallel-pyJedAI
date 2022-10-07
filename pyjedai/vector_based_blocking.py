@@ -153,7 +153,6 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
                 model = AlbertModel.from_pretrained("albert-base-v2")
 
             model = model.to(device)
-
             for i in range(0, data.num_of_entities_1, 1):
                 record = isolated_attr_dataset_1.iloc[i] if attributes_1 \
                             else data.entities_d1.iloc[i]

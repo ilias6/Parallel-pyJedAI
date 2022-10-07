@@ -47,7 +47,7 @@ class AbstractBlockBuilding:
         """
 
         _start_time = time.time()
-        self.blocks = dict()
+        self.blocks = {}
         self.data, self.attributes_1, self.attributes_2 = data, attributes_1, attributes_2
         self._progress_bar = tqdm(
             total=data.num_of_entities, desc=self._method_name, disable=tqdm_disable
