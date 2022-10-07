@@ -17,7 +17,6 @@ dirty_data = Data(
     ground_truth=pd.read_csv("data/cora/cora_gt.csv", sep='|', header=None),
     attributes_1=['Entity Id', 'author', 'title']
 )
-dirty_data.process()
 dirty_data.print_specs()
 
 def test_datamodel_dirty_er():
