@@ -1,7 +1,3 @@
-import os
-import sys
-import pandas as pd
-sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 from pyjedai.datamodel import Data
 from pyjedai.block_building import (
     StandardBlocking,
@@ -10,6 +6,12 @@ from pyjedai.block_building import (
     ExtendedSuffixArraysBlocking,
     ExtendedQGramsBlocking
 )
+
+import os
+import sys
+import pandas as pd
+sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
+
 
 dirty_data = Data(
     dataset_1=pd.read_csv("data/cora/cora.csv", sep='|'),
@@ -31,7 +33,6 @@ clean_clean_data = Data(
     id_column_name_2='id',
     ground_truth=pd.read_csv("data/D2/gt.csv", sep='|', engine='python')
 )
-clean_clean_data.process()
 clean_clean_data.print_specs()
 
 def test_datamodel_clean_clean_er():

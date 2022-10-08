@@ -1,3 +1,5 @@
+"""Datamodel of pyjedai.
+"""
 import pandas as pd
 from pandas import DataFrame, concat
 
@@ -23,13 +25,15 @@ class Data:
         else:
             raise AttributeError("Dataset 1 must be a pandas DataFrame")
 
-        if isinstance(dataset_2, pd.DataFrame):
-            self.dataset_2 = dataset_2
-        else:
-            raise AttributeError("Dataset 2 must be a pandas DataFrame")
+        if dataset_2 is not None:
+            if id_column_name_2 is None:
+                raise AttributeError("Must provide datasets 2 id column")
 
-        if dataset_2 is not None and id_column_name_2 is None:
-            raise AttributeError("Must provide datasets 2 id column")
+            if isinstance(dataset_2, pd.DataFrame):
+                self.dataset_2 = dataset_2
+                
+            else:
+                raise AttributeError("Dataset 2 must be a pandas DataFrame")
 
         # Processed dataframes - All attributes are concatenated
         self.entities_d1: DataFrame
@@ -62,7 +66,7 @@ class Data:
         self.id_column_name_2 = id_column_name_2
 
         # Ground truth data
-        if ground_truth:
+        if ground_truth is not None:
             self.ground_truth = ground_truth.astype(str)
             self._ids_mapping_1: dict
             self._gt_to_ids_reversed_1: dict
