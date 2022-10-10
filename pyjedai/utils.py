@@ -1,4 +1,5 @@
 import numpy as np
+from pyjedai.datamodel import Block
 
 # Constants
 EMPTY = -1
@@ -20,25 +21,27 @@ def create_entity_index(blocks: dict, is_dirty_er: bool):
     return entity_index
 
 def drop_big_blocks_by_size(blocks: dict, max_block_size: int) -> dict:
-    all_keys = list(blocks.keys())
-    for key in all_keys:
-        if blocks[key].get_size() > max_block_size:
-            del blocks[key]
-    return blocks
+    return dict(filter(
+        lambda e: not block_with_one_entity(e[1], is_dirty_er) 
+                    and not e[1].get_size() > max_block_size,
+                blocks.items()
+        )
+    )
+    # all_keys = list(blocks.keys())
+    # for key in all_keys:
+    #     if blocks[key].get_size() > max_block_size:
+    #         del blocks[key]
+    # return blocks
 
 def drop_single_entity_blocks(blocks: dict, is_dirty_er: bool) -> dict:
     """Removes one-size blocks for DER and empty for CCER
     """
-    all_keys = list(blocks.keys())
-    if is_dirty_er:
-        for key in all_keys:
-            if len(blocks[key].entities_D1) == 1:
-                del blocks[key]
-    else:
-        for key in all_keys:
-            if len(blocks[key].entities_D1) == 0 or len(blocks[key].entities_D2) == 0:
-                del blocks[key]
-    return blocks
+    return dict(filter(lambda e: not block_with_one_entity(e[1], is_dirty_er), blocks.items()))
+    
+def block_with_one_entity(block: Block, is_dirty_er: bool) -> bool:
+    return True if ((is_dirty_er and len(block.entities_D1) == 1) or \
+        (not is_dirty_er and (len(block.entities_D1) == 0 or len(block.entities_D2) == 0))) \
+            else False
 
 def print_blocks(blocks, is_dirty_er):
     print("Number of blocks: ", len(blocks))

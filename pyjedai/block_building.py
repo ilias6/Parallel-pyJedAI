@@ -1,3 +1,4 @@
+import itertools
 import nltk
 import math
 import re
@@ -5,6 +6,7 @@ import time
 import logging as log
 from tqdm.notebook import tqdm
 import numpy as np
+from collections import defaultdict
 
 from .datamodel import Block, Data
 from .utils import drop_big_blocks_by_size, drop_single_entity_blocks
@@ -47,34 +49,46 @@ class AbstractBlockBuilding:
         """
 
         _start_time = time.time()
-        self.blocks = {}
         self.data, self.attributes_1, self.attributes_2 = data, attributes_1, attributes_2
         self._progress_bar = tqdm(
             total=data.num_of_entities, desc=self._method_name, disable=tqdm_disable
         )
 
-        if attributes_1:
-            isolated_attr_dataset_1 = data.dataset_1[attributes_1].apply(" ".join, axis=1)
-        if attributes_2:
-            isolated_attr_dataset_2 = data.dataset_2[attributes_1].apply(" ".join, axis=1)
+        
+        self._entities_d1 = data.dataset_1[attributes_1 if attributes_1 else data.attributes_1] \
+                            .apply(" ".join, axis=1) \
+                            .apply(self._tokenize_entity) \
+                            .values.tolist()
+                        # if attributes_1 else data.entities_d1.apply(self._tokenize_entity)
 
-        for i in range(0, data.num_of_entities_1, 1):
-            record = isolated_attr_dataset_1.iloc[i] if attributes_1 \
-                        else data.entities_d1.iloc[i]
-            for token in self._tokenize_entity(record):
-                self.blocks.setdefault(token, Block())
-                self.blocks[token].entities_D1.add(i)
-            self._progress_bar.update(1)
+        self._all_tokens = set(itertools.chain.from_iterable(self._entities_d1))
+
         if not data.is_dirty_er:
-            for i in range(0, data.num_of_entities_2, 1):
-                record = isolated_attr_dataset_2.iloc[i] if attributes_2 \
-                            else data.entities_d2.iloc[i]
-                for token in self._tokenize_entity(record):
+            self._entities_d2 = data.dataset_2[attributes_2 if attributes_2 else data.attributes_2] \
+                    .apply(" ".join, axis=1) \
+                    .apply(self._tokenize_entity) \
+                    .values.tolist()
+            self._all_tokens.union(set(itertools.chain.from_iterable(self._entities_d2)))
+
+        entity_id = itertools.count()
+        self.blocks = {}
+        self.blocks.fromkeys(self._all_tokens)
+        for entity in self._entities_d1:
+            eid = next(entity_id)
+            for token in entity:
+                self.blocks.setdefault(token, Block())
+                self.blocks[token].entities_D1.add(eid)
+            self._progress_bar.update(1)
+
+        if not data.is_dirty_er:
+            for entity in self._entities_d2:
+                eid = next(entity_id)
+                for token in entity:
                     self.blocks.setdefault(token, Block())
-                    self.blocks[token].entities_D2.add(data.dataset_limit+i)
+                    self.blocks[token].entities_D2.add(eid)
                 self._progress_bar.update(1)
 
-        self.blocks = self._clean_blocks(drop_single_entity_blocks(self.blocks, data.is_dirty_er))
+        self.blocks = self._clean_blocks(self.blocks)
         self.execution_time = time.time() - _start_time
         self._progress_bar.close()
         return self.blocks
@@ -112,7 +126,7 @@ class StandardBlocking(AbstractBlockBuilding):
     def __init__(self) -> any:
         super().__init__()
 
-    def _tokenize_entity(self, entity: str) -> set:
+    def _tokenize_entity(self, entity: str) -> list:
         """Produces a list of workds of a given string
 
         Args:
@@ -121,11 +135,11 @@ class StandardBlocking(AbstractBlockBuilding):
         Returns:
             list: List of words
         """
-        return set(filter(None, re.split('[\\W_]', entity.lower())))
+        return list(set(filter(None, re.split('[\\W_]', entity.lower()))))
 
     def _clean_blocks(self, blocks: dict) -> dict:
         """No cleaning"""
-        return blocks
+        return drop_single_entity_blocks(self.blocks, self.data.is_dirty_er)
 
     def _configuration(self) -> dict:
         """No configuration"""
@@ -158,7 +172,7 @@ class QGramsBlocking(StandardBlocking):
         return keys
 
     def _clean_blocks(self, blocks: dict) -> dict:
-        return blocks
+        return drop_single_entity_blocks(self.blocks, self.data.is_dirty_er)
 
     def _configuration(self) -> dict:
         return {
@@ -296,7 +310,7 @@ class ExtendedQGramsBlocking(StandardBlocking):
         return resulting_combinations
 
     def _clean_blocks(self, blocks: dict) -> dict:
-        return blocks
+        return drop_single_entity_blocks(self.blocks, self.data.is_dirty_er)
 
     def _configuration(self) -> dict:
         return {

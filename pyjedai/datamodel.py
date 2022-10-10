@@ -31,13 +31,15 @@ class Data:
 
             if isinstance(dataset_2, pd.DataFrame):
                 self.dataset_2 = dataset_2
-                
             else:
                 raise AttributeError("Dataset 2 must be a pandas DataFrame")
 
-        # Processed dataframes - All attributes are concatenated
-        self.entities_d1: DataFrame
-        self.entities_d2: DataFrame = None
+        # Processed dataframes to lists (all attribute columns)
+        # Tranformed to list for optimization (list)
+        self.entities_d1: list
+        self.entities_d2: list = None
+
+        # D1 and D2 dataframes concatenated
         self.entities: DataFrame
 
         # Datasets specs
@@ -76,11 +78,11 @@ class Data:
         self.entities = self.dataset_1 = self.dataset_1.astype(str)
 
         # Concatenated columns into new dataframe
-        self.entities_d1 = self.dataset_1[self.attributes_1].apply(" ".join, axis=1)
+        self.entities_d1 = self.dataset_1[self.attributes_1]
 
         if not self.is_dirty_er:
             self.dataset_2 = self.dataset_2.astype(str)
-            self.entities_d2 = self.dataset_2[self.attributes_2].apply(" ".join, axis=1)
+            self.entities_d2 = self.dataset_2[self.attributes_2]
             self.entities = concat([self.dataset_1, self.dataset_2])
 
         self._create_gt_mapping()
@@ -125,7 +127,7 @@ class Data:
                 )
             )
 
-    def print_specs(self):
+    def print_specs(self) -> None:
         """Dataset report.
         """
         print("Type of Entity Resolution: ", "Dirty" if self.is_dirty_er else "Clean-Clean" )

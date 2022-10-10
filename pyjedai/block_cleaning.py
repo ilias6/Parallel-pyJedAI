@@ -140,15 +140,21 @@ class BlockPurging:
             raise AttributeError("Empty dict of blocks was given as input!")
         new_blocks = blocks.copy()
         self._set_threshold(new_blocks)
-        all_keys = list(new_blocks.keys())
-        for key in all_keys:
-            if new_blocks[key].get_cardinality(self.data.is_dirty_er) > self.max_comparisons_per_block:
-                del new_blocks[key]
-            self._progress_bar.update(1)
-        self.execution_time = time() - start_time
-        self._progress_bar.close()
+        # all_keys = list(new_blocks.keys())
+        return dict(
+            filter(
+                lambda e: new_blocks[e[0]].get_cardinality(self.data.is_dirty_er) <= self.max_comparisons_per_block, 
+                new_blocks.items()
+                )
+            )
+        # for key in all_keys:
+        #     if new_blocks[key].get_cardinality(self.data.is_dirty_er) > self.max_comparisons_per_block:
+        #         del new_blocks[key]
+        #     self._progress_bar.update(1)
+        # self.execution_time = time() - start_time
+        # self._progress_bar.close()
 
-        return new_blocks
+        # return new_blocks
 
     def _set_threshold(self, blocks: dict) -> None:
         """
