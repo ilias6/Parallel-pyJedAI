@@ -57,7 +57,7 @@ class BlockFiltering:
             desc=self._method_name,
             disable=self.tqdm_disable
         )
-        sorted_blocks = sort_blocks_cardinality(blocks, self.data.is_dirty_er)
+        sorted_blocks = _sort_blocks_cardinality(blocks, self.data.is_dirty_er)
         self._progress_bar.update(1)
         entity_index = create_entity_index(sorted_blocks, self.data.is_dirty_er)
         self._progress_bar.update(1)
@@ -124,37 +124,34 @@ class BlockPurging:
             data: Data,
             tqdm_disable: bool = False
     ) -> dict:
-        """Main method of Block Purging
+        """Main method of Block Purging.
 
         Args:
-            blocks (dict): _description_
-            data (Data): _description_
-            tqdm_disable (bool, optional): _description_. Defaults to False.
+            blocks (dict): Blocks of entities.
+            data (Data): Data module. Contains all the information about the dataset.
+            tqdm_disable (bool, optional): Disable progress bar. Defaults to False.
 
         Returns:
-            dict: _description_
+            dict: Purged blocks.
         """
         self.tqdm_disable, self.data, start_time = tqdm_disable, data, time()
-        self._progress_bar = tqdm(total=2*len(blocks), desc=self._method_name, disable=self.tqdm_disable)
+        self._progress_bar = tqdm(total=100, desc=self._method_name, disable=self.tqdm_disable)
         if not blocks:
             raise AttributeError("Empty dict of blocks was given as input!")
         new_blocks = blocks.copy()
         self._set_threshold(new_blocks)
-        # all_keys = list(new_blocks.keys())
-        return dict(
+        new_blocks = dict(
             filter(
-                lambda e: new_blocks[e[0]].get_cardinality(self.data.is_dirty_er) <= self.max_comparisons_per_block, 
+                lambda e: new_blocks[e[0]].get_cardinality(self.data.is_dirty_er) \
+                                            <= self.max_comparisons_per_block,
                 new_blocks.items()
-                )
             )
-        # for key in all_keys:
-        #     if new_blocks[key].get_cardinality(self.data.is_dirty_er) > self.max_comparisons_per_block:
-        #         del new_blocks[key]
-        #     self._progress_bar.update(1)
-        # self.execution_time = time() - start_time
-        # self._progress_bar.close()
+        )
+        self._progress_bar.update(100)
+        self._progress_bar.close()
+        self.execution_time = time() - start_time
+        return new_blocks
 
-        # return new_blocks
 
     def _set_threshold(self, blocks: dict) -> None:
         """
@@ -163,7 +160,7 @@ class BlockPurging:
         Args:
             blocks (dict): _description_
         """
-        sorted_blocks = sort_blocks_cardinality(blocks, self.data.is_dirty_er)
+        sorted_blocks = _sort_blocks_cardinality(blocks, self.data.is_dirty_er)
         distinct_comparisons_level = set(b.get_cardinality(self.data.is_dirty_er) \
                                         for _, b in sorted_blocks.items())
         block_assignments = np.empty([len(distinct_comparisons_level)])
@@ -203,6 +200,11 @@ class BlockPurging:
         return block.get_cardinality(self.data.is_dirty_er) <= self.max_comparisons_per_block
 
     def method_configuration(self) -> dict:
+        """Returns the specs of the given method.
+
+        Returns:
+            dict: Method specs
+        """
         return {
             "name" : self._method_name,
             "parameters" : self._configuration(),
@@ -226,5 +228,5 @@ class BlockPurging:
             "Runtime: {:2.4f} seconds".format(self.execution_time)
         )
 
-def sort_blocks_cardinality(blocks: dict, is_dirty_er: bool) -> dict:
+def _sort_blocks_cardinality(blocks: dict, is_dirty_er: bool) -> dict:
     return dict(sorted(blocks.items(), key=lambda x: x[1].get_cardinality(is_dirty_er)))

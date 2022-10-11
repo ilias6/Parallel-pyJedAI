@@ -54,7 +54,7 @@ class AbstractBlockBuilding:
             total=data.num_of_entities, desc=self._method_name, disable=tqdm_disable
         )
 
-        
+        # TODO Text process function can be applied in this step (.apply)
         self._entities_d1 = data.dataset_1[attributes_1 if attributes_1 else data.attributes_1] \
                             .apply(" ".join, axis=1) \
                             .apply(self._tokenize_entity) \
@@ -207,7 +207,7 @@ class SuffixArraysBlocking(StandardBlocking):
         return keys
 
     def _clean_blocks(self, blocks: dict) -> dict:
-        return drop_big_blocks_by_size(blocks, self.max_block_size)
+        return drop_big_blocks_by_size(blocks, self.max_block_size, self.data.is_dirty_er)
 
     def _configuration(self) -> dict:
         return {
@@ -243,7 +243,7 @@ class ExtendedSuffixArraysBlocking(StandardBlocking):
         return keys
 
     def _clean_blocks(self, blocks: dict) -> dict:
-        return drop_big_blocks_by_size(blocks, self.max_block_size)
+        return drop_big_blocks_by_size(blocks, self.max_block_size, self.data.is_dirty_er)
 
     def _configuration(self) -> dict:
         return {
