@@ -68,10 +68,8 @@ class BlockFiltering:
                 filtered_blocks.setdefault(key, Block())
                 # Entities ids start to 0 ... n-1 for 1st dataset
                 # and n ... m for 2nd dataset
-                if entity_id < self.data.dataset_limit:
-                    filtered_blocks[key].entities_D1.add(entity_id)
-                else:
-                    filtered_blocks[key].entities_D2.add(entity_id)
+                _ = filtered_blocks[key].entities_D1.add(entity_id) if entity_id < self.data.dataset_limit \
+                    else filtered_blocks[key].entities_D2.add(entity_id)
         self._progress_bar.update(1)
         self.blocks = drop_single_entity_blocks(filtered_blocks, self.data.is_dirty_er)
         self._progress_bar.close()
@@ -154,8 +152,7 @@ class BlockPurging:
 
 
     def _set_threshold(self, blocks: dict) -> None:
-        """
-        TODO _summary_
+        """Calculates the maximum number of comparisons per block, so in the next step to be purged.
 
         Args:
             blocks (dict): _description_
