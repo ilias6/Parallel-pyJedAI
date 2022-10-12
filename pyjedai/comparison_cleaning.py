@@ -21,7 +21,7 @@ class AbstractComparisonCleaning:
         self._entity_index: dict
         self._progress_bar: tqdm
         self._weighting_scheme: str
-        self._blocks: dict() # initial blocks
+        self._blocks: dict # initial blocks
         self.blocks = dict() # blocks after CC
         self.tqdm_disable: bool
         self._progress_bar: tqdm
@@ -45,7 +45,7 @@ class AbstractComparisonCleaning:
             dict: cleaned blocks
         """
         start_time = time()
-        self.tqdm_disable, self.data = tqdm_disable, data, 
+        self.tqdm_disable, self.data = tqdm_disable, data
         self._entity_index = create_entity_index(blocks, self.data.is_dirty_er)
         self._num_of_blocks = len(blocks)
         self._blocks: dict = blocks
@@ -59,10 +59,15 @@ class AbstractComparisonCleaning:
         blocks = self._apply_main_processing()
         self.execution_time = time() - start_time
         self._progress_bar.close()
-        
+
         return blocks
 
     def method_configuration(self) -> dict:
+        """Abstact method configuration
+
+        Returns:
+            dict: Specs.
+        """
         return {
             "name" : self._method_name,
             "parameters" : self._configuration(),
@@ -84,10 +89,9 @@ class AbstractComparisonCleaning:
         )
 
 class AbstractMetablocking(AbstractComparisonCleaning):
-    """
-    Restructure a redundancy-positive block collection into a new
-    one that contains substantially lower number of redundant
-    and superfluous comparisons, while maintaining the original number of matching ones
+    """Restructure a redundancy-positive block collection into a new
+        one that contains substantially lower number of redundant
+        and superfluous comparisons, while maintaining the original number of matching ones
     """
 
     def __init__(self) -> None:
@@ -111,6 +115,7 @@ class AbstractMetablocking(AbstractComparisonCleaning):
         if self.weighting_scheme == 'EJS':
             self._set_statistics()
         self._set_threshold()
+        
         return self._prune_edges()
 
     def _get_weight(self, entity_id: int, neighbor_id: int) -> float:
@@ -145,9 +150,15 @@ class AbstractMetablocking(AbstractComparisonCleaning):
         self._neighbors.clear()
         if self.data.is_dirty_er:
             if not self._node_centric:
-                self._neighbors.update([neighbor_id for neighbor_id in self._blocks[block_key].entities_D1 if neighbor_id < entity_id])
+                self._neighbors.update(
+                    [neighbor_id for neighbor_id in self._blocks[block_key].entities_D1 \
+                        if neighbor_id < entity_id]
+                )
             else:
-                self._neighbors.update([neighbor_id for neighbor_id in self._blocks[block_key].entities_D1 if neighbor_id != entity_id])
+                self._neighbors.update(
+                    [neighbor_id for neighbor_id in self._blocks[block_key].entities_D1 \
+                        if neighbor_id != entity_id]
+                )
         else:
             if entity_id < self.data.dataset_limit:
                 self._neighbors.update(self._blocks[block_key].entities_D2)
@@ -181,13 +192,7 @@ class AbstractMetablocking(AbstractComparisonCleaning):
         return self._blocks[block_id].entities_D1
         
 class ComparisonPropagation(AbstractComparisonCleaning):
-    """_summary_
-    TODO ComparisonPropagation
-    Args:
-        AbstractComparisonCleaning (_type_): _description_
-
-    Returns:
-        _type_: _description_
+    """Comparison Propagation
     """
 
     _method_name = "Comparison Propagation"
@@ -524,7 +529,7 @@ class ReciprocalWeightedNodePruning(WeightedNodePruning):
                              self._average_weight[neighbor_id] <= weight) and
                                 entity_id < neighbor_id) else 0
 
-def get_meta_blocking_approach(acronym, w_scheme):
+def get_meta_blocking_approach(acronym: str, w_scheme: str) -> any:
     if acronym == "BLAST":
         return BLAST(w_scheme)
     elif acronym == "CEP":
