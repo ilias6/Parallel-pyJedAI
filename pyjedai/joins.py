@@ -264,9 +264,9 @@ class SchemaAgnosticΕJoin(AbstractJoin):
             self._insert_to_graph(
                 candidate_id+self.data.dataset_limit if self.reverse_order and not self.data.is_dirty_er \
                                 else candidate_id,
-                entity_id, 
+                entity_id,
                 self._calc_similarity(
-                    self._counters[candidate_id], 
+                    self._counters[candidate_id],
                     self._source_frequency[candidate_id],
                     tokens_size
                 )

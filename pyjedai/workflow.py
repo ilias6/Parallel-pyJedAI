@@ -61,11 +61,9 @@ class WorkFlow:
         """
         steps = [self.block_building, self.entity_matching, self.clustering, self.joins, self.block_cleaning, self.comparison_cleaning]
         num_of_steps = sum(x is not None for x in steps)
-        self._workflow_bar = tqdm(
-            total=num_of_steps,
-            desc=self.name,
-            disable=not workflow_tqdm_enable
-        )
+        self._workflow_bar = tqdm(total=num_of_steps,
+                                  desc=self.name,
+                                  disable=not workflow_tqdm_enable)
         self.data = data
         self._init_experiment()
         start_time = time()
@@ -76,17 +74,17 @@ class WorkFlow:
         block_building_method = self.block_building['method'](**self.block_building["params"]) \
                                                     if "params" in self.block_building \
                                                     else self.block_building['method']()
-        self.final_pairs = block_building_blocks = block_building_method.build_blocks(
-            data,
-            attributes_1=self.block_building["attributes_1"] \
-                            if "attributes_1" in self.block_building else None,
-            attributes_2=self.block_building["attributes_2"] \
-                            if "attributes_2" in self.block_building else None,
-            tqdm_disable=workflow_step_tqdm_disable
-        )
-        pj_eval.report(
-            block_building_blocks, block_building_method.method_configuration(), verbose=verbose
-        )
+        block_building_blocks, entity_index  = \
+        block_building_method.build_blocks(data,
+                                            attributes_1=self.block_building["attributes_1"] \
+                                                            if "attributes_1" in self.block_building else None,
+                                            attributes_2=self.block_building["attributes_2"] \
+                                                            if "attributes_2" in self.block_building else None,
+                                            tqdm_disable=workflow_step_tqdm_disable)
+        self.final_pairs = block_building_blocks
+        pj_eval.report(block_building_blocks, 
+                       block_building_method.method_configuration(), 
+                       verbose=verbose)
         self._save_step(pj_eval, block_building_method.method_configuration())
         self._workflow_bar.update(1)
         #
@@ -101,9 +99,10 @@ class WorkFlow:
                 block_cleaning_method = block_cleaning['method'](**block_cleaning["params"]) \
                                                     if "params" in block_cleaning \
                                                     else block_cleaning['method']()
-                block_cleaning_blocks = block_cleaning_method.process(
-                    bblocks, data, tqdm_disable=workflow_step_tqdm_disable
-                )
+                block_cleaning_blocks, entity_index = block_cleaning_method.process(bblocks, 
+                                                                      data, 
+                                                                      tqdm_disable=workflow_step_tqdm_disable)
+                
                 self.final_pairs = bblocks = block_cleaning_blocks
                 pj_eval.report(
                     bblocks, block_cleaning_method.method_configuration(), verbose=verbose
@@ -118,17 +117,16 @@ class WorkFlow:
             comparison_cleaning_method = self.comparison_cleaning['method'](**self.comparison_cleaning["params"]) \
                                             if "params" in self.comparison_cleaning \
                                             else self.comparison_cleaning['method']()
-            self.final_pairs = comparison_cleaning_blocks = comparison_cleaning_method.process(
-                block_cleaning_blocks if block_cleaning_blocks is not None \
-                    else block_building_blocks,
-                data,
-                tqdm_disable=workflow_step_tqdm_disable
-            )
-            pj_eval.report(
-                comparison_cleaning_blocks,
-                comparison_cleaning_method.method_configuration(),
-                verbose=verbose
-            )
+            self.final_pairs = \
+            comparison_cleaning_blocks = \
+            comparison_cleaning_method.process(block_cleaning_blocks if block_cleaning_blocks is not None \
+                                                    else block_building_blocks,
+                                                data,
+                                                entity_index=entity_index,
+                                                tqdm_disable=workflow_step_tqdm_disable)
+            pj_eval.report(comparison_cleaning_blocks,
+                           comparison_cleaning_method.method_configuration(),
+                           verbose=verbose)
             self._save_step(pj_eval, comparison_cleaning_method.method_configuration())
             self._workflow_bar.update(1)
         #

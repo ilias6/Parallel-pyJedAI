@@ -3,8 +3,7 @@ pyjedai/__pycache__/
 pyjedai/.ipynb_checkpoints/
 examples/.ipynb_checkpoints/
 examples/scripts/.ipynb_checkpoints/
-data/1M*
-data/2M*
+data/der/synthetic/*
 .vscode/
 tests/__pycache__/
 *.zip

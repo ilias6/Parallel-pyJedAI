@@ -26,7 +26,14 @@ class Evaluation:
         self.num_of_true_duplicates: int
         self.data: Data = data
 
-    def report(self, prediction: any, configuration: dict = None, to_df=False, verbose=True) -> any:
+    def report(
+            self,
+            prediction: any,
+            configuration: dict = None,
+            to_df=False,
+            to_dict=False,
+            verbose=True
+        ) -> any:
         """Calculates the F1, Recall, Presicion and produces a classification report.
 
         Args:
@@ -96,9 +103,7 @@ class Evaluation:
             else:
                 self.f1 = 2*((self.precision*self.recall)/(self.precision+self.recall))
 
-        if to_df:
-            pd.set_option("display.precision", 2)
-            results = pd.DataFrame.from_dict({
+        results_dict = {
                 'Precision %': self.precision*100,
                 'Recall %': self.recall*100,
                 'F1 %': self.f1*100,
@@ -106,9 +111,8 @@ class Evaluation:
                 'False Positives': self.false_positives,
                 'True Negatives': self.true_negatives,
                 'False Negatives': self.false_negatives
-            }, orient='index').T
-            return results
-
+            }
+        
         if verbose:
             print("# " + (configuration['name'] if configuration else "") + " Evaluation \n---")
             if configuration:
@@ -123,6 +127,16 @@ class Evaluation:
                 int(self.false_negatives), int(self.total_matching_pairs))
             )
             print("---")
+        
+        if to_df:
+            pd.set_option("display.precision", 2)
+            results = pd.DataFrame.from_dict(results_dict, orient='index').T
+            return results
+
+        if to_dict:
+            return results_dict
+        
+        
 
     def _create_entity_index(self, groups: any, all_ground_truth_ids: set) -> dict:
         if len(groups) < 1:

@@ -1,16 +1,18 @@
 import itertools
-from typing import Tuple
-import nltk
+import logging as log
 import math
 import re
 import time
-import logging as log
-from tqdm.notebook import tqdm
-import numpy as np
 from collections import defaultdict
+from typing import Tuple
+
+import nltk
+import numpy as np
+from tqdm.notebook import tqdm
 
 from .datamodel import Block, Data
 from .utils import drop_big_blocks_by_size, drop_single_entity_blocks
+
 
 class AbstractBlockBuilding:
     """Abstract class for the block building method

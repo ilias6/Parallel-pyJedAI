@@ -1,3 +1,8 @@
+"""Block Cleaning Module
+Contains:
+ - BlockFiltering
+ - BlockPurging
+"""
 from collections import defaultdict
 from time import time
 from typing import Tuple
