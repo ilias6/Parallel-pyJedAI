@@ -1,4 +1,5 @@
 import itertools
+from typing import Tuple
 import nltk
 import math
 import re
@@ -18,7 +19,7 @@ class AbstractBlockBuilding:
     _method_name: str
     _method_info: str
 
-    def __init__(self) -> any:
+    def __init__(self):
         self.blocks: dict
         self._progress_bar: tqdm
         self.attributes_1: list
@@ -32,20 +33,20 @@ class AbstractBlockBuilding:
             attributes_1: list = None,
             attributes_2: list = None,
             tqdm_disable: bool = False
-    ) -> dict:
+    ) -> Tuple[dict, dict]:
         """Main method of Blocking in a dataset
 
-        Args:
-            data (Data): Data module that contaiins the processed dataset
-            attributes_1 (list, optional): Attribute columns of the dataset 1 \
-                that will be processed. Defaults to None. \
-                If not provided, all attributes are slected.
-            attributes_2 (list, optional): Attribute columns of the dataset 2. \
-                Defaults to None. If not provided, all attributes are slected.
-            tqdm_disable (bool, optional): Disables all tqdm at processing. Defaults to False.
+            Args:
+                data (Data): Data module that contaiins the processed dataset
+                attributes_1 (list, optional): Attribute columns of the dataset 1 \
+                    that will be processed. Defaults to None. \
+                    If not provided, all attributes are slected.
+                attributes_2 (list, optional): Attribute columns of the dataset 2. \
+                    Defaults to None. If not provided, all attributes are slected.
+                tqdm_disable (bool, optional): Disables all tqdm at processing. Defaults to False.
 
-        Returns:
-            dict: Blocks as a dictionary of keys to sets of Block objects (Block contains two sets).
+            Returns:
+                Tuple[dict, dict]: Dictionary of blocks, Dict of entity index (reversed blocks).
         """
 
         _start_time = time.time()
@@ -71,27 +72,32 @@ class AbstractBlockBuilding:
             self._all_tokens.union(set(itertools.chain.from_iterable(self._entities_d2)))
 
         entity_id = itertools.count()
-        self.blocks = {}
-        self.blocks.fromkeys(self._all_tokens)
+        blocks = {}
+        entity_index = defaultdict(set)
+
         for entity in self._entities_d1:
             eid = next(entity_id)
             for token in entity:
-                self.blocks.setdefault(token, Block())
-                self.blocks[token].entities_D1.add(eid)
+                blocks.setdefault(token, Block())
+                blocks[token].entities_D1.add(eid)
+                entity_index[eid].add(token)
             self._progress_bar.update(1)
 
         if not data.is_dirty_er:
             for entity in self._entities_d2:
                 eid = next(entity_id)
                 for token in entity:
-                    self.blocks.setdefault(token, Block())
-                    self.blocks[token].entities_D2.add(eid)
+                    blocks.setdefault(token, Block())
+                    blocks[token].entities_D2.add(eid)
+                    entity_index[eid].add(token)
                 self._progress_bar.update(1)
 
-        self.blocks = self._clean_blocks(self.blocks)
+        self.blocks = self._clean_blocks(blocks)
+        self.entity_index = dict(filter(lambda x: len(x[1]) > 0, entity_index.items()))
         self.execution_time = time.time() - _start_time
         self._progress_bar.close()
-        return self.blocks
+
+        return self.blocks, self.entity_index
 
     def method_configuration(self) -> dict:
         return {
@@ -139,7 +145,7 @@ class StandardBlocking(AbstractBlockBuilding):
 
     def _clean_blocks(self, blocks: dict) -> dict:
         """No cleaning"""
-        return drop_single_entity_blocks(self.blocks, self.data.is_dirty_er)
+        return drop_single_entity_blocks(blocks, self.data.is_dirty_er)
 
     def _configuration(self) -> dict:
         """No configuration"""
@@ -172,7 +178,7 @@ class QGramsBlocking(StandardBlocking):
         return keys
 
     def _clean_blocks(self, blocks: dict) -> dict:
-        return drop_single_entity_blocks(self.blocks, self.data.is_dirty_er)
+        return drop_single_entity_blocks(blocks, self.data.is_dirty_er)
 
     def _configuration(self) -> dict:
         return {
@@ -310,7 +316,7 @@ class ExtendedQGramsBlocking(StandardBlocking):
         return resulting_combinations
 
     def _clean_blocks(self, blocks: dict) -> dict:
-        return drop_single_entity_blocks(self.blocks, self.data.is_dirty_er)
+        return drop_single_entity_blocks(blocks, self.data.is_dirty_er)
 
     def _configuration(self) -> dict:
         return {
