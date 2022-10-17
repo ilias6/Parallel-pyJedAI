@@ -1,4 +1,6 @@
+from collections import defaultdict
 from time import time
+from typing import Tuple
 
 import numpy as np
 from tqdm.notebook import tqdm
@@ -9,11 +11,12 @@ from .utils import create_entity_index, drop_single_entity_blocks
 
 class BlockFiltering:
     """Retains every entity in a subset of its smallest blocks.
-    Filtering consists of 3 steps:
-     - Blocks sort in ascending cardinality
-     - Creation of Entity Index: inversed block dictionary
-     - Retain every entity in ratio % of its smallest blocks
-     - Blocks reconstruction
+
+        Filtering consists of 3 steps:
+        - Blocks sort in ascending cardinality
+        - Creation of Entity Index: inversed block dictionary
+        - Retain every entity in ratio % of its smallest blocks
+        - Blocks reconstruction
     """
 
     _method_name = "Block Filtering"
@@ -27,6 +30,7 @@ class BlockFiltering:
         self.blocks: dict
         self.tqdm_disable: bool
         self.data: Data
+        self.entity_index: dict
         self._progress_bar: tqdm
         self.execution_time: float
 
@@ -37,19 +41,19 @@ class BlockFiltering:
 
     def process(
             self,
-            blocks: dict = None,
-            data: Data = None,
+            blocks: dict,
+            data: Data,
             tqdm_disable: bool = False
-    ) -> dict:
-        """Main method of Block Filtering
+    ) -> Tuple[dict, dict]:
+        """Main method of Block Filtering.
 
         Args:
-            blocks (dict, optional): dict of keys to Blocks. Defaults to None.
-            data (Data, optional): input dataset module. Defaults to None.
+            blocks (dict): dict of keys to Blocks.
+            data (Data): input dataset.
             tqdm_disable (bool, optional): disable progress bars. Defaults to False.
 
         Returns:
-            dict: dict of keys to Blocks
+            Tuple[dict, dict]: dict of keys to Blocks, entity index (reversed blocks)
         """
         start_time, self.tqdm_disable, self.data = time(), tqdm_disable, data
         self._progress_bar = tqdm(
@@ -62,20 +66,23 @@ class BlockFiltering:
         entity_index = create_entity_index(sorted_blocks, self.data.is_dirty_er)
         self._progress_bar.update(1)
         filtered_blocks = {}
+        new_entity_index = defaultdict(set)
         for entity_id, block_keys in entity_index.items():
             # Create new blocks from the entity index
             for key in block_keys[:int(round(self.ratio*len(block_keys)))]:
                 filtered_blocks.setdefault(key, Block())
+                new_entity_index[entity_id].add(key)
                 # Entities ids start to 0 ... n-1 for 1st dataset
                 # and n ... m for 2nd dataset
                 _ = filtered_blocks[key].entities_D1.add(entity_id) if entity_id < self.data.dataset_limit \
                     else filtered_blocks[key].entities_D2.add(entity_id)
         self._progress_bar.update(1)
         self.blocks = drop_single_entity_blocks(filtered_blocks, self.data.is_dirty_er)
+        self.entity_index = new_entity_index
         self._progress_bar.close()
         self.execution_time = time() - start_time
-
-        return self.blocks
+        
+        return self.blocks, self.entity_index
 
     def method_configuration(self) -> dict:
         """Returns configuration details
@@ -133,19 +140,20 @@ class BlockPurging:
             dict: Purged blocks.
         """
         self.tqdm_disable, self.data, start_time = tqdm_disable, data, time()
-        self._progress_bar = tqdm(total=100, desc=self._method_name, disable=self.tqdm_disable)
+        new_blocks = blocks.copy()
+        self._progress_bar = tqdm(total=2*len(new_blocks), desc=self._method_name, disable=self.tqdm_disable)
         if not blocks:
             raise AttributeError("Empty dict of blocks was given as input!")
-        new_blocks = blocks.copy()
+        
         self._set_threshold(new_blocks)
         new_blocks = dict(
             filter(
-                lambda e: new_blocks[e[0]].get_cardinality(self.data.is_dirty_er) \
-                                            <= self.max_comparisons_per_block,
+                lambda e: (new_blocks[e[0]].get_cardinality(self.data.is_dirty_er) \
+                                            <= self.max_comparisons_per_block, self._progress_bar.update(1)),
                 new_blocks.items()
             )
         )
-        self._progress_bar.update(100)
+        # self._progress_bar.update(100)
         self._progress_bar.close()
         self.execution_time = time() - start_time
         return new_blocks
