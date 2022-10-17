@@ -148,7 +148,7 @@ class AbstractJoin:
                             self._counters[candidate_id] += 1
                             candidates.add(candidate_id)
                 if 0 < len(candidates):
-                    self._process_candidates(candidates, entity_id, len(tokens))
+                    self._process_candidates(candidates, entity_id, len(record))
                 self._progress_bar.update(1)
         self._progress_bar.close()
         self.execution_time = time() - start_time
