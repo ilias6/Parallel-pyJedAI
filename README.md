@@ -82,7 +82,12 @@ __Brainstorming-sheet__: [google-sheet](https://docs.google.com/spreadsheets/d/1
 
 </details>
 <details>
-<summary>Mercury</summary>
+<summary>TODO: readthedocs</summary>
+
+Link: https://pyjedai.readthedocs.io/en/latest/
 
 </details>
+
+
+
 
