@@ -3,12 +3,15 @@ This file contains all the methods for evaluating every module in pyjedai.
 """
 from decimal import DivisionByZero
 from typing import Type
+from warnings import warn
+
 import matplotlib.pyplot as plt
-import seaborn as sns
-from .datamodel import Data
 import networkx as nx
 import pandas as pd
-from warnings import warn
+import seaborn as sns
+
+from .datamodel import Data
+
 
 class Evaluation:
     """Evaluation class. Contains multiple methods for all the fitted & predicted data.
@@ -32,6 +35,7 @@ class Evaluation:
             configuration: dict = None,
             to_df=False,
             to_dict=False,
+            with_classification_report=False,
             verbose=True
         ) -> any:
         """Calculates the F1, Recall, Presicion and produces a classification report.
@@ -92,7 +96,8 @@ class Evaluation:
             self.num_of_true_duplicates = len(gt)
             self.false_negatives = self.num_of_true_duplicates - self.true_positives
             self.false_positives = self.total_matching_pairs - self.true_positives
-            cardinality = (self.data.num_of_entities_1*(self.data.num_of_entities_1-1))/2 if self.data.is_dirty_er else self.data.num_of_entities_1 * self.data.num_of_entities_2
+            cardinality = (self.data.num_of_entities_1*(self.data.num_of_entities_1-1))/2 \
+                if self.data.is_dirty_er else self.data.num_of_entities_1 * self.data.num_of_entities_2
             self.true_negatives = cardinality - self.false_negatives - self.false_positives
             self.precision = self.true_positives / self.total_matching_pairs
             self.recall = self.true_positives / self.num_of_true_duplicates
@@ -112,7 +117,7 @@ class Evaluation:
                 'True Negatives': self.true_negatives,
                 'False Negatives': self.false_negatives
             }
-        
+
         if verbose:
             print("# " + (configuration['name'] if configuration else "") + " Evaluation \n---")
             if configuration:
@@ -122,10 +127,11 @@ class Evaluation:
                     "Runtime: {:2.4f} seconds".format(configuration['runtime'])
                 )
             print("Scores:\n\tPrecision: {:9.2f}% \n\tRecall:    {:9.2f}%\n\tF1-score:  {:9.2f}%".format(self.precision*100, self.recall*100, self.f1*100))
-            print("Classification report:\n\tTrue positives: {:d}\n\tFalse positives: {:d}\n\tTrue negatives: {:d}\n\tFalse negatives: {:d}\n\tTotal comparisons: {:d}".format(
-                int(self.true_positives), int(self.false_positives), int(self.true_negatives), \
-                int(self.false_negatives), int(self.total_matching_pairs))
-            )
+            if with_classification_report:
+                print("Classification report:\n\tTrue positives: {:d}\n\tFalse positives: {:d}\n\tTrue negatives: {:d}\n\tFalse negatives: {:d}\n\tTotal comparisons: {:d}".format(
+                    int(self.true_positives), int(self.false_positives), int(self.true_negatives), \
+                    int(self.false_negatives), int(self.total_matching_pairs))
+                )
             print("---")
         
         if to_df:
