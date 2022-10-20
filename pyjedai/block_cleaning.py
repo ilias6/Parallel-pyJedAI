@@ -8,7 +8,7 @@ from time import time
 from typing import Tuple
 
 import numpy as np
-from tqdm.notebook import tqdm
+from tqdm.autonotebook import tqdm
 
 from .datamodel import Block, Data
 from .utils import create_entity_index, drop_single_entity_blocks

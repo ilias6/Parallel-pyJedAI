@@ -10,7 +10,7 @@ import nltk
 import numpy as np
 import pandas as pd
 import tqdm
-from tqdm.notebook import tqdm
+from tqdm.autonotebook import tqdm
 
 from .datamodel import Data
 

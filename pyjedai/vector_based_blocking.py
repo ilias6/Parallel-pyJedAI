@@ -9,7 +9,7 @@ import numpy as np
 import torch
 import transformers
 from sentence_transformers import SentenceTransformer
-from tqdm.notebook import tqdm
+from tqdm.autonotebook import tqdm
 from transformers import (AlbertModel, AlbertTokenizer, BertModel,
                           BertTokenizer, DistilBertModel, DistilBertTokenizer,
                           RobertaModel, RobertaTokenizer, XLNetModel,

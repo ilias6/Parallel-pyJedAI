@@ -1,6 +1,5 @@
 from itertools import count
 from time import time
-from turtle import color
 from typing import Callable, List, Tuple
 
 import matplotlib.pyplot as plt
@@ -8,7 +7,7 @@ import optuna
 import pandas as pd
 from networkx import Graph
 # import plotly.express as px
-from tqdm.notebook import tqdm
+from tqdm.autonotebook import tqdm
 
 from .datamodel import Data
 from .evaluation import Evaluation, write

@@ -12,10 +12,18 @@ EMPTY = -1
 # ----------------------- #
 def create_entity_index(blocks: dict, is_dirty_er: bool):
     """Creates a dict of entity ids to block keys
-
         Example:
             e_id -> ['block_key_1', ..]
             ...  -> [ ... ]
+        ---------------------------------------
+        Reduce time complexity!!!
+        entity_index = defaultdict(list)
+        dict_init = lambda k, v: entity_index[k].append(v)
+        _dict = defaultdict(list, dict(map(
+                 lambda x: (),
+                 blocks.items()
+             ))
+        )
     """
     entity_index = {}
     for key, block in blocks.items():
@@ -29,11 +37,6 @@ def create_entity_index(blocks: dict, is_dirty_er: bool):
                 entity_index[entity_id].append(key)
 
     return entity_index
-    # _dict = defaultdict(list, dict(map(
-    #         lambda x: (),
-    #         blocks.items()
-    #     ))
-    # )
 
 def drop_big_blocks_by_size(blocks: dict, max_block_size: int, is_dirty_er: bool) -> dict:
     """Drops blocks if:

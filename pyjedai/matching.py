@@ -1,43 +1,50 @@
 """Entity Matching Module
 """
+from time import time
+
+from networkx import Graph
 from py_stringmatching.similarity_measure.affine import Affine
 from py_stringmatching.similarity_measure.bag_distance import BagDistance
 from py_stringmatching.similarity_measure.cosine import Cosine
 from py_stringmatching.similarity_measure.dice import Dice
 from py_stringmatching.similarity_measure.editex import Editex
-from py_stringmatching.similarity_measure.generalized_jaccard import GeneralizedJaccard
-from py_stringmatching.similarity_measure.hamming_distance import HammingDistance
+from py_stringmatching.similarity_measure.generalized_jaccard import \
+    GeneralizedJaccard
+from py_stringmatching.similarity_measure.hamming_distance import \
+    HammingDistance
 from py_stringmatching.similarity_measure.jaccard import Jaccard
 from py_stringmatching.similarity_measure.jaro import Jaro
 from py_stringmatching.similarity_measure.jaro_winkler import JaroWinkler
 from py_stringmatching.similarity_measure.levenshtein import Levenshtein
 from py_stringmatching.similarity_measure.monge_elkan import MongeElkan
-from py_stringmatching.similarity_measure.needleman_wunsch import NeedlemanWunsch
-from py_stringmatching.similarity_measure.overlap_coefficient import OverlapCoefficient
+from py_stringmatching.similarity_measure.needleman_wunsch import \
+    NeedlemanWunsch
+from py_stringmatching.similarity_measure.overlap_coefficient import \
+    OverlapCoefficient
 from py_stringmatching.similarity_measure.partial_ratio import PartialRatio
-from py_stringmatching.similarity_measure.partial_token_sort import PartialTokenSort
+from py_stringmatching.similarity_measure.partial_token_sort import \
+    PartialTokenSort
 from py_stringmatching.similarity_measure.ratio import Ratio
 from py_stringmatching.similarity_measure.smith_waterman import SmithWaterman
-from py_stringmatching.similarity_measure.tfidf import TfIdf
 from py_stringmatching.similarity_measure.soundex import Soundex
+from py_stringmatching.similarity_measure.tfidf import TfIdf
 from py_stringmatching.similarity_measure.tversky_index import TverskyIndex
-
-from py_stringmatching.tokenizer.whitespace_tokenizer import WhitespaceTokenizer
-from py_stringmatching.tokenizer.qgram_tokenizer import QgramTokenizer
+from py_stringmatching.tokenizer.alphabetic_tokenizer import \
+    AlphabeticTokenizer
+from py_stringmatching.tokenizer.alphanumeric_tokenizer import \
+    AlphanumericTokenizer
 from py_stringmatching.tokenizer.delimiter_tokenizer import DelimiterTokenizer
-from py_stringmatching.tokenizer.alphabetic_tokenizer import AlphabeticTokenizer
-from py_stringmatching.tokenizer.alphanumeric_tokenizer import AlphanumericTokenizer
+from py_stringmatching.tokenizer.qgram_tokenizer import QgramTokenizer
+from py_stringmatching.tokenizer.whitespace_tokenizer import \
+    WhitespaceTokenizer
+from tqdm.autonotebook import tqdm
+
+from .datamodel import Data
 
 # Package import from https://anhaidgroup.github.io/py_stringmatching/v0.4.2/index.html
 
-
-from time import time
-from tqdm.notebook import tqdm
-from networkx import Graph
-from .datamodel import Data
-
 available_tokenizers = [
-    'white_space_tokenizer', 'qgram_tokenizer', 'delimiter_tokenizer', 
+    'white_space_tokenizer', 'qgram_tokenizer', 'delimiter_tokenizer',
     'alphabetic_tokenizer', 'alphanumeric_tokenizer'
 ]
 
@@ -80,7 +87,9 @@ class EntityMatching:
         self.execution_time: float
         self._progress_bar: tqdm
 
+        #
         # Selecting tokenizer
+        #
         if tokenizer == 'white_space_tokenizer':
             self._tokenizer = WhitespaceTokenizer(
                 return_set=tokenizer_return_set)
@@ -108,7 +117,9 @@ class EntityMatching:
                 )
             )
 
+        #
         # Selecting similarity measure
+        #
         if metric == 'levenshtein' or metric == 'edit_distance':
             self._metric = Levenshtein()
         elif metric == 'jaro_winkler':

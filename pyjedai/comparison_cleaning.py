@@ -8,7 +8,7 @@ from queue import PriorityQueue
 from time import time
 
 import numpy as np
-from tqdm.notebook import tqdm
+from tqdm.autonotebook import tqdm
 
 from .datamodel import Data
 from .utils import chi_square, create_entity_index
@@ -45,7 +45,7 @@ class AbstractComparisonCleaning:
         Args:
             blocks (dict): blocks creted from previous steps of pyjedai
             data (Data): dataset module
-            entity_index (dict): reversed blocks 
+            entity_index (dict): reversed blocks
             tqdm_disable (bool, optional): Disables tqdm progress bars. Defaults to False.
 
         Returns:
@@ -60,7 +60,7 @@ class AbstractComparisonCleaning:
             desc=self._method_name,
             disable=self.tqdm_disable
         )
-        
+
         self._entity_index = entity_index if entity_index else \
             create_entity_index(blocks, self.data.is_dirty_er)
         self._num_of_blocks = len(blocks)
