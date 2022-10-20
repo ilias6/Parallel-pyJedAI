@@ -87,7 +87,19 @@ __Brainstorming-sheet__: [google-sheet](https://docs.google.com/spreadsheets/d/1
 Link: https://pyjedai.readthedocs.io/en/latest/
 
 </details>
+<details>
+<summary>Jekyll website dev</summary>
 
+If first time, install Ruby and after run ```gem install jekyll bundler```
+
+For local deployment and testing:
+
+1. ```cd /webpage```
+2.  ```bundle exec jekyll serve```, if fails run ```bundle add webrick```
+3. Open localhost:4000
+
+
+</details>
 
 
 
