@@ -1,3 +1,4 @@
+from queue import PriorityQueue
 from networkx import connected_components, Graph
 from time import time
 from tqdm.autonotebook import tqdm
@@ -9,6 +10,7 @@ class ConnectedComponentsClustering:
     """
 
     _method_name: str = "Connected Components Clustering"
+    _method_short_name: str = "CCC"
     _method_info: str = "Gets equivalence clusters from the " + \
                     "transitive closure of the similarity graph."
 
@@ -84,12 +86,21 @@ class UniqueMappingClustering:
             list: list of clusters
         """
         start_time = time()
-        clusters = {}
-        
-        for u, v, d in graph:
-            print(u,v,d)
-        
-    
+        matched_entities = {}
+        new_graph = Graph()
+        priority_queue = PriorityQueue(maxsize=graph.number_of_edges()*2)
+        for x in graph.edges(data=True):
+            if x[2]['weight'] > self.similarity_threshold:
+                priority_queue.put_nowait((x[2]['weight'], x[0], x[1]))
+
+        while not priority_queue.empty():
+            sim, entity_1, entity_2 = priority_queue.get()
+            if entity_1 in matched_entities or entity_2 in matched_entities:
+                continue
+            new_graph.add_edge(entity_1, entity_2, weight=sim)
+            matched_entities |= {entity_1, entity_2}
+
+        clusters = ConnectedComponentsClustering().process(new_graph)
         self.execution_time = time() - start_time
         return clusters
 
