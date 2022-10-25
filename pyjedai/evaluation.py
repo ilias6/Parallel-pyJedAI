@@ -141,8 +141,6 @@ class Evaluation:
 
         if to_dict:
             return results_dict
-        
-        
 
     def _create_entity_index(self, groups: any, all_ground_truth_ids: set) -> dict:
         if len(groups) < 1:

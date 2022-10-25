@@ -25,6 +25,7 @@ class BlockFiltering:
     """
 
     _method_name = "Block Filtering"
+    _method_short_name: str = "BF"
     _method_info = "Retains every entity in a subset of its smallest blocks."
 
     def __init__(self, ratio: float = 0.8) -> None:
@@ -115,6 +116,7 @@ class BlockPurging:
     """
 
     _method_name = "Block Purging"
+    _method_short_name: str = "BP"
     _method_info = "Discards the blocks exceeding a certain number of comparisons."
 
     def __init__(self, smoothing_factor: float = 1.025) -> any:

@@ -208,6 +208,7 @@ class ComparisonPropagation(AbstractComparisonCleaning):
     """
 
     _method_name = "Comparison Propagation"
+    _method_short_name: str = "CP"
     _method_info = "Eliminates all redundant comparisons from a set of overlapping blocks."
 
     def __init__(self) -> None:
@@ -242,6 +243,7 @@ class WeightedEdgePruning(AbstractMetablocking):
     """
 
     _method_name = "Weighted Edge Pruning"
+    _method_short_name: str = "WEP"
     _method_info = "A Meta-blocking method that retains all comparisons " + \
                 "that have a weight higher than the average edge weight in the blocking graph."
 
@@ -320,6 +322,7 @@ class CardinalityEdgePruning(WeightedEdgePruning):
     """
 
     _method_name = "Cardinality Edge Pruning"
+    _method_short_name: str = "CEP"
     _method_info = "A Meta-blocking method that retains the comparisons " + \
                         "that correspond to the top-K weighted edges in the blocking graph."
 
@@ -366,6 +369,7 @@ class CardinalityNodePruning(CardinalityEdgePruning):
     """
 
     _method_name = "Cardinality Node Pruning"
+    _method_short_name: str = "CNP"
     _method_info = "A Meta-blocking method that retains for every entity, " + \
                     "the comparisons that correspond to its top-k weighted edges in the blocking graph."
 
@@ -433,6 +437,7 @@ class ReciprocalCardinalityNodePruning(CardinalityNodePruning):
     """
 
     _method_name = "Reciprocal Cardinality Node Pruning"
+    _method_short_name: str = "RCNP"
     _method_info = "A Meta-blocking method that retains the comparisons " + \
                     "that correspond to edges in the blocking graph that are among " + \
                     "the top-k weighted ones for both adjacent entities/nodes."
@@ -454,6 +459,7 @@ class WeightedNodePruning(WeightedEdgePruning):
     """
 
     _method_name = "Weighted Node Pruning"
+    _method_short_name: str = "WNP"
     _method_info = "A Meta-blocking method that retains for every entity, the comparisons \
                     that correspond to edges in the blocking graph that are exceed \
                     the average edge weight in the respective node neighborhood."
@@ -499,7 +505,7 @@ class BLAST(WeightedNodePruning):
         of the maximum edge weights in the two adjacent node neighborhoods.
     """
 
-    _method_name = "BLAST"
+    _method_name = _method_short_name = "BLAST"
     _method_info = "Meta-blocking method that retains the comparisons " + \
                 "that correspond to edges in the blocking graph that are exceed 1/4 of the sum " + \
                 "of the maximum edge weights in the two adjacent node neighborhoods."
@@ -527,6 +533,7 @@ class ReciprocalWeightedNodePruning(WeightedNodePruning):
     """
 
     _method_name = "Reciprocal Weighted Node Pruning"
+    _method_short_name: str = "RWNP"
     _method_info = "Meta-blocking method that retains the comparisons " + \
                     "that correspond to edges in the blocking graph that are " + \
                     "exceed the average edge weight in both adjacent node neighborhoods."

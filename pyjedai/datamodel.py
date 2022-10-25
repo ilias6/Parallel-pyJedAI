@@ -48,10 +48,15 @@ class Data:
         self.num_of_entities_2: int = len(dataset_2) if dataset_2 is not None else 0
         self.num_of_entities: int = self.num_of_entities_1 + self.num_of_entities_2
 
+        self.id_column_name_1 = id_column_name_1
+        self.id_column_name_2 = id_column_name_2
+
         # Attributes
         if attributes_1 is None:
             if dataset_1.columns.values.tolist():
                 self.attributes_1 = dataset_1.columns.values.tolist()
+                if self.id_column_name_1 in self.attributes_1:
+                    self.attributes_1.remove(self.id_column_name_1)
             else:
                 raise AttributeError("Dataset 1 must contain column names if attributes_1 is empty.")
         else:
@@ -59,13 +64,12 @@ class Data:
         if dataset_2 is not None:
             if dataset_2.columns.values.tolist():
                 self.attributes_2 = dataset_2.columns.values.tolist()
+                if self.id_column_name_2 in self.attributes_2:
+                    self.attributes_2.remove(self.id_column_name_1)
             else:
                 raise AttributeError("Dataset 2 must contain column names if attributes_2 is empty.")
         else:
             self.attributes_2: list = attributes_2
-
-        self.id_column_name_1 = id_column_name_1
-        self.id_column_name_2 = id_column_name_2
 
         # Ground truth data
         if ground_truth is not None:
@@ -115,7 +119,7 @@ class Data:
         if not self.is_dirty_er:
             self._ids_mapping_2 = dict(
                 zip(
-                    self.dataset_2[self.id_column_name_2].tolist(), 
+                    self.dataset_2[self.id_column_name_2].tolist(),
                     range(self.num_of_entities_1, self.num_of_entities_1+self.num_of_entities_2)
                 )
             )

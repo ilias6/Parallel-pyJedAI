@@ -124,6 +124,7 @@ class StandardBlocking(AbstractBlockBuilding):
     """
 
     _method_name = "Standard Blocking"
+    _method_short_name: str = "SB"
     _method_info = "Creates one block for every token in " + \
         "the attribute values of at least two entities."
 
@@ -156,6 +157,7 @@ class QGramsBlocking(StandardBlocking):
     """
 
     _method_name = "Q-Grams Blocking"
+    _method_short_name: str = "QGB"
     _method_info = "Creates one block for every q-gram that is extracted " + \
                     "from any token in the attribute values of any entity. " + \
                     "The q-gram must be shared by at least two entities."
@@ -189,6 +191,7 @@ class SuffixArraysBlocking(StandardBlocking):
     """
 
     _method_name = "Suffix Arrays Blocking"
+    _method_short_name: str = "SAB"
     _method_info = "Creates one block for every suffix that appears in the " + \
         "attribute value tokens of at least two entities."
 
@@ -225,6 +228,7 @@ class ExtendedSuffixArraysBlocking(StandardBlocking):
     """
 
     _method_name = "Extended Suffix Arrays Blocking"
+    _method_short_name: str = "ESAB"
     _method_info = "Creates one block for every substring (not just suffix) " + \
         "that appears in the tokens of at least two entities."
 
@@ -261,6 +265,7 @@ class ExtendedQGramsBlocking(StandardBlocking):
     """
 
     _method_name = "Extended QGramsBlocking"
+    _method_short_name: str = "EQGB"
     _method_info = "Creates one block for every substring (not just suffix) " + \
         "that appears in the tokens of at least two entities."
 
