@@ -36,7 +36,7 @@ try:
             )
             e = Evaluation(data)
             sb = StandardBlocking()
-            blocks, entity_index = sb.build_blocks(data)
+            blocks = sb.build_blocks(data)
             total_time = 0.0
             res = e.report(blocks, to_df=True)
             results.append([dataset_name, 'StandardBlocking', res['F1 %'], res['Recall %'], res['Precision %'], sb.execution_time])
@@ -49,13 +49,13 @@ try:
             total_time += sb.execution_time
 
             bf = BlockFiltering()
-            bf_blocks, entity_index = bf.process(blocks, data)
+            bf_blocks = bf.process(blocks, data)
             res = e.report(bp_blocks, to_df=True)
             results.append([dataset_name, 'BlockFiltering', res['F1 %'], res['Recall %'], res['Precision %'], bf.execution_time])
             total_time += sb.execution_time
 
             cnp = CardinalityNodePruning(weighting_scheme='JS')
-            candidate_pairs_blocks = cnp.process(bf_blocks, data, entity_index)
+            candidate_pairs_blocks = cnp.process(bf_blocks, data)
             res = e.report(bp_blocks, to_df=True)
             results.append([dataset_name, 'CardinalityNodePruning', res['F1 %'], res['Recall %'], res['Precision %'], cnp.execution_time])
             total_time += sb.execution_time

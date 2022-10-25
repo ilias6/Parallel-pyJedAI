@@ -37,7 +37,6 @@ class AbstractComparisonCleaning:
             self,
             blocks: dict,
             data: Data,
-            entity_index: dict = None,
             tqdm_disable: bool = False
     ) -> dict:
         """Main method for comparison cleaning
@@ -45,7 +44,6 @@ class AbstractComparisonCleaning:
         Args:
             blocks (dict): blocks creted from previous steps of pyjedai
             data (Data): dataset module
-            entity_index (dict): reversed blocks
             tqdm_disable (bool, optional): Disables tqdm progress bars. Defaults to False.
 
         Returns:
@@ -61,8 +59,7 @@ class AbstractComparisonCleaning:
             disable=self.tqdm_disable
         )
 
-        self._entity_index = entity_index if entity_index else \
-            create_entity_index(blocks, self.data.is_dirty_er)
+        self._entity_index = create_entity_index(blocks, self.data.is_dirty_er)
         self._num_of_blocks = len(blocks)
         self._blocks: dict = blocks
         self._blocks = self._apply_main_processing()

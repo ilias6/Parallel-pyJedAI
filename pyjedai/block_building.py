@@ -75,14 +75,12 @@ class AbstractBlockBuilding:
 
         entity_id = itertools.count()
         blocks = {}
-        entity_index = defaultdict(set)
-
+        
         for entity in self._entities_d1:
             eid = next(entity_id)
             for token in entity:
                 blocks.setdefault(token, Block())
                 blocks[token].entities_D1.add(eid)
-                entity_index[eid].add(token)
             self._progress_bar.update(1)
 
         if not data.is_dirty_er:
@@ -91,15 +89,13 @@ class AbstractBlockBuilding:
                 for token in entity:
                     blocks.setdefault(token, Block())
                     blocks[token].entities_D2.add(eid)
-                    entity_index[eid].add(token)
                 self._progress_bar.update(1)
 
         self.blocks = self._clean_blocks(blocks)
-        self.entity_index = dict(filter(lambda x: len(x[1]) > 0, entity_index.items()))
         self.execution_time = time.time() - _start_time
         self._progress_bar.close()
 
-        return self.blocks, self.entity_index
+        return self.blocks
 
     def method_configuration(self) -> dict:
         return {

@@ -71,23 +71,20 @@ class BlockFiltering:
         entity_index = create_entity_index(sorted_blocks, self.data.is_dirty_er)
         self._progress_bar.update(1)
         filtered_blocks = {}
-        new_entity_index = defaultdict(set)
         for entity_id, block_keys in entity_index.items():
             # Create new blocks from the entity index
             for key in block_keys[:int(round(self.ratio*len(block_keys)))]:
                 filtered_blocks.setdefault(key, Block())
-                new_entity_index[entity_id].add(key)
                 # Entities ids start to 0 ... n-1 for 1st dataset
                 # and n ... m for 2nd dataset
                 _ = filtered_blocks[key].entities_D1.add(entity_id) if entity_id < self.data.dataset_limit \
                     else filtered_blocks[key].entities_D2.add(entity_id)
         self._progress_bar.update(1)
         self.blocks = drop_single_entity_blocks(filtered_blocks, self.data.is_dirty_er)
-        self.entity_index = new_entity_index
         self._progress_bar.close()
         self.execution_time = time() - start_time
         
-        return self.blocks, self.entity_index
+        return self.blocks
 
     def method_configuration(self) -> dict:
         """Returns configuration details
