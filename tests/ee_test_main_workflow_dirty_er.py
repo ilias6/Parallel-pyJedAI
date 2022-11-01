@@ -22,9 +22,9 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 from pyjedai.datamodel import Data
 
 dirty_data = Data(
-    dataset_1=pd.read_csv("data/cora/cora.csv", sep='|').head(100),
+    dataset_1=pd.read_csv("data/der/cora/cora.csv", sep='|').head(100),
     id_column_name_1='Entity Id',
-    ground_truth=pd.read_csv("data/cora/cora_gt.csv", sep='|', header=None),
+    ground_truth=pd.read_csv("data/der/cora/cora_gt.csv", sep='|', header=None),
     attributes_1=['Entity Id', 'author', 'title']
 )
 dirty_data.process()
