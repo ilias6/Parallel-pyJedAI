@@ -71,10 +71,12 @@ class UniqueMappingClustering:
         """Unique Mapping Clustering Constructor
 
         Args:
-            similarity_threshold (float, optional): Prunes all edges with a weight lower than this. Defaults to 0.1.
+            similarity_threshold (float, optional): Prunes all edges with a weight
+                lower than this. Defaults to 0.1.
         """
         self.similarity_threshold: float = similarity_threshold
         self.execution_time: float
+        print("Unique Mapping Clustering can only be performed in Clean-Clean Entity Resolution.")
 
     def process(self, graph: Graph) -> list:
         """NetworkX Connected Components Algorithm in the produced graph.
@@ -86,7 +88,7 @@ class UniqueMappingClustering:
             list: list of clusters
         """
         start_time = time()
-        matched_entities = {}
+        matched_entities = set()
         new_graph = Graph()
         priority_queue = PriorityQueue(maxsize=graph.number_of_edges()*2)
         for x in graph.edges(data=True):
@@ -98,7 +100,8 @@ class UniqueMappingClustering:
             if entity_1 in matched_entities or entity_2 in matched_entities:
                 continue
             new_graph.add_edge(entity_1, entity_2, weight=sim)
-            matched_entities |= {entity_1, entity_2}
+            matched_entities.add(entity_1)
+            matched_entities.add(entity_2)
 
         clusters = ConnectedComponentsClustering().process(new_graph)
         self.execution_time = time() - start_time

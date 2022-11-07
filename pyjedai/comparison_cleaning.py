@@ -510,7 +510,7 @@ class BLAST(WeightedNodePruning):
                 "that correspond to edges in the blocking graph that are exceed 1/4 of the sum " + \
                 "of the maximum edge weights in the two adjacent node neighborhoods."
 
-    def __init__(self, weighting_scheme: str = 'PEARSON_X2') -> None:
+    def __init__(self, weighting_scheme: str = 'X2') -> None:
         super().__init__(weighting_scheme)
 
     def _get_valid_weight(self, entity_id: int, neighbor_id: int) -> float:
