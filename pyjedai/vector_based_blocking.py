@@ -1,3 +1,7 @@
+'''
+Contains all methods for creating embeddings from text 
+and then performing NNs methods for cluster formation.
+'''
 import sys
 import warnings
 from time import time

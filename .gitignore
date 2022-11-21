@@ -4,6 +4,7 @@ pyjedai/.ipynb_checkpoints/
 examples/.ipynb_checkpoints/
 examples/scripts/.ipynb_checkpoints/
 data/der/synthetic/*
+data/supervised/*
 .vscode/
 tests/__pycache__/
 *.zip

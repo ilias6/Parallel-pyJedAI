@@ -20,6 +20,7 @@ class AbstractBlockBuilding:
 
     _method_name: str
     _method_info: str
+    _method_short_name: str
 
     def __init__(self):
         self.blocks: dict
