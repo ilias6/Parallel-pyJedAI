@@ -472,7 +472,7 @@ def get_default_blocking_workflow_der():
                                    params=dict(weighting_scheme='JS')),
         entity_matching = dict(method=EntityMatching,
                                params=dict(metric='cosine',
-                                           similarity_threshold=0.55)).
+                                           similarity_threshold=0.55)),
         name="best-der-workflow"
     )
 
