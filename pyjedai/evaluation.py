@@ -119,7 +119,7 @@ class Evaluation:
             }
 
         if verbose:
-            print("# " + (configuration['name'] if configuration else "") + " Evaluation \n---")
+            print(" " + (configuration['name'] if configuration else "") + " Evaluation \n---")
             if configuration:
                 print(
                     "Method name: " + configuration['name'] +

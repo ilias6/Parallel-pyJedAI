@@ -11,6 +11,11 @@ from tqdm.autonotebook import tqdm
 
 from .datamodel import Data
 from .evaluation import Evaluation, write
+from .block_building import StandardBlocking
+from .block_cleaning import BlockFiltering, BlockPurging
+from .comparison_cleaning import CardinalityNodePruning
+from .matching import EntityMatching
+from .clustering import ConnectedComponentsClustering, UniqueMappingClustering
 
 plt.style.use('seaborn-whitegrid')
 
@@ -22,7 +27,7 @@ class WorkFlow:
 
     def __init__(
             self,
-            block_building: dict,
+            block_building: dict = None,
             entity_matching: dict = None,
             block_cleaning: dict = None,
             comparison_cleaning: dict = None,
@@ -73,15 +78,16 @@ class WorkFlow:
         block_building_method = self.block_building['method'](**self.block_building["params"]) \
                                                     if "params" in self.block_building \
                                                     else self.block_building['method']()
-        block_building_blocks, entity_index  = \
-        block_building_method.build_blocks(data,
-                                            attributes_1=self.block_building["attributes_1"] \
-                                                            if "attributes_1" in self.block_building else None,
-                                            attributes_2=self.block_building["attributes_2"] \
-                                                            if "attributes_2" in self.block_building else None,
-                                            tqdm_disable=workflow_step_tqdm_disable)
+
+        block_building_blocks = \
+            block_building_method.build_blocks(data,
+                                               attributes_1=self.block_building["attributes_1"] \
+                                                                if "attributes_1" in self.block_building else None,
+                                                attributes_2=self.block_building["attributes_2"] \
+                                                                if "attributes_2" in self.block_building else None,
+                                                tqdm_disable=workflow_step_tqdm_disable)
         self.final_pairs = block_building_blocks
-        pj_eval.report(block_building_blocks, 
+        pj_eval.report(block_building_blocks,
                        block_building_method.method_configuration(), 
                        verbose=verbose)
         self._save_step(pj_eval, block_building_method.method_configuration())
@@ -98,7 +104,7 @@ class WorkFlow:
                 block_cleaning_method = block_cleaning['method'](**block_cleaning["params"]) \
                                                     if "params" in block_cleaning \
                                                     else block_cleaning['method']()
-                block_cleaning_blocks, entity_index = block_cleaning_method.process(bblocks, 
+                block_cleaning_blocks = block_cleaning_method.process(bblocks, 
                                                                       data, 
                                                                       tqdm_disable=workflow_step_tqdm_disable)
                 
@@ -121,7 +127,6 @@ class WorkFlow:
             comparison_cleaning_method.process(block_cleaning_blocks if block_cleaning_blocks is not None \
                                                     else block_building_blocks,
                                                 data,
-                                                entity_index=entity_index,
                                                 tqdm_disable=workflow_step_tqdm_disable)
             pj_eval.report(comparison_cleaning_blocks,
                            comparison_cleaning_method.method_configuration(),
@@ -150,7 +155,7 @@ class WorkFlow:
         #
         if self.clustering:
             clustering_method = self.clustering['method'](**self.clustering["params"]) \
-                                            if "params" in self.entity_matching \
+                                            if "params" in self.clustering \
                                             else self.clustering['method']()
             self.final_pairs = components = clustering_method.process(em_graph)
             pj_eval.report(
@@ -176,27 +181,58 @@ class WorkFlow:
             precision: bool = True,
             separate: bool = False
     ) -> None:
+        """Performance Visualization of the workflow.
+
+        Args:
+            f1 (bool, optional): F-Measure. Defaults to True.
+            recall (bool, optional): Recall. Defaults to True.
+            precision (bool, optional): Precision. Defaults to True.
+            separate (bool, optional): Separate plots. Defaults to False.
+        """
         method_names = [conf['name'] for conf in self.configurations]
         exec_time = []
         prev = 0
-        for i in range(0, len(self.runtime)):
+
+        for i, _ in enumerate(self.runtime):
             exec_time.append(prev + self.runtime[i])
             prev = exec_time[i]
+
         if separate:
             fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(10, 8))
             fig.suptitle(self.name + " Visualization", fontweight='bold', fontsize=14)
             fig.subplots_adjust(top=0.88)
-            axs[0, 0].plot(method_names, self.precision, linewidth=2.0, label="Precision", marker='o', markersize=10)
+            axs[0, 0].plot(method_names,
+                           self.precision,
+                           linewidth=2.0,
+                           label="Precision",
+                           marker='o',
+                           markersize=10)
             axs[0, 0].set_ylabel("Scores %", fontsize=12)
             axs[0, 0].set_title("Precision", fontsize=12)
-            axs[0, 1].plot(method_names, self.recall, linewidth=2.0, label="Recall", marker='*', markersize=10)
+            axs[0, 1].plot(method_names,
+                           self.recall,
+                           linewidth=2.0,
+                           label="Recall",
+                           marker='*',
+                           markersize=10)
             axs[0, 1].set_ylabel("Scores %", fontsize=12)
             axs[0, 1].set_title("Recall", fontsize=12)            
-            axs[1, 0].plot(method_names, self.f1, linewidth=2.0, label="F1-Score", marker='x', markersize=10)
+            axs[1, 0].plot(method_names,
+                           self.f1,
+                           linewidth=2.0,
+                           label="F1-Score",
+                           marker='x',
+                           markersize=10)
             axs[1, 0].set_ylabel("Scores %", fontsize=12)
             axs[1, 0].set_title("F1-Score", fontsize=12)
             # axs[0, 0].legend(loc='lower right')
-            axs[1, 1].plot(method_names, exec_time, linewidth=2.0, label="Time", marker='.', markersize=10, color='r')
+            axs[1, 1].plot(method_names,
+                           exec_time,
+                           linewidth=2.0,
+                           label="Time",
+                           marker='.',
+                           markersize=10,
+                           color='r')
             axs[1, 1].set_ylabel("Time (sec)", fontsize=12)
             axs[1, 1].set_title("Execution time", fontsize=12)
             fig.autofmt_xdate()
@@ -205,35 +241,68 @@ class WorkFlow:
             fig.suptitle(self.name + " Visualization", fontweight='bold', fontsize=14)
             fig.subplots_adjust(top=0.88)
             if precision:
-                axs[0].plot(method_names, self.precision, linewidth=2.0, label="Precision", marker='o', markersize=10)
+                axs[0].plot(method_names,
+                            self.precision,
+                            linewidth=2.0,
+                            label="Precision",
+                            marker='o',
+                            markersize=10)
             if recall:
-                axs[0].plot(method_names, self.recall, linewidth=2.0, label="Recall", marker='*', markersize=10)
+                axs[0].plot(method_names,
+                            self.recall,
+                            linewidth=2.0,
+                            label="Recall",
+                            marker='*',
+                            markersize=10)
             if f1:
-                axs[0].plot(method_names, self.f1, linewidth=2.0, label="F1-Score", marker='x', markersize=10)
+                axs[0].plot(method_names,
+                            self.f1, linewidth=2.0,
+                            label="F1-Score",
+                            marker='x',
+                            markersize=10)
             axs[0].set_xlabel("Models", fontsize=12)
             axs[0].set_ylabel("Scores %", fontsize=12)
             axs[0].set_title("Performance per step", fontsize=12)
             axs[0].legend(loc='lower right')
             exec_time = []
             prev = 0
-            for i in range(0, len(self.runtime)):
+            for i, _ in enumerate(self.runtime):
                 exec_time.append(prev + self.runtime[i])
                 prev = exec_time[i]
-            axs[1].plot(method_names, exec_time, linewidth=2.0, label="F1-Score", marker='.', markersize=10, color='r')
+            axs[1].plot(method_names,
+                        exec_time,
+                        linewidth=2.0,
+                        label="F1-Score",
+                        marker='.',
+                        markersize=10,
+                        color='r')
             axs[1].set_ylabel("Time (sec)", fontsize=12)
             axs[1].set_title("Execution time", fontsize=12)
             fig.autofmt_xdate()
         plt.show()
 
     def to_df(self) -> pd.DataFrame:
-        workflow_df = pd.DataFrame(columns=['Algorithm', 'F1', 'Recall', 'Precision', 'Runtime (sec)', 'Params'])
-        workflow_df['F1'], workflow_df['Recall'], workflow_df['Precision'], workflow_df['Runtime (sec)'] = \
+        """Transform results into a pandas.DataFrame
+
+        Returns:
+            pd.DataFrame: Results
+        """
+        workflow_df = pd.DataFrame(
+            columns=['Algorithm', 'F1', 'Recall', 'Precision', 'Runtime (sec)', 'Params'])
+        workflow_df['F1'], workflow_df['Recall'], \
+        workflow_df['Precision'], workflow_df['Runtime (sec)'] = \
             self.f1, self.recall, self.precision, self.runtime
         workflow_df['Algorithm'] = [c['name'] for c in self.configurations]
         workflow_df['Params'] = [c['parameters'] for c in self.configurations]
+
         return workflow_df
 
     def export_pairs(self) -> pd.DataFrame:
+        """Export pairs to file.
+
+        Returns:
+            pd.DataFrame: pairs as a DataFrame
+        """
         return write(self.final_pairs, self.data)
 
     def _save_step(self, evaluation: Evaluation, configuration: dict) -> None:
@@ -242,11 +311,25 @@ class WorkFlow:
         self.precision.append(evaluation.precision*100)
         self.configurations.append(configuration)
         self.runtime.append(configuration['runtime'])
-        
+
     def get_final_scores(self) -> Tuple[float, float, float]:
+        """Final scores in the last step of the workflow.
+
+        Returns:
+            Tuple[float, float, float]: F-Measure, Precision, Recall.
+        """
         return self.f1[-1], self.precision[-1], self.recall[-1]
 
 def compare_workflows(workflows: List[WorkFlow], with_visualization=True) -> pd.DataFrame:
+    """Compares workflows by creating multiple plots and tables with results.
+
+    Args:
+        workflows (List[WorkFlow]): Different workflows
+        with_visualization (bool, optional): Diagram generation. Defaults to True.
+
+    Returns:
+        pd.DataFrame: Results
+    """
     workflow_df = pd.DataFrame(columns=['Name', 'F1', 'Recall', 'Precision', 'Runtime (sec)'])
     if with_visualization:
         fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(10, 8))
@@ -263,17 +346,136 @@ def compare_workflows(workflows: List[WorkFlow], with_visualization=True) -> pd.
         axs[1, 0].set_ylim([0, 100])
         axs[1, 1].set_ylabel("Time (sec)", fontsize=12)
         axs[1, 1].set_title("Execution time", fontsize=12)
+
     for w in workflows:
-        workflow_df.loc[len(workflow_df)] = [w.name, w.f1[-1], w.recall[-1], w.precision[-1], w.workflow_exec_time]
+        workflow_df.loc[len(workflow_df)] = \
+            [w.name, w.f1[-1], w.recall[-1], w.precision[-1], w.workflow_exec_time]
 
     if with_visualization:
-        axs[0, 0].bar(workflow_df['Name'], workflow_df['Precision'], label=workflow_df['Name'], color='b')
-        axs[0, 1].bar(workflow_df['Name'], workflow_df['Recall'], label=workflow_df['Name'], color='g')
+        axs[0, 0].bar(workflow_df['Name'],
+                      workflow_df['Precision'],
+                      label=workflow_df['Name'],
+                      color='b')
+        axs[0, 1].bar(workflow_df['Name'],
+                      workflow_df['Recall'],
+                      label=workflow_df['Name'],
+                      color='g')
         axs[1, 0].bar(workflow_df['Name'], workflow_df['F1'], color='orange')
         axs[1, 1].bar(workflow_df['Name'], workflow_df['Runtime (sec)'], color='r')
     fig.autofmt_xdate()
     plt.show()
+
     return workflow_df
+
+
+############################################
+#  Pre-defined workflows same as JedAI     #
+############################################
+
+def get_best_blocking_workflow_ccer() -> WorkFlow:
+    """Best CC-ER workflow.
+
+    Returns:
+        WorkFlow: Best workflow
+    """
+    return WorkFlow(
+        block_building = dict(
+            method=StandardBlocking
+        ),
+        block_cleaning = [
+            dict(
+                method=BlockPurging,
+                params=dict(smoothing_factor=1.0)
+            ),
+            dict(
+                method=BlockFiltering
+            )
+
+        ],
+        comparison_cleaning = dict(method=CardinalityNodePruning),
+        entity_matching = dict(
+            method=EntityMatching,
+            metric='cosine',
+            similarity_threshold=0.55
+        ),
+        clustering = dict(
+            method=ConnectedComponentsClustering
+        ),
+        name="best-ccer-workflow"
+    )
+
+def get_best_blocking_workflow_der():
+    """Best D-ER workflow.
+
+    Returns:
+        WorkFlow: Best workflow
+    """
+    return WorkFlow(
+        block_building = dict(
+            method=StandardBlocking
+        ),
+        block_cleaning = [
+            dict(method=BlockPurging, params=dict(smoothing_factor=1.0)),
+            dict(method=BlockFiltering)
+        ],
+        comparison_cleaning = dict(method=CardinalityNodePruning,
+                                   params=dict(weighting_scheme='JS')),
+        entity_matching = dict(method=EntityMatching, 
+                               params=dict(metric='cosine',
+                                           similarity_threshold=0.55)),
+        clustering = dict(method=ConnectedComponentsClustering),
+        name="best-der-workflow"
+    )
+
+def get_default_blocking_workflow_ccer():
+    return WorkFlow(
+        block_building = dict(
+            method=StandardBlocking
+        ),
+        block_cleaning = [
+            dict(
+                method=BlockPurging,
+                params=dict(smoothing_factor=1.0)
+            ),
+            dict(
+                method=BlockFiltering
+            )
+
+        ],
+        comparison_cleaning = dict(method=CardinalityNodePruning),
+        entity_matching = dict(
+            method=EntityMatching,
+            metric='cosine',
+            similarity_threshold=0.55
+        ),
+        clustering = dict(
+            method=UniqueMappingClustering
+        ),
+        name="default-ccer-workflow"
+    )
+
+def get_default_blocking_workflow_der():
+    """Best D-ER workflow.
+
+    Returns:
+        WorkFlow: Best workflow
+    """
+    return WorkFlow(
+        block_building = dict(
+            method=StandardBlocking
+        ),
+        block_cleaning = [
+            dict(method=BlockPurging, params=dict(smoothing_factor=1.0)),
+            dict(method=BlockFiltering)
+        ],
+        comparison_cleaning = dict(method=CardinalityNodePruning, 
+                                   params=dict(weighting_scheme='JS')),
+        entity_matching = dict(method=EntityMatching,
+                               params=dict(metric='cosine',
+                                           similarity_threshold=0.55)).
+        name="best-der-workflow"
+    )
+
 
 class OptimizeWorkflow:
     """Optuna Framework for GridSearch/RandomSearch/Prunning in a given pyjedai workflow.
@@ -374,5 +576,3 @@ class OptimizeWorkflow:
     
     def to_df():
         pass
-    
-    
