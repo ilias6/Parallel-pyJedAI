@@ -58,7 +58,8 @@ class Data:
                 if self.id_column_name_1 in self.attributes_1:
                     self.attributes_1.remove(self.id_column_name_1)
             else:
-                raise AttributeError("Dataset 1 must contain column names if attributes_1 is empty.")
+                raise AttributeError(
+                    "Dataset 1 must contain column names if attributes_1 is empty.")
         else:
             self.attributes_1: list = attributes_1
         if dataset_2 is not None:
@@ -87,7 +88,8 @@ class Data:
         if not self.is_dirty_er:
             self.dataset_2 = self.dataset_2.astype(str)
             self.entities_d2 = self.dataset_2[self.attributes_2]
-            self.entities = concat([self.dataset_1, self.dataset_2])
+            self.entities = pd.concat([self.dataset_1, self.dataset_2],
+                                      ignore_index=True)
 
         self._create_gt_mapping()
 

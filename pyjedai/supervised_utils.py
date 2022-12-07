@@ -2,6 +2,7 @@ import random, os, csv, argparse, json, logging, sys, torch
 import numpy as np
 from enum import Enum
 from torch.utils.data import TensorDataset, RandomSampler, DataLoader, SequentialSampler
+from typing import List, Tuple, Dict
 import pandas as pd
 from sklearn.metrics import f1_score, classification_report, precision_recall_fscore_support
 from tqdm import tqdm, trange
@@ -14,7 +15,11 @@ from pytorch_transformers import AdamW, WarmupLinearSchedule
 from transformers import AutoConfig, AutoTokenizer, AutoModelForSequenceClassification, \
     AlbertConfig, AlbertForSequenceClassification, AlbertTokenizer, \
     T5Config, T5Tokenizer, T5ForConditionalGeneration
+import re
 
+
+from .utils import create_entity_index, are_matching
+from .datamodel import Data
 
 
 def build_optimizer(model, num_train_steps, learning_rate, adam_eps, warmup_steps, weight_decay):
@@ -131,6 +136,60 @@ class InputFeatures(object):
 
 class DeepMatcherProcessor(object):
     """Processor for preprocessed DeepMatcher data sets (abt_buy, company, etc.)"""
+
+    def _tokenize_entity(self, entity: str) -> list:
+        return ' '.join((set(filter(None, re.split('[\\W_]', entity.lower())))))
+
+    def split(self,
+              candidate_pairs: dict,
+              data: Data,
+              train_split_size: float = 0.6,
+              test_split_size: float = 0.2,
+              validation_split_size: float = 0.2) -> Tuple[dict, dict, dict]:
+
+        entities_d1 = data.dataset_1[data.attributes_1] \
+                            .apply(" ".join, axis=1) \
+                            .apply(self._tokenize_entity) \
+                            .values.tolist()
+        
+        if not data.is_dirty_er:
+            entities_d2 = data.dataset_2[data.attributes_2] \
+                    .apply(" ".join, axis=1) \
+                    .apply(self._tokenize_entity) \
+                    .values.tolist()
+
+        pairs = []
+        matches = {}
+        if isinstance(candidate_pairs, dict) and isinstance(list(candidate_pairs.values())[0], set):
+            # case of candidate pairs, entity-id -> {entity-id, ..}, i.e result from meta-blocking
+            for _, (gid1, gid2) in data.ground_truth.iterrows():
+                id1 = data._ids_mapping_1[gid1]
+                id2 = data._ids_mapping_1[gid2] if data.is_dirty_er else data._ids_mapping_2[gid2]
+                if (id1 in candidate_pairs and id2 in candidate_pairs[id1]) or   \
+                    (id2 in candidate_pairs and id1 in candidate_pairs[id2]):
+                    # id1 and id2 are a match
+                    pairs.append((entities_d1[id1], entities_d1[id2] if data.is_dirty_er \
+                                        else entities_d2[id2 - data.dataset_limit], "1"))
+                    # matches[id1] = id2
+        else:
+            # blocks
+            entity_index = create_entity_index(candidate_pairs, data.is_dirty_er)
+            # print(entity_index)
+            for _, (gid1, gid2) in data.ground_truth.iterrows():
+                id1 = data._ids_mapping_1[gid1]
+                id2 = data._ids_mapping_1[gid2] if data.is_dirty_er \
+                                                else data._ids_mapping_2[gid2]
+                if id1 in entity_index and id2 in entity_index and \
+                     are_matching(entity_index, id1, id2):
+                        # id1 and id2 are a match
+                    pairs.append((entities_d1[id1], entities_d1[id2] if data.is_dirty_er \
+                                        else entities_d2[id2 - data.dataset_limit], "1"))
+            
+            # for key in entity_index.getkeys():
+                
+                
+                
+        return None, None, None
 
     def get_train_examples(self, data_dir):
         """See base class."""

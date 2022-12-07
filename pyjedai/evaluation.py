@@ -11,6 +11,7 @@ import pandas as pd
 import seaborn as sns
 
 from .datamodel import Data
+from .utils import are_matching
 
 
 class Evaluation:
@@ -83,7 +84,7 @@ class Evaluation:
                 id2 = self.data._ids_mapping_1[id2] if self.data.is_dirty_er else self.data._ids_mapping_2[id2]
                 if id1 in entity_index and    \
                     id2 in entity_index and     \
-                        self._are_matching(entity_index, id1, id2):
+                        are_matching(entity_index, id1, id2):
                     self.true_positives += 1
 
         if self.total_matching_pairs == 0:
@@ -102,8 +103,6 @@ class Evaluation:
             self.precision = self.true_positives / self.total_matching_pairs
             self.recall = self.true_positives / self.num_of_true_duplicates
             if self.precision == 0.0 or self.recall == 0.0:
-                print(self.recall)
-                print(self.precision)
                 raise DivisionByZero("Recall or Precision is equal to zero. Can't calculate F1 score.")
             else:
                 self.f1 = 2*((self.precision*self.recall)/(self.precision+self.recall))
@@ -182,7 +181,7 @@ class Evaluation:
             blocks: dict
     ) -> dict:
         entity_index = dict()
-        for block_id, block in blocks.items():          
+        for block_id, block in blocks.items():       
             for entity_id in block.entities_D1:
                 entity_index.setdefault(entity_id, set())
                 entity_index[entity_id].add(block_id)
@@ -199,20 +198,11 @@ class Evaluation:
 
         return entity_index
 
-    def _are_matching(self, entity_index, id1, id2) -> bool:
-        '''
-        id1 and id2 consist a matching pair if:
-        - Blocks: intersection > 0 (comparison of sets)
-        - Clusters: cluster-id-j == cluster-id-i (comparison of integers)
-        '''
 
-        if len(entity_index) < 1:
-            raise ValueError("No entities found in the provided index")
-        if isinstance(list(entity_index.values())[0], set): # Blocks case
-            return len(entity_index[id1].intersection(entity_index[id2])) > 0
-        return entity_index[id1] == entity_index[id2] # Clusters case
 
     def confusion_matrix(self):
+        """Generates a confusion matrix based on the classification report.
+        """
         heatmap = [
             [int(self.true_positives), int(self.false_positives)],
             [int(self.false_negatives), int(self.true_negatives)]
@@ -256,10 +246,10 @@ def write(
                     id1 = data._gt_to_ids_reversed_1[lcluster[i1]]
                     id2 = data._gt_to_ids_reversed_1[lcluster[i2]] if data.is_dirty_er \
                             else data._gt_to_ids_reversed_2[lcluster[i2]]
-                    pairs_df = pd.concat([
-                        pairs_df,
-                        pd.DataFrame([{'id1':id1, 'id2':id2}],
-                        index=[0])], ignore_index=True)
+                    pairs_df = pd.concat(
+                        [pairs_df, pd.DataFrame([{'id1':id1, 'id2':id2}], index=[0])], 
+                        ignore_index=True
+                    )
     elif 'Block' in str(type(list(prediction.values())[0])): # blocks evaluation
         for _, block in prediction.items():
             if data.is_dirty_er:

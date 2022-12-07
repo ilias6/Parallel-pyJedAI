@@ -428,6 +428,11 @@ def get_best_blocking_workflow_der():
     )
 
 def get_default_blocking_workflow_ccer():
+    """Default CC-ER workflow.
+
+    Returns:
+        WorkFlow: Default workflow
+    """
     return WorkFlow(
         block_building = dict(
             method=StandardBlocking
@@ -455,7 +460,7 @@ def get_default_blocking_workflow_ccer():
     )
 
 def get_default_blocking_workflow_der():
-    """Best D-ER workflow.
+    """Default D-ER workflow.
 
     Returns:
         WorkFlow: Best workflow
@@ -473,7 +478,7 @@ def get_default_blocking_workflow_der():
         entity_matching = dict(method=EntityMatching,
                                params=dict(metric='cosine',
                                            similarity_threshold=0.55)),
-        name="best-der-workflow"
+        name="default-der-workflow"
     )
 
 

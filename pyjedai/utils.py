@@ -10,20 +10,11 @@ EMPTY = -1
 # ----------------------- #
 # Utility Methods
 # ----------------------- #
-def create_entity_index(blocks: dict, is_dirty_er: bool):
+def create_entity_index(blocks: dict, is_dirty_er: bool) -> dict:
     """Creates a dict of entity ids to block keys
         Example:
             e_id -> ['block_key_1', ..]
             ...  -> [ ... ]
-        ---------------------------------------
-        Reduce time complexity!!!
-        entity_index = defaultdict(list)
-        dict_init = lambda k, v: entity_index[k].append(v)
-        _dict = defaultdict(list, dict(map(
-                 lambda x: (),
-                 blocks.items()
-             ))
-        )
     """
     entity_index = {}
     for key, block in blocks.items():
@@ -37,6 +28,19 @@ def create_entity_index(blocks: dict, is_dirty_er: bool):
                 entity_index[entity_id].append(key)
 
     return entity_index
+
+def are_matching(entity_index, id1, id2) -> bool:
+    '''
+    id1 and id2 consist a matching pair if:
+    - Blocks: intersection > 0 (comparison of sets)
+    - Clusters: cluster-id-j == cluster-id-i (comparison of integers)
+    '''
+
+    if len(entity_index) < 1:
+        raise ValueError("No entities found in the provided index")
+    if isinstance(list(entity_index.values())[0], set): # Blocks case
+        return len(entity_index[id1].intersection(entity_index[id2])) > 0
+    return entity_index[id1] == entity_index[id2] # Clusters case
 
 def drop_big_blocks_by_size(blocks: dict, max_block_size: int, is_dirty_er: bool) -> dict:
     """Drops blocks if:
