@@ -97,19 +97,19 @@ class PretrainedSupervisedER():
         #
         # Selecting pretrained model
         #
-        config_class, model_class, tokenizer_class = Config.MODEL_CLASSES[self.model_type]
-        if config_class is not None:
-            config = config_class.from_pretrained(self.model_name)
-            tokenizer = tokenizer_class.from_pretrained(self.model_name,
-                                                        do_lower_case=self.do_lower_case)
-            model = model_class.from_pretrained(self.model_name, config=config)
-            model.to(device)
-        else: # SBERT Models
-            tokenizer = tokenizer_class.from_pretrained(self.model_name)
-            model = model_class.from_pretrained(self.model_name)
-            model.to(device)
+        # config_class, model_class, tokenizer_class = Config.MODEL_CLASSES[self.model_type]
+        # if config_class is not None:
+        #     config = config_class.from_pretrained(self.model_name)
+        #     tokenizer = tokenizer_class.from_pretrained(self.model_name,
+        #                                                 do_lower_case=self.do_lower_case)
+        #     model = model_class.from_pretrained(self.model_name, config=config)
+        #     model.to(device)
+        # else: # SBERT Models
+        #     tokenizer = tokenizer_class.from_pretrained(self.model_name)
+        #     model = model_class.from_pretrained(self.model_name)
+        #     model.to(device)
 
-        print("Initialized {}-model".format(self.model_type))
+        # print("Initialized {}-model".format(self.model_type))
 
         #
         # Training

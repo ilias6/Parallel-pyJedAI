@@ -19,13 +19,13 @@ def create_entity_index(blocks: dict, is_dirty_er: bool) -> dict:
     entity_index = {}
     for key, block in blocks.items():
         for entity_id in block.entities_D1:
-            entity_index.setdefault(entity_id, [])
-            entity_index[entity_id].append(key)
+            entity_index.setdefault(entity_id, set())
+            entity_index[entity_id].add(key)
 
         if not is_dirty_er:
             for entity_id in block.entities_D2:
-                entity_index.setdefault(entity_id, [])
-                entity_index[entity_id].append(key)
+                entity_index.setdefault(entity_id, set())
+                entity_index[entity_id].add(key)
 
     return entity_index
 

@@ -1,3 +1,4 @@
+from collections import defaultdict
 import random, os, csv, argparse, json, logging, sys, torch
 import numpy as np
 from enum import Enum
@@ -16,7 +17,7 @@ from transformers import AutoConfig, AutoTokenizer, AutoModelForSequenceClassifi
     AlbertConfig, AlbertForSequenceClassification, AlbertTokenizer, \
     T5Config, T5Tokenizer, T5ForConditionalGeneration
 import re
-
+import random
 
 from .utils import create_entity_index, are_matching
 from .datamodel import Data
@@ -135,7 +136,7 @@ class InputFeatures(object):
 
 
 class DeepMatcherProcessor(object):
-    """Processor for preprocessed DeepMatcher data sets (abt_buy, company, etc.)"""
+    """Processor for preprocessed DeepMatcher data sets"""
 
     def _tokenize_entity(self, entity: str) -> list:
         return ' '.join((set(filter(None, re.split('[\\W_]', entity.lower())))))
@@ -145,13 +146,14 @@ class DeepMatcherProcessor(object):
               data: Data,
               train_split_size: float = 0.6,
               test_split_size: float = 0.2,
-              validation_split_size: float = 0.2) -> Tuple[dict, dict, dict]:
+              validation_split_size: float = 0.2,
+              shuffle=True) -> Tuple[dict, dict, dict]:
 
         entities_d1 = data.dataset_1[data.attributes_1] \
                             .apply(" ".join, axis=1) \
                             .apply(self._tokenize_entity) \
                             .values.tolist()
-        
+
         if not data.is_dirty_er:
             entities_d2 = data.dataset_2[data.attributes_2] \
                     .apply(" ".join, axis=1) \
@@ -160,36 +162,133 @@ class DeepMatcherProcessor(object):
 
         pairs = []
         matches = {}
+        total_pairs = 0
+        all_ids = None
         if isinstance(candidate_pairs, dict) and isinstance(list(candidate_pairs.values())[0], set):
             # case of candidate pairs, entity-id -> {entity-id, ..}, i.e result from meta-blocking
+            total_pairs = 0
+            all_ids  = set()
             for _, (gid1, gid2) in data.ground_truth.iterrows():
                 id1 = data._ids_mapping_1[gid1]
                 id2 = data._ids_mapping_1[gid2] if data.is_dirty_er else data._ids_mapping_2[gid2]
                 if (id1 in candidate_pairs and id2 in candidate_pairs[id1]) or   \
                     (id2 in candidate_pairs and id1 in candidate_pairs[id2]):
+                    total_pairs+=1
                     # id1 and id2 are a match
+                    if id1 not in matches:
+                        matches[id1] = set()
+                    if id2 not in matches:
+                        matches[id2] = set()
+                    matches[id1].add(id2)
+                    matches[id2].add(id1)
+                    all_ids.add(id1)
+                    all_ids.add(id2)
                     pairs.append((entities_d1[id1], entities_d1[id2] if data.is_dirty_er \
                                         else entities_d2[id2 - data.dataset_limit], "1"))
-                    # matches[id1] = id2
-        else:
-            # blocks
+            
+            
+                
+        else: # blocks case
             entity_index = create_entity_index(candidate_pairs, data.is_dirty_er)
-            # print(entity_index)
             for _, (gid1, gid2) in data.ground_truth.iterrows():
                 id1 = data._ids_mapping_1[gid1]
                 id2 = data._ids_mapping_1[gid2] if data.is_dirty_er \
                                                 else data._ids_mapping_2[gid2]
                 if id1 in entity_index and id2 in entity_index and \
-                     are_matching(entity_index, id1, id2):
-                        # id1 and id2 are a match
+                        are_matching(entity_index, id1, id2):
+                    total_pairs+=1
+                    # print('here')
+                    # id1 and id2 are a match
                     pairs.append((entities_d1[id1], entities_d1[id2] if data.is_dirty_er \
                                         else entities_d2[id2 - data.dataset_limit], "1"))
+                    if id1 not in matches:
+                        matches[id1] = set()
+                    if id2 not in matches:
+                        matches[id2] = set()
+                    matches[id1].add(id2)
+                    # matches[id2].add(id1)
+            all_ids = set(entity_index.keys())
+
+        non_matches_count = 0
+        diff_pairs = []
+        for entity_id, pairs_ids in matches.items():
+            non_matches = all_ids.difference(pairs_ids)
             
-            # for key in entity_index.getkeys():
+            for no_match_id in non_matches:
+                entity_1 = entities_d1[entity_id] if entity_id < data.dataset_limit else entities_d2[entity_id-data.dataset_limit]
+                entity_2 = entities_d1[no_match_id] if no_match_id < data.dataset_limit else entities_d2[no_match_id-data.dataset_limit]
                 
-                
-                
-        return None, None, None
+                diff_pairs.append((entity_1, entity_2, "0"))
+                non_matches_count += 1
+            # print(len(all_ids), " - ", len(pairs_ids), " = ", len(non_matches))
+
+        print(len(matches))
+        print(len(pairs))
+        print(len(diff_pairs))
+        print("Ratio of true positives to true negatives: ", len(matches)/non_matches_count)
+        print("Ratio of true positives to all pairs: ", len(matches)/(len(pairs)+len(diff_pairs)))
+        # print(total_pairs)
+        # print(pairs)
+        train, test, validation = [], [], []
+
+        if shuffle:
+            random.shuffle(diff_pairs)
+            random.shuffle(pairs)
+
+        all_pairs = pairs + diff_pairs
+        all_pairs_count = len(all_pairs)
+        num_of_training_data = int(train_split_size*all_pairs_count)
+        num_of_test_data = int(test_split_size*all_pairs_count)
+        num_of_validation_data = int(validation_split_size*all_pairs_count)
+
+        print(
+            "#all_pairs_count: ", all_pairs_count,
+            "\n#num_of_training_data: ", num_of_training_data,
+            "\n#num_of_test_data: ", num_of_test_data,
+            "\n#num_of_validation_data: ", num_of_validation_data
+        )
+
+        train.append(
+            [InputExample(guid='train-'+str(i),
+                          text_a=pairs[i][0],
+                          text_b=pairs[i][1],
+                          label=pairs[i][2]) for i in range(0,int(train_split_size*len(pairs)))])
+
+        train.append(
+            [InputExample(guid='train-'+str(i),
+                          text_a=diff_pairs[i][0],
+                          text_b=diff_pairs[i][1],
+                          label=diff_pairs[i][2]) for i in range(0,int(train_split_size*len(diff_pairs)))])
+
+        test.append(
+            [InputExample(guid='test-'+str(i),
+                          text_a=pairs[i][0],
+                          text_b=pairs[i][1],
+                          label=pairs[i][2]) for i in range(int(train_split_size*len(pairs)),
+                                                            int(train_split_size*len(pairs))+int(test_split_size*len(pairs)))])
+
+        test.append(
+            [InputExample(guid='test-'+str(i),
+                          text_a=diff_pairs[i][0],
+                          text_b=diff_pairs[i][1],
+                          label=diff_pairs[i][2]) for i in range(int(train_split_size*len(diff_pairs)),
+                                                                int(train_split_size*len(diff_pairs))+int(test_split_size*len(diff_pairs)))])
+
+        validation.append(
+            [InputExample(guid='validation-'+str(i),
+                          text_a=pairs[i][0],
+                          text_b=pairs[i][1],
+                          label=pairs[i][2]) for i in range(int((train_split_size+test_split_size)*len(pairs)),
+                                                            int((train_split_size+test_split_size)*len(pairs))+int(validation_split_size*len(pairs)))])
+
+        validation.append(
+            [InputExample(guid='validation-'+str(i),
+                          text_a=diff_pairs[i][0],
+                          text_b=diff_pairs[i][1],
+                          label=diff_pairs[i][2]) for i in range(int((train_split_size+test_split_size)*len(pairs)),
+                                                                 int((train_split_size+test_split_size)*len(pairs))+int(validation_split_size*len(pairs)))])
+
+        return train, test, validation
 
     def get_train_examples(self, data_dir):
         """See base class."""
