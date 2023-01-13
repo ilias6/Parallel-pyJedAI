@@ -13,8 +13,9 @@ from tqdm.autonotebook import tqdm
 from .datamodel import Block, Data
 from .utils import drop_big_blocks_by_size, drop_single_entity_blocks
 
+from abc import ABC, abstractmethod
 
-class AbstractBlockBuilding:
+class AbstractBlockBuilding(ABC):
     """Abstract class for the block building method
     """
 
@@ -118,6 +119,14 @@ class AbstractBlockBuilding:
                 else self.data.dataset_2.columns)) if not self.data.is_dirty_er else "") +
             "\nRuntime: {:2.4f} seconds".format(self.execution_time)
         )
+
+    @abstractmethod
+    def _clean_blocks(self, blocks: dict) -> dict:
+        pass
+
+    @abstractmethod
+    def _configuration(self) -> dict:
+        pass
 
 class StandardBlocking(AbstractBlockBuilding):
     """ Creates one block for every token in \
