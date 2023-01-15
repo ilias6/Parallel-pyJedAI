@@ -54,3 +54,4 @@ dev-only/vectorization.py
 documentation/~$workflow-example.odp
 documentation/workflow-example.odp
 dev-only/data/tvdbProfiles
+dev-only/*
