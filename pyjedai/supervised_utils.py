@@ -67,10 +67,9 @@ class DataType(Enum):
     EVALUATION = "Evaluation"
     TEST = "Test"
 
-
 def load_data(examples, label_list, tokenizer, max_seq_length, batch_size, data_type: DataType, model_type):
     logging.info("***** Convert Data to Features (Word-Piece Tokenizing) [{}] *****".format(data_type))
-    
+
     features = convert_examples_to_features(examples,
                                             label_list,
                                             max_seq_length,
@@ -166,7 +165,6 @@ class DeepMatcherProcessor(object):
         all_ids = None
         if isinstance(candidate_pairs, dict) and isinstance(list(candidate_pairs.values())[0], set):
             # case of candidate pairs, entity-id -> {entity-id, ..}, i.e result from meta-blocking
-            total_pairs = 0
             all_ids  = set()
             for _, (gid1, gid2) in data.ground_truth.iterrows():
                 id1 = data._ids_mapping_1[gid1]
@@ -185,9 +183,6 @@ class DeepMatcherProcessor(object):
                     all_ids.add(id2)
                     pairs.append((entities_d1[id1], entities_d1[id2] if data.is_dirty_er \
                                         else entities_d2[id2 - data.dataset_limit], "1"))
-            
-            
-                
         else: # blocks case
             entity_index = create_entity_index(candidate_pairs, data.is_dirty_er)
             for _, (gid1, gid2) in data.ground_truth.iterrows():
@@ -222,9 +217,10 @@ class DeepMatcherProcessor(object):
                 non_matches_count += 1
             # print(len(all_ids), " - ", len(pairs_ids), " = ", len(non_matches))
 
-        print(len(matches))
+        print(total_pairs)
         print(len(pairs))
         print(len(diff_pairs))
+        diff_pairs = diff_pairs[:len(pairs)]
         print("Ratio of true positives to true negatives: ", len(matches)/non_matches_count)
         print("Ratio of true positives to all pairs: ", len(matches)/(len(pairs)+len(diff_pairs)))
         # print(total_pairs)
@@ -242,135 +238,102 @@ class DeepMatcherProcessor(object):
         num_of_validation_data = int(validation_split_size*all_pairs_count)
 
         print(
-            "#all_pairs_count: ", all_pairs_count,
-            "\n#num_of_training_data: ", num_of_training_data,
-            "\n#num_of_test_data: ", num_of_test_data,
-            "\n#num_of_validation_data: ", num_of_validation_data
+            "#pairs_count: ", len(pairs),
+            "\n#diff_pairs: ", len(diff_pairs)
         )
 
-        train.append(
+        train.extend(
             [InputExample(guid='train-'+str(i),
                           text_a=pairs[i][0],
                           text_b=pairs[i][1],
                           label=pairs[i][2]) for i in range(0,int(train_split_size*len(pairs)))])
+        print(0," -> ",int(train_split_size*len(pairs)))
 
-        train.append(
+        train.extend(
             [InputExample(guid='train-'+str(i),
                           text_a=diff_pairs[i][0],
                           text_b=diff_pairs[i][1],
                           label=diff_pairs[i][2]) for i in range(0,int(train_split_size*len(diff_pairs)))])
+        print(0," -> ", int(train_split_size*len(diff_pairs)))
 
-        test.append(
+        test.extend(
             [InputExample(guid='test-'+str(i),
                           text_a=pairs[i][0],
                           text_b=pairs[i][1],
                           label=pairs[i][2]) for i in range(int(train_split_size*len(pairs)),
                                                             int(train_split_size*len(pairs))+int(test_split_size*len(pairs)))])
-
-        test.append(
+        print(int(train_split_size*len(pairs))," -> ",int(train_split_size*len(pairs))+int(test_split_size*len(pairs)))
+        
+        test.extend(
             [InputExample(guid='test-'+str(i),
                           text_a=diff_pairs[i][0],
                           text_b=diff_pairs[i][1],
                           label=diff_pairs[i][2]) for i in range(int(train_split_size*len(diff_pairs)),
                                                                 int(train_split_size*len(diff_pairs))+int(test_split_size*len(diff_pairs)))])
+        print(int(train_split_size*len(diff_pairs))," -> ",int(train_split_size*len(diff_pairs))+int(test_split_size*len(diff_pairs)))
 
-        validation.append(
+        validation.extend(
             [InputExample(guid='validation-'+str(i),
                           text_a=pairs[i][0],
                           text_b=pairs[i][1],
-                          label=pairs[i][2]) for i in range(int((train_split_size+test_split_size)*len(pairs)),
-                                                            int((train_split_size+test_split_size)*len(pairs))+int(validation_split_size*len(pairs)))])
+                          label=pairs[i][2]) for i in range(int((train_split_size+test_split_size)*len(pairs)), len(pairs))])
+            
+        print(int((train_split_size+test_split_size)*len(pairs))," -> ",int(len(pairs)))
 
-        validation.append(
+        validation.extend(
             [InputExample(guid='validation-'+str(i),
                           text_a=diff_pairs[i][0],
                           text_b=diff_pairs[i][1],
-                          label=diff_pairs[i][2]) for i in range(int((train_split_size+test_split_size)*len(pairs)),
-                                                                 int((train_split_size+test_split_size)*len(pairs))+int(validation_split_size*len(pairs)))])
+                          label=diff_pairs[i][2]) for i in range(int((train_split_size+test_split_size)*len(diff_pairs)), len(diff_pairs))])
+        print(int((train_split_size+test_split_size)*len(diff_pairs))," -> ",len(diff_pairs))
+        print("Total: ", len(train)+len(test)+len(validation))
 
-        return train, test, validation
+        return train, validation, test
 
-    def get_train_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "train.csv")), 
-            self._read_tsv(os.path.join(data_dir, "tableA.csv")),
-            self._read_tsv(os.path.join(data_dir, "tableB.csv")),
-            "train")
+    # def get_train_examples(self, data_dir):
+    #     """See base class."""
+    #     return self._create_examples(
+    #         self._read_tsv(os.path.join(data_dir, "train.csv")), 
+    #         self._read_tsv(os.path.join(data_dir, "tableA.csv")),
+    #         self._read_tsv(os.path.join(data_dir, "tableB.csv")),
+    #         "train")
 
-    def get_dev_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "valid.csv")),
-            self._read_tsv(os.path.join(data_dir, "tableA.csv")),
-            self._read_tsv(os.path.join(data_dir, "tableB.csv")),
-            "dev")
+    # def get_dev_examples(self, data_dir):
+    #     """See base class."""
+    #     return self._create_examples(
+    #         self._read_tsv(os.path.join(data_dir, "valid.csv")),
+    #         self._read_tsv(os.path.join(data_dir, "tableA.csv")),
+    #         self._read_tsv(os.path.join(data_dir, "tableB.csv")),
+    #         "dev")
 
-    def get_test_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "test.csv")),
-            self._read_tsv(os.path.join(data_dir, "tableA.csv")),
-            self._read_tsv(os.path.join(data_dir, "tableB.csv")),
-            "test")
+    # def get_test_examples(self, data_dir):
+    #     """See base class."""
+    #     return self._create_examples(
+    #         self._read_tsv(os.path.join(data_dir, "test.csv")),
+    #         self._read_tsv(os.path.join(data_dir, "tableA.csv")),
+    #         self._read_tsv(os.path.join(data_dir, "tableB.csv")),
+    #         "test")
 
     def get_labels(self):
         """See base class."""
         return ["0", "1"]
+    
+def train(device,
+          train_dataloader,
+          model,
+          optimizer,
+          scheduler,
+          evaluation,
+          num_epocs,
+          max_grad_norm,
+          save_model_after_epoch,
+          experiment_name,
+          model_type,
+          output_dir=None):
 
-    def _create_examples(self, lines, tableA, tableB, set_type):
-        """Creates examples for the training and dev sets."""
-        tableA = [' '.join(line[1:]) for line in tableA]
-        tableB = [' '.join(line[1:]) for line in tableB]
-        
-        examples = []
-        for (i, line) in enumerate(lines):
-            if i == 0:
-                continue
-            #guid = "%s-%s" % (set_type, line[0])
-            guid = "%s-%s" % (set_type, i)
-            try:
-                #text_a, text_b, label = line[1:]
-                text_a, text_b, label = line
-                
-                text_a = tableA[int(text_a)]
-                text_b = tableB[int(text_b)]
-                
-                '''
-                text_a = line[1]
-                text_b = line[2]
-                label = line[3]
-                '''
-            except IndexError:
-                continue
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-                
-        return examples
-    
-    def _read_tsv(self, input_file, quotechar=None, delimiter=','):
-        """Reads a tab separated value file."""
-        with open(input_file, "r", encoding='utf-8') as f:
-            reader = csv.reader(f, delimiter=delimiter, quotechar=quotechar)
-            '''
-            lines = []
-            for line in reader:
-                lines.append(line)
-            return lines
-            '''            
-            lines = []
-            for no, line in enumerate(reader):
-                if no == 0:
-                        continue
-                lines.append(line)
-            return lines
-   
-    
-def train(device, train_dataloader, model, optimizer, scheduler, evaluation,
-          num_epocs, max_grad_norm, save_model_after_epoch, experiment_name,
-          output_dir, model_type):
     logging.info("***** Run training *****")
-    tb_writer = SummaryWriter(os.path.join(output_dir, experiment_name))
+    
+    tb_writer = SummaryWriter(os.path.join("./", experiment_name))
 
     global_step = 0
     tr_loss, logging_loss = 0.0, 0.0
@@ -383,7 +346,7 @@ def train(device, train_dataloader, model, optimizer, scheduler, evaluation,
 
     for epoch in trange(int(num_epocs), desc="Epoch"):
         for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
-            model.train()
+            model.train()   
 
             batch = tuple(t.to(device) for t in batch)
             inputs = {'input_ids': batch[0],
@@ -608,11 +571,19 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
 
 class Evaluation:
 
-    def __init__(self, evaluation_data_loader, experiment_name, model_output_dir, n_labels, model_type):
+    def __init__(self,
+                 evaluation_data_loader,
+                 experiment_name,
+                 n_labels,
+                 model_type,
+                 model_output_dir=None):
         self.model_type = model_type
         self.evaluation_data_loader = evaluation_data_loader
         self.n_labels = n_labels
-        self.output_path = os.path.join(model_output_dir, experiment_name, "eval_results.txt")
+        self.verbose_to_file = False
+        if model_output_dir:
+            self.output_path = os.path.join(model_output_dir, experiment_name, "eval_results.txt")
+            self.verbose_to_file = True
 
     def evaluate(self, model, device, epoch):
         nb_eval_steps = 0
@@ -661,15 +632,20 @@ class Evaluation:
                   'simple_accuracy': simple_accuracy,
                   'f1_score': f1}
 
-        with open(self.output_path, "a+") as writer:
+        if self.verbose_to_file:
+            with open(self.output_path, "a+") as writer:
+                tqdm.write("***** Eval results after epoch {} *****".format(epoch))
+                writer.write("***** Eval results after epoch {} *****\n".format(epoch))
+                for key in sorted(result.keys()):
+                    tqdm.write("{}: {}".format(key, str(result[key])))
+                    writer.write("{}: {}\n".format(key, str(result[key])))
+
+                tqdm.write(report)
+                writer.write(report + "\n")
+        else:
             tqdm.write("***** Eval results after epoch {} *****".format(epoch))
-            writer.write("***** Eval results after epoch {} *****\n".format(epoch))
             for key in sorted(result.keys()):
                 tqdm.write("{}: {}".format(key, str(result[key])))
-                writer.write("{}: {}\n".format(key, str(result[key])))
-
-            tqdm.write(report)
-            writer.write(report + "\n")
 
         return result
 

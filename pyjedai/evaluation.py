@@ -52,8 +52,8 @@ class Evaluation:
             any: pd.DataFrame, dict or str
         """
         if self.data.ground_truth is None:
-            raise AttributeError("Can not proceed to evaluation without a ground-truth file.\
-                Data object mush have initialized with the ground-truth file")
+            raise AttributeError("Can not proceed to evaluation without a ground-truth file. " + 
+                    "Data object has not been initialized with the ground-truth file")
 
         self.true_positives = self.true_negatives = self.false_positives = self.false_negatives = 0
         gt = self.data.ground_truth

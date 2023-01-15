@@ -4,6 +4,7 @@ pyjedai/.ipynb_checkpoints/
 examples/.ipynb_checkpoints/
 examples/scripts/.ipynb_checkpoints/
 data/der/synthetic/*
+dev-only/data/*
 data/supervised/*
 .vscode/
 tests/__pycache__/
@@ -52,3 +53,4 @@ dev-only/vectorization.py
 dev-only/vectorization.py
 documentation/~$workflow-example.odp
 documentation/workflow-example.odp
+dev-only/data/tvdbProfiles
