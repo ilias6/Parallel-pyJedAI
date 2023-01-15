@@ -91,7 +91,10 @@ class Data:
             self.entities = pd.concat([self.dataset_1, self.dataset_2],
                                       ignore_index=True)
 
-        self._create_gt_mapping()
+        if ground_truth is not None:
+            self._create_gt_mapping()
+        else:
+            self.ground_truth = None
 
     def _create_gt_mapping(self) -> None:
         """Creates two mappings:

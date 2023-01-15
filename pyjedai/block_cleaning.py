@@ -74,7 +74,9 @@ class BlockFiltering:
         filtered_blocks = {}
         for entity_id, block_keys in entity_index.items():
             # Create new blocks from the entity index
-            for key in block_keys[:int(round(self.ratio*len(block_keys)))]:
+            # print(list(block_keys[:int(round(self.ratio*len(block_keys)))]))
+            block_keys = list(block_keys)
+            for key in list(block_keys[:int(round(self.ratio*len(block_keys)))]):
                 filtered_blocks.setdefault(key, Block())
                 # Entities ids start to 0 ... n-1 for 1st dataset
                 # and n ... m for 2nd dataset
