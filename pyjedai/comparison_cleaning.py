@@ -13,8 +13,10 @@ from tqdm.autonotebook import tqdm
 from .datamodel import Data
 from .utils import chi_square, create_entity_index
 
+from abc import ABC, abstractmethod
 
-class AbstractComparisonCleaning:
+
+class AbstractComparisonCleaning(ABC):
     """Abstract class for Block cleaning
     """
 
@@ -94,7 +96,15 @@ class AbstractComparisonCleaning:
             "\nRuntime: {:2.4f} seconds".format(self.execution_time)
         )
 
-class AbstractMetablocking(AbstractComparisonCleaning):
+    @abstractmethod
+    def _apply_main_processing(self) -> dict:
+        pass
+
+    @abstractmethod
+    def _configuration(self) -> dict:
+        pass
+
+class AbstractMetablocking(AbstractComparisonCleaning, ABC):
     """Restructure a redundancy-positive block collection into a new
         one that contains substantially lower number of redundant
         and superfluous comparisons, while maintaining the original number of matching ones
@@ -202,6 +212,14 @@ class AbstractMetablocking(AbstractComparisonCleaning):
         return self._blocks[block_id].entities_D2 \
             if (not self.data.is_dirty_er and entity_id < self.data.dataset_limit) else \
                 self._blocks[block_id].entities_D1
+
+    @abstractmethod
+    def _set_threshold(self):
+        pass
+
+    @abstractmethod
+    def _prune_edges(self) -> dict:
+        pass
 
 class ComparisonPropagation(AbstractComparisonCleaning):
     """Comparison Propagation
