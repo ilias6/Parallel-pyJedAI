@@ -24,8 +24,8 @@ def create_experiment_folder(model_output_dir: str, model_type: str, data_dir: s
 
 
 if __name__ == "__main__":
-    args = read_arguments_train()
 
+    args = read_arguments_train()
     exp_name = create_experiment_folder(args.model_output_dir, args.model_type, args.data_dir)
     
     write_config_to_file(args, args.model_output_dir, exp_name)
@@ -138,4 +138,4 @@ if __name__ == "__main__":
  
     '''     
     save_model(model, exp_name, args.model_output_dir, tokenizer=tokenizer)
-    '''          
+    '''

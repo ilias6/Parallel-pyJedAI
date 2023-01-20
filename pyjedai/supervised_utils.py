@@ -123,7 +123,6 @@ class InputExample(object):
         self.text_b = text_b
         self.label = label
 
-
 class InputFeatures(object):
     """A single set of features of data."""
 
@@ -132,7 +131,6 @@ class InputFeatures(object):
         self.input_mask = input_mask
         self.segment_ids = segment_ids
         self.label_id = label_id
-
 
 class DeepMatcherProcessor(object):
     """Processor for preprocessed DeepMatcher data sets"""
@@ -217,14 +215,14 @@ class DeepMatcherProcessor(object):
                 non_matches_count += 1
             # print(len(all_ids), " - ", len(pairs_ids), " = ", len(non_matches))
 
-        print(total_pairs)
-        print(len(pairs))
-        print(len(diff_pairs))
-        diff_pairs = diff_pairs[:len(pairs)]
+        # print(total_pairs)
+        # print(len(pairs))
+        # print(len(diff_pairs))
+        pairs = pairs[:100]
+        diff_pairs = diff_pairs[:100]
         print("Ratio of true positives to true negatives: ", len(matches)/non_matches_count)
         print("Ratio of true positives to all pairs: ", len(matches)/(len(pairs)+len(diff_pairs)))
-        # print(total_pairs)
-        # print(pairs)
+
         train, test, validation = [], [], []
 
         if shuffle:
@@ -247,14 +245,14 @@ class DeepMatcherProcessor(object):
                           text_a=pairs[i][0],
                           text_b=pairs[i][1],
                           label=pairs[i][2]) for i in range(0,int(train_split_size*len(pairs)))])
-        print(0," -> ",int(train_split_size*len(pairs)))
+        # print(0," -> ",int(train_split_size*len(pairs)))
 
         train.extend(
             [InputExample(guid='train-'+str(i),
                           text_a=diff_pairs[i][0],
                           text_b=diff_pairs[i][1],
                           label=diff_pairs[i][2]) for i in range(0,int(train_split_size*len(diff_pairs)))])
-        print(0," -> ", int(train_split_size*len(diff_pairs)))
+        # print(0," -> ", int(train_split_size*len(diff_pairs)))
 
         test.extend(
             [InputExample(guid='test-'+str(i),
@@ -262,7 +260,7 @@ class DeepMatcherProcessor(object):
                           text_b=pairs[i][1],
                           label=pairs[i][2]) for i in range(int(train_split_size*len(pairs)),
                                                             int(train_split_size*len(pairs))+int(test_split_size*len(pairs)))])
-        print(int(train_split_size*len(pairs))," -> ",int(train_split_size*len(pairs))+int(test_split_size*len(pairs)))
+        # print(int(train_split_size*len(pairs))," -> ",int(train_split_size*len(pairs))+int(test_split_size*len(pairs)))
         
         test.extend(
             [InputExample(guid='test-'+str(i),
@@ -270,7 +268,7 @@ class DeepMatcherProcessor(object):
                           text_b=diff_pairs[i][1],
                           label=diff_pairs[i][2]) for i in range(int(train_split_size*len(diff_pairs)),
                                                                 int(train_split_size*len(diff_pairs))+int(test_split_size*len(diff_pairs)))])
-        print(int(train_split_size*len(diff_pairs))," -> ",int(train_split_size*len(diff_pairs))+int(test_split_size*len(diff_pairs)))
+        # print(int(train_split_size*len(diff_pairs))," -> ",int(train_split_size*len(diff_pairs))+int(test_split_size*len(diff_pairs)))
 
         validation.extend(
             [InputExample(guid='validation-'+str(i),
@@ -278,15 +276,15 @@ class DeepMatcherProcessor(object):
                           text_b=pairs[i][1],
                           label=pairs[i][2]) for i in range(int((train_split_size+test_split_size)*len(pairs)), len(pairs))])
             
-        print(int((train_split_size+test_split_size)*len(pairs))," -> ",int(len(pairs)))
+        # print(int((train_split_size+test_split_size)*len(pairs))," -> ",int(len(pairs)))
 
         validation.extend(
             [InputExample(guid='validation-'+str(i),
                           text_a=diff_pairs[i][0],
                           text_b=diff_pairs[i][1],
                           label=diff_pairs[i][2]) for i in range(int((train_split_size+test_split_size)*len(diff_pairs)), len(diff_pairs))])
-        print(int((train_split_size+test_split_size)*len(diff_pairs))," -> ",len(diff_pairs))
-        print("Total: ", len(train)+len(test)+len(validation))
+        # print(int((train_split_size+test_split_size)*len(diff_pairs))," -> ",len(diff_pairs))
+        # print("Total: ", len(train)+len(test)+len(validation))
 
         return train, validation, test
 
@@ -318,12 +316,12 @@ class DeepMatcherProcessor(object):
         """See base class."""
         return ["0", "1"]
     
-def train(device,
-          train_dataloader,
+def train(train_dataloader,
           model,
           optimizer,
           scheduler,
           evaluation,
+          device,
           num_epocs,
           max_grad_norm,
           save_model_after_epoch,
@@ -333,7 +331,7 @@ def train(device,
 
     logging.info("***** Run training *****")
     
-    tb_writer = SummaryWriter(os.path.join("./", experiment_name))
+    # tb_writer = SummaryWriter(os.path.join("./", experiment_name))
 
     global_step = 0
     tr_loss, logging_loss = 0.0, 0.0
@@ -341,12 +339,12 @@ def train(device,
 
     # we are interested in 0 shot learning, therefore we already evaluate before training.
     eval_results = evaluation.evaluate(model, device, -1)
-    for key, value in eval_results.items():
-        tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
-
+    # for key, value in eval_results.items():
+        # tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
+        # print('eval_{}'.format(key), value, global_step)
     for epoch in trange(int(num_epocs), desc="Epoch"):
         for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
-            model.train()   
+            model.train()
 
             batch = tuple(t.to(device) for t in batch)
             inputs = {'input_ids': batch[0],
@@ -370,21 +368,26 @@ def train(device,
 
             global_step += 1
 
-            tb_writer.add_scalar('lr', scheduler.get_lr()[0], global_step)
-            tb_writer.add_scalar('loss', (tr_loss - logging_loss), global_step)
+            # tb_writer.add_scalar('lr', scheduler.get_lr()[0], global_step)
+            # print('lr ', scheduler.get_lr()[0], global_step)
+            # tb_writer.add_scalar('loss', (tr_loss - logging_loss), global_step)
+            # print('loss ', (tr_loss - logging_loss), global_step)
             logging_loss = tr_loss
 
         eval_results = evaluation.evaluate(model, device, epoch)
         for key, value in eval_results.items():
-            tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
+            print('eval_{}'.format(key))
+            # tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
 
-        if save_model_after_epoch:
-            save_model(model, experiment_name, output_dir, epoch=epoch)
+        # if save_model_after_epoch:
+        #     save_model(model, experiment_name, output_dir, epoch=epoch)
 
-    tb_writer.close()
-   
-    
-def predict(model, device, test_data_loader, include_token_type_ids=False):
+    # tb_writer.close()
+
+def predict(model,
+            device,
+            test_data_loader,
+            include_token_type_ids=False):
     nb_prediction_steps = 0
     predictions = None
     labels = None
@@ -417,12 +420,14 @@ def predict(model, device, test_data_loader, include_token_type_ids=False):
     # for a simple classification this is also not necessary, we just take the index of the neuron with the maximal output.
     predicted_class = np.argmax(predictions, axis=1)
 
-    simple_accuracy = (predicted_class == labels).mean()
-    f1 = f1_score(y_true=labels, y_pred=predicted_class)
-    scores = precision_recall_fscore_support(y_true=labels, y_pred=predicted_class)
-    report = classification_report(labels, predicted_class)
+    return predicted_class, labels
 
-    return simple_accuracy, f1, report, scores, pd.DataFrame({'predictions': predicted_class, 'labels': labels})
+    # simple_accuracy = (predicted_class == labels).mean()
+    # f1 = f1_score(y_true=labels, y_pred=predicted_class)
+    # scores = precision_recall_fscore_support(y_true=labels, y_pred=predicted_class)
+    # report = classification_report(labels, predicted_class)
+
+    # return simple_accuracy, f1, report, scores, pd.DataFrame({'predictions': predicted_class, 'labels': labels})
     
 def _truncate_seq_pair(id, tokens_a, tokens_b, max_length):
     """Truncates a sequence pair in place to the maximum length."""
@@ -444,7 +449,6 @@ def _truncate_seq_pair(id, tokens_a, tokens_b, max_length):
             tokens_a.pop()
         else:
             tokens_b.pop()
-
 
 def convert_examples_to_features(examples, label_list, max_seq_length,
                                  tokenizer, output_mode,

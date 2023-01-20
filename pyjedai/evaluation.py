@@ -198,8 +198,6 @@ class Evaluation:
 
         return entity_index
 
-
-
     def confusion_matrix(self):
         """Generates a confusion matrix based on the classification report.
         """

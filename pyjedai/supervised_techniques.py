@@ -12,7 +12,11 @@ import warnings
 from time import time
 from typing import List, Tuple, Dict
 import json
-
+from sklearn.metrics import (
+    f1_score,
+    classification_report,
+    precision_recall_fscore_support
+)
 from .supervised_utils import (
     build_optimizer,
     initialize_gpu_seed,
@@ -25,8 +29,11 @@ from .supervised_utils import (
     Evaluation,
     save_model
 )
+import pandas as pd
 from .datamodel import Data
 from .utils import create_entity_index, are_matching
+import warnings
+warnings.filterwarnings('always')
 
 class PretrainedSupervisedER():
 
@@ -40,7 +47,7 @@ class PretrainedSupervisedER():
                  train_batch_size: int = 16,
                  eval_batch_size: int = 16,
                  max_seq_length: int = 180,
-                 num_epochs: int = 15,
+                 num_epochs: int = 1,
                  seed: int =22,
                  do_lower_case: bool = True):
         self.model_type = model_type
@@ -66,15 +73,19 @@ class PretrainedSupervisedER():
         self._warmup_steps: int = 0
         self._weight_decay: float = 0.0
         self._max_grad_norm: float = 1.0
-        self._save_model_after_epoch: bool = True
+        self._save_model_after_epoch: bool = False
 
-    def fit(self,
-            candidate_pairs: dict,
-            data: Data,
-            train_split_size: float = 0.6,
-            test_split_size: float = 0.2,
-            validation_split_size: float = 0.2,
-            experiment_title='Experiment') -> any:
+    def fit(self):
+        pass
+    
+    def fit_blocks(self,
+                candidate_pairs: dict,
+                data: Data,
+                train_split_size: float = 0.6,
+                test_split_size: float = 0.2,
+                validation_split_size: float = 0.2,
+                experiment_title='Experiment',
+                verbose: int = 0) -> any:
 
         if data.ground_truth is None:
             raise AttributeError("Can't use this method without ground-truth file")
@@ -86,7 +97,8 @@ class PretrainedSupervisedER():
         device, n_gpu = initialize_gpu_seed(self.seed)
         processor = DeepMatcherProcessor()
         label_list = processor.get_labels()
-        print("Training with {} labels: {}".format(len(label_list), label_list))
+        if verbose:
+            print("Training with {} labels: {}".format(len(label_list), label_list))
 
         train_examples, validation_examples, test_examples = \
             processor.split(candidate_pairs,
@@ -109,19 +121,20 @@ class PretrainedSupervisedER():
             tokenizer = tokenizer_class.from_pretrained(self.model_name)
             model = model_class.from_pretrained(self.model_name)
             model.to(device)
-        print("Initialized {}-model".format(self.model_type))
+        if verbose:
+            print("Initialized {}-model".format(self.model_type))
 
         #
         # Training
         #
-        # train_examples = processor.get_train_examples(train_data)
         training_data_loader = load_data(train_examples,
                                             label_list,
                                             tokenizer,
                                             self.max_seq_length,
                                             self.train_batch_size,
                                             DataType.TRAINING, self.model_type)
-        print("Loaded {} training examples".format(len(train_examples)))
+        if verbose:
+            print("Loaded {} training examples".format(len(train_examples)))
 
         num_train_steps = len(training_data_loader) * self.num_epochs
 
@@ -129,39 +142,39 @@ class PretrainedSupervisedER():
         # Optimizer
         #
         optimizer, scheduler = build_optimizer(model,
-                                            num_train_steps,
-                                            self._learning_rate,
-                                            self._adam_eps,
-                                            self._warmup_steps,
-                                            self._weight_decay)
-        print("Built optimizer: {}".format(optimizer))
+                                               num_train_steps,
+                                               self._learning_rate,
+                                               self._adam_eps,
+                                               self._warmup_steps,
+                                               self._weight_decay)
+        if verbose:
+            print("Built optimizer: {}".format(optimizer))
 
         #
         # Validation
         #
-        # eval_examples = processor.get_dev_examples(val_data)
         evaluation_data_loader = load_data(validation_examples,
-                                        label_list,
-                                        tokenizer,
-                                        self.max_seq_length,
-                                        self.eval_batch_size,
-                                        DataType.EVALUATION,
-                                        self.model_type)
+                                           label_list,
+                                           tokenizer,
+                                           self.max_seq_length,
+                                           self.eval_batch_size,
+                                           DataType.EVALUATION,
+                                           self.model_type)
 
         evaluation = Evaluation(evaluation_data_loader,
                                 experiment_title,
                                 len(label_list),
                                 self.model_type, None)
-
-        print("Loaded and initialized evaluation examples {}".format(len(validation_examples)))
+        if verbose:
+            print("Loaded and initialized evaluation examples {}".format(len(validation_examples)))
 
         t1 = time()
-        train(device,
-              training_data_loader,
+        train(training_data_loader,
               model,
               optimizer,
               scheduler,
               evaluation,
+              device,
               self.num_epochs,
               self._max_grad_norm,
               self._save_model_after_epoch,
@@ -174,9 +187,8 @@ class PretrainedSupervisedER():
         #
         # Testing
         #
-        # test_examples = processor.get_test_examples(args.data_path)
-
-        print("Loaded {} test examples".format(len(test_examples)))
+        if verbose:
+            print("Loaded {} test examples".format(len(test_examples)))
         test_data_loader = load_data(validation_examples,
                                     label_list,
                                     tokenizer,
@@ -190,29 +202,43 @@ class PretrainedSupervisedER():
             include_token_type_ids = True
         
         t1 = time()
-        simple_accuracy, f1, classification_report, prfs, predictions = \
-            predict(model, device, test_data_loader, include_token_type_ids)
+        predictions, labels = predict(model, device, test_data_loader, include_token_type_ids)
+        predictions_df = pd.DataFrame({'predictions': predictions, 'labels': labels})
         t2 = time()
         testing_time = t2-t1
-        print("Prediction done for {} examples.F1: {}, Simple Accuracy: {}".format(
-            len(test_data_loader), f1, simple_accuracy))
-        print(classification_report)
-        print(predictions)
+        
+        return predictions, labels
 
-        keys = ['precision', 'recall', 'fbeta_score', 'support']
-        prfs = {f'class_{no}': {key: float(prfs[nok][no]) for nok, key in enumerate(keys)} for no in range(2)}
-        scores = {
-            'simple_accuracy': simple_accuracy,
-            'f1': f1,
-            'model_type': self.model_type,
-            # 'data_dir': args.data_dir,
-            'training_time': training_time,
-            'testing_time': testing_time,
-            'prfs': prfs
-        }
-        print(scores)
-        with open('test_scores.txt', 'a') as fout:
-            fout.write(json.dumps(scores)+"\n")
+    def evaluate(self, predictions, true_labels):
+        simple_accuracy = (predictions == true_labels).mean()
+        f1 = f1_score(y_true=true_labels, y_pred=predictions)
+        scores = precision_recall_fscore_support(y_true=true_labels, y_pred=predictions)
+        report = classification_report(true_labels, predictions)
+        print("Prediction done for test examples.F1: {}, Simple Accuracy: {}".format(
+                f1, simple_accuracy))
+        # print(f1)
+        # print(simple_accuracy)
+        
+        # if verbose:
+        #     print("Prediction done for {} examples.F1: {}, Simple Accuracy: {}".format(
+        #         len(test_data_loader), f1, simple_accuracy))
+        # # print(classification_report)
+        # # print(predictions)
+
+        # keys = ['precision', 'recall', 'fbeta_score', 'support']
+        # prfs = {f'class_{no}': {key: float(prfs[nok][no]) for nok, key in enumerate(keys)} for no in range(2)}
+        # scores = {
+        #     'simple_accuracy': simple_accuracy,
+        #     'f1': f1,
+        #     'model_type': self.model_type,
+        #     # 'data_dir': args.data_dir,
+        #     'training_time': training_time,
+        #     'testing_time': testing_time,
+        #     'prfs': prfs
+        # }
+        # print(scores)
+        # with open('test_scores.txt', 'a') as fout:
+        #     fout.write(json.dumps(scores)+"\n")
 
 
     

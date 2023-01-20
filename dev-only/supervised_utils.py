@@ -135,7 +135,7 @@ class DeepMatcherProcessor(object):
     def get_train_examples(self, data_dir):
         """See base class."""
         return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "train.csv")), 
+            self._read_tsv(os.path.join(data_dir, "train.csv")),
             self._read_tsv(os.path.join(data_dir, "tableA.csv")),
             self._read_tsv(os.path.join(data_dir, "tableB.csv")),
             "train")
