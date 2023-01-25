@@ -22,12 +22,11 @@ class Evaluation:
         self.recall: float
         self.precision: float
         self.num_of_comparisons: int
-        self.total_matching_pairs: int
+        self.total_matching_pairs: int = 0
         self.true_positives: int
         self.true_negatives: int
         self.false_positives: int
         self.false_negatives: int
-        self.total_matching_pairs = 0
         self.num_of_true_duplicates: int
         self.data: Data = data
 
@@ -73,9 +72,12 @@ class Evaluation:
     #                 are_matching(entity_index, id1, id2):
     #             self.true_positives += 1
 
-    def calculate_scores(self, true_positives=None) -> None:
+    def calculate_scores(self, true_positives=None, total_matching_pairs=None) -> None:
         if true_positives is not None:
             self.true_positives = true_positives
+            
+        if total_matching_pairs is not None:
+            self.total_matching_pairs = total_matching_pairs
 
         if self.total_matching_pairs == 0:
             warn("Evaluation: No matches found", Warning)
@@ -150,13 +152,12 @@ class Evaluation:
     def _create_entity_index_from_clusters(
             self,
             clusters: list,
-            all_ground_truth_ids: set
     ) -> dict:
         entity_index = dict()
         for cluster, cluster_id in zip(clusters, range(0, len(clusters))):
             cluster_entities_d1 = 0
             cluster_entities_d2 = 0
-            for entity_id in cluster.intersection(all_ground_truth_ids):
+            for entity_id in cluster.intersection(self.all_gt_ids):
                 entity_index[entity_id] = cluster_id
 
                 if not self.data.is_dirty_er:
