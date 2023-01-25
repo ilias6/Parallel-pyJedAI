@@ -10,29 +10,27 @@ from time import time
 import numpy as np
 from tqdm.autonotebook import tqdm
 
-from .datamodel import Data
+from .evaluation import Evaluation
+
+from .datamodel import Data, PYJEDAIFeature
 from .utils import chi_square, create_entity_index
 
 from abc import ABC, abstractmethod
 
 
-class AbstractComparisonCleaning(ABC):
+class AbstractComparisonCleaning(PYJEDAIFeature):
     """Abstract class for Block cleaning
     """
 
     def __init__(self) -> None:
-        self.data: Data
+        super().__init__()
         self._limit: int
         self._num_of_blocks: int
         self._valid_entities: set() = set()
         self._entity_index: dict
-        self._progress_bar: tqdm
         self._weighting_scheme: str
         self._blocks: dict # initial blocks
         self.blocks = dict() # blocks after CC
-        self.tqdm_disable: bool
-        self._progress_bar: tqdm
-        self.execution_time: float
         self._node_centric: bool
 
     def process(
@@ -70,18 +68,6 @@ class AbstractComparisonCleaning(ABC):
 
         return self._blocks
 
-    def method_configuration(self) -> dict:
-        """Abstact method configuration
-
-        Returns:
-            dict: Specs.
-        """
-        return {
-            "name" : self._method_name,
-            "parameters" : self._configuration(),
-            "runtime": self.execution_time
-        }
-
     def report(self) -> None:
         """Prints Block Building method configuration
         """
@@ -103,6 +89,40 @@ class AbstractComparisonCleaning(ABC):
     @abstractmethod
     def _configuration(self) -> dict:
         pass
+    
+    def evaluate(self,
+                 prediction,
+                 export_to_df: bool = False,
+                 export_to_dict: bool = False,
+                 with_classification_report: bool = False,
+                 verbose: bool = True) -> any:
+
+        if self.data is None:
+            raise AttributeError("Can not proceed to evaluation without data object.")
+
+        if self.data.ground_truth is None:
+            raise AttributeError("Can not proceed to evaluation without a ground-truth file. " +
+                    "Data object has not been initialized with the ground-truth file")
+
+        eval_obj = Evaluation(self.data)
+        true_positives = 0
+        total_matching_pairs = sum([len(block) for block in prediction.values()])
+        for _, (id1, id2) in self.data.ground_truth.iterrows():
+            id1 = self.data._ids_mapping_1[id1]
+            id2 = self.data._ids_mapping_1[id2] if self.data.is_dirty_er \
+                                                else self.data._ids_mapping_2[id2]
+            if (id1 in prediction and id2 in prediction[id1]) or   \
+                (id2 in prediction and id1 in prediction[id2]):
+                true_positives += 1
+
+        eval_obj.calculate_scores(true_positives=true_positives, 
+                                  total_matching_pairs=total_matching_pairs)
+        eval_obj.report(self.method_configuration(),
+                        export_to_df,
+                        export_to_dict,
+                        with_classification_report,
+                        verbose)
+
 
 class AbstractMetablocking(AbstractComparisonCleaning, ABC):
     """Restructure a redundancy-positive block collection into a new
