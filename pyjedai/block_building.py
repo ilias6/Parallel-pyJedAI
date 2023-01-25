@@ -3,6 +3,7 @@ import logging as log
 import math
 import re
 import time
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import Tuple
 
@@ -10,12 +11,79 @@ import nltk
 import numpy as np
 from tqdm.autonotebook import tqdm
 
-from .datamodel import Block, Data
-from .utils import drop_big_blocks_by_size, drop_single_entity_blocks
+from .datamodel import Block, Data, PYJEDAIFeature
+from .utils import (are_matching, drop_big_blocks_by_size,
+                    drop_single_entity_blocks)
+from .evaluation import Evaluation
 
-from abc import ABC, abstractmethod
+class AbstractBlockProcessing(PYJEDAIFeature):
+    """Abstract class for the block building method
+    """
 
-class AbstractBlockBuilding(ABC):
+    def __init__(self):
+        super().__init__()
+        self.blocks: dict
+        # self._progress_bar: tqdm
+        self.attributes_1: list
+        self.attributes_2: list
+        # self.execution_time: float
+        # self.data: Data
+
+    def report(self) -> None:
+        """Prints Block Building method configuration
+        """
+        print(
+            "Method name: " + self._method_name +
+            "\nMethod info: " + self._method_info +
+            ("\nParameters: \n" + ''.join(['\t{0}: {1}\n'.format(k, v) for k, v in self._configuration().items()]) if self._configuration().items() else "\nParameters: Parameter-Free method\n") +
+            "Attributes from D1:\n\t" + ', '.join(c for c in (self.attributes_1 if self.attributes_1 is not None \
+                else self.data.dataset_1.columns)) +
+            ("\nAttributes from D2:\n\t" + ', '.join(c for c in (self.attributes_2 if self.attributes_2 is not None \
+                else self.data.dataset_2.columns)) if not self.data.is_dirty_er else "") +
+            "\nRuntime: {:2.4f} seconds".format(self.execution_time)
+        )
+
+    def evaluate(self,
+                 prediction,
+                 export_to_df: bool = False,
+                 export_to_dict: bool = False,
+                 with_classification_report: bool = False,
+                 verbose: bool = True) -> any:
+
+        if prediction is None:
+            if self.blocks is None:
+                raise AttributeError("Can not proceed to evaluation without build_blocks.")
+            else:
+                eval_blocks = self.blocks
+        else:
+            eval_blocks = prediction
+            
+        if self.data is None:
+            raise AttributeError("Can not proceed to evaluation without data object.")
+
+        if self.data.ground_truth is None:
+            raise AttributeError("Can not proceed to evaluation without a ground-truth file. " + 
+                    "Data object has not been initialized with the ground-truth file")
+
+        eval_obj = Evaluation(self.data)
+        true_positives = 0
+        entity_index = eval_obj._create_entity_index_from_blocks(eval_blocks)
+        for _, (id1, id2) in self.data.ground_truth.iterrows():
+            id1 = self.data._ids_mapping_1[id1]
+            id2 = self.data._ids_mapping_1[id2] if self.data.is_dirty_er else self.data._ids_mapping_2[id2]
+            if id1 in entity_index and    \
+                id2 in entity_index and are_matching(entity_index, id1, id2):
+                true_positives += 1
+
+        eval_obj.calculate_scores(true_positives)
+        eval_obj.report(self.method_configuration(),
+                          export_to_df,
+                          export_to_dict,
+                          with_classification_report,
+                          verbose)
+
+
+class AbstractBlockBuilding(AbstractBlockProcessing):
     """Abstract class for the block building method
     """
 
@@ -24,6 +92,7 @@ class AbstractBlockBuilding(ABC):
     _method_short_name: str
 
     def __init__(self):
+        super().__init__()
         self.blocks: dict
         self._progress_bar: tqdm
         self.attributes_1: list
@@ -127,6 +196,7 @@ class AbstractBlockBuilding(ABC):
     @abstractmethod
     def _configuration(self) -> dict:
         pass
+
 
 class StandardBlocking(AbstractBlockBuilding):
     """ Creates one block for every token in \

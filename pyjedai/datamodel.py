@@ -3,6 +3,55 @@
 import pandas as pd
 from pandas import DataFrame, concat
 
+from abc import ABC, abstractmethod
+
+class PYJEDAIFeature(ABC):
+
+    _method_name: str
+    _method_info: str
+    _method_short_name: str
+
+    # def fit(self):
+    #     pass
+    def __init__(self) -> None:
+        super().__init__()
+        self._progress_bar: tqdm
+        self.execution_time: float
+        self.tqdm_disable: bool
+        self.data: Data
+
+    @abstractmethod
+    def _configuration(self) -> dict:
+        pass
+
+    @abstractmethod
+    def evaluate(self,
+                 prediction=None,
+                 export_to_df: bool = False,
+                 export_to_dict: bool = False,
+                 with_classification_report: bool = False,
+                 verbose: bool = True) -> any:
+        pass
+    
+    def method_configuration(self) -> dict:
+        """Returns configuration details
+        """
+        return {
+            "name" : self._method_name,
+            "parameters" : self._configuration(),
+            "runtime": self.execution_time
+        }
+        
+    def report(self) -> None:
+        """Prints Block Building method configuration
+        """
+        print(
+            "Method name: " + self._method_name +
+            "\nMethod info: " + self._method_info +
+            "\nParameters: \n" + ''.join(['\t{0}: {1}\n'.format(k, v) for k, v in self._configuration().items()]) +
+            "\nRuntime: {:2.4f} seconds".format(self.execution_time)
+        )
+
 class Data:
     """The corpus of the dataset that will be processed with pyjedai. \
         Contains all the information of the dataset and will be passed to each step \

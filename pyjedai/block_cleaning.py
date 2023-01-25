@@ -3,6 +3,7 @@ Contains:
  - BlockFiltering
  - BlockPurging
 """
+from abc import ABC
 from collections import defaultdict
 from time import time
 from typing import Tuple
@@ -10,11 +11,35 @@ from typing import Tuple
 import numpy as np
 from tqdm.autonotebook import tqdm
 
+from .block_building import AbstractBlockProcessing
 from .datamodel import Block, Data
 from .utils import create_entity_index, drop_single_entity_blocks
 
+class AbstractBlockCleaning(AbstractBlockProcessing):
 
-class BlockFiltering:
+    def __init__(self) -> None:
+        super().__init__()
+
+    # def method_configuration(self) -> dict:
+    #     """Returns configuration details
+    #     """
+    #     return {
+    #         "name" : self._method_name,
+    #         "parameters" : self._configuration(),
+    #         "runtime": self.execution_time
+    #     }
+
+    def report(self) -> None:
+        """Prints Block Building method configuration
+        """
+        print(
+            "Method name: " + self._method_name +
+            "\nMethod info: " + self._method_info +
+            "\nParameters: \n" + ''.join(['\t{0}: {1}\n'.format(k, v) for k, v in self._configuration().items()]) +
+            "Runtime: {:2.4f} seconds".format(self.execution_time)
+        )
+
+class BlockFiltering(AbstractBlockCleaning):
     """Retains every entity in a subset of its smallest blocks.
 
         Filtering consists of 3 steps:
@@ -29,16 +54,12 @@ class BlockFiltering:
     _method_info = "Retains every entity in a subset of its smallest blocks."
 
     def __init__(self, ratio: float = 0.8) -> None:
+        super().__init__()
         if ratio > 1.0 or ratio < 0.0:
             raise AttributeError("Ratio is a number between 0.0 and 1.0")
         else:
             self.ratio = ratio
-        self.blocks: dict
-        self.tqdm_disable: bool
-        self.data: Data
         self.entity_index: dict
-        self._progress_bar: tqdm
-        self.execution_time: float
 
     def __str__(self) -> str:
         print(self._method_name + self._method_info)
@@ -83,37 +104,24 @@ class BlockFiltering:
                 _ = filtered_blocks[key].entities_D1.add(entity_id) if entity_id < self.data.dataset_limit \
                     else filtered_blocks[key].entities_D2.add(entity_id)
         self._progress_bar.update(1)
-        self.blocks = drop_single_entity_blocks(filtered_blocks, self.data.is_dirty_er)
+
+        new_blocks = drop_single_entity_blocks(filtered_blocks, self.data.is_dirty_er)
+        print("HERE ", new_blocks == blocks)
+
         self._progress_bar.close()
         self.execution_time = time() - start_time
+        self.evaluate(new_blocks)
+        self.blocks = new_blocks
         
-        return self.blocks
-
-    def method_configuration(self) -> dict:
-        """Returns configuration details
-        """
-        return {
-            "name" : self._method_name,
-            "parameters" : self._configuration(),
-            "runtime": self.execution_time
-        }
+        return new_blocks
 
     def _configuration(self) -> dict:
         return {
             "Ratio" : self.ratio
         }
 
-    def report(self) -> None:
-        """Prints Block Building method configuration
-        """
-        print(
-            "Method name: " + self._method_name +
-            "\nMethod info: " + self._method_info +
-            "\nParameters: \n" + ''.join(['\t{0}: {1}\n'.format(k, v) for k, v in self._configuration().items()]) +
-            "\nRuntime: {:2.4f} seconds".format(self.execution_time)
-        )
 
-class BlockPurging:
+class BlockPurging(AbstractBlockCleaning):
     """Discards the blocks exceeding a certain number of comparisons.
     """
 
@@ -122,12 +130,13 @@ class BlockPurging:
     _method_info = "Discards the blocks exceeding a certain number of comparisons."
 
     def __init__(self, smoothing_factor: float = 1.025) -> any:
+        super().__init__()
         self.smoothing_factor: float = smoothing_factor
         self.max_comparisons_per_block: float
-        self.execution_time: float
-        self.tqdm_disable: bool
-        self._progress_bar: tqdm
-        self.data: Data
+        # self.execution_time: float
+        # self.tqdm_disable: bool
+        # self._progress_bar: tqdm
+        # self.data: Data
 
     def process(
             self,
@@ -146,24 +155,22 @@ class BlockPurging:
             dict: Purged blocks.
         """
         self.tqdm_disable, self.data, start_time = tqdm_disable, data, time()
-        new_blocks = blocks.copy()
-        self._progress_bar = tqdm(total=2*len(new_blocks), desc=self._method_name, disable=self.tqdm_disable)
         if not blocks:
             raise AttributeError("Empty dict of blocks was given as input!")
-        
+        else:
+            new_blocks = blocks.copy()
+        self._progress_bar = tqdm(total=2*len(new_blocks), desc=self._method_name, disable=self.tqdm_disable)            
         self._set_threshold(new_blocks)
-        new_blocks = dict(
-            filter(
-                lambda e: (new_blocks[e[0]].get_cardinality(self.data.is_dirty_er) \
-                                            <= self.max_comparisons_per_block, self._progress_bar.update(1)),
-                new_blocks.items()
-            )
-        )
-        # self._progress_bar.update(100)
+        new_blocks = dict(filter(self._cardinality_threshold, blocks.items()))
         self._progress_bar.close()
         self.execution_time = time() - start_time
+        self.blocks = new_blocks
+
         return new_blocks
 
+    def _cardinality_threshold(self, id_block_tuple) -> bool:
+        self._progress_bar.update(1)
+        return id_block_tuple[1].get_cardinality(self.data.is_dirty_er) <= self.max_comparisons_per_block
 
     def _set_threshold(self, blocks: dict) -> None:
         """Calculates the maximum number of comparisons per block, so in the next step to be purged.
@@ -210,34 +217,11 @@ class BlockPurging:
     def _satisfies_threshold(self, block: Block) -> bool:
         return block.get_cardinality(self.data.is_dirty_er) <= self.max_comparisons_per_block
 
-    def method_configuration(self) -> dict:
-        """Returns the specs of the given method.
-
-        Returns:
-            dict: Method specs
-        """
-        return {
-            "name" : self._method_name,
-            "parameters" : self._configuration(),
-            "runtime": self.execution_time
-        }
-
     def _configuration(self) -> dict:
         return {
             "Smoothing factor" : self.smoothing_factor,
             "Max Comparisons per Block" : self.max_comparisons_per_block
         }
-
-    def report(self) -> None:
-        """Prints method configuration
-        """
-        print(
-            "Method name: " + self._method_name +
-            "\nMethod info: " + self._method_info +
-            "\nParameters: \n" + ''.join(
-                ['\t{0}: {1}\n'.format(k, v) for k, v in self._configuration().items()]) +
-            "Runtime: {:2.4f} seconds".format(self.execution_time)
-        )
 
 def _sort_blocks_cardinality(blocks: dict, is_dirty_er: bool) -> dict:
     return dict(sorted(blocks.items(), key=lambda x: x[1].get_cardinality(is_dirty_er)))
