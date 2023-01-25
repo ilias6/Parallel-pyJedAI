@@ -20,15 +20,6 @@ class AbstractBlockCleaning(AbstractBlockProcessing):
     def __init__(self) -> None:
         super().__init__()
 
-    # def method_configuration(self) -> dict:
-    #     """Returns configuration details
-    #     """
-    #     return {
-    #         "name" : self._method_name,
-    #         "parameters" : self._configuration(),
-    #         "runtime": self.execution_time
-    #     }
-
     def report(self) -> None:
         """Prints Block Building method configuration
         """
@@ -104,10 +95,7 @@ class BlockFiltering(AbstractBlockCleaning):
                 _ = filtered_blocks[key].entities_D1.add(entity_id) if entity_id < self.data.dataset_limit \
                     else filtered_blocks[key].entities_D2.add(entity_id)
         self._progress_bar.update(1)
-
         new_blocks = drop_single_entity_blocks(filtered_blocks, self.data.is_dirty_er)
-        print("HERE ", new_blocks == blocks)
-
         self._progress_bar.close()
         self.execution_time = time() - start_time
         self.evaluate(new_blocks)
@@ -133,10 +121,6 @@ class BlockPurging(AbstractBlockCleaning):
         super().__init__()
         self.smoothing_factor: float = smoothing_factor
         self.max_comparisons_per_block: float
-        # self.execution_time: float
-        # self.tqdm_disable: bool
-        # self._progress_bar: tqdm
-        # self.data: Data
 
     def process(
             self,
