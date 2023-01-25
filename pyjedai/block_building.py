@@ -75,7 +75,7 @@ class AbstractBlockProcessing(PYJEDAIFeature):
                 id2 in entity_index and are_matching(entity_index, id1, id2):
                 true_positives += 1
 
-        eval_obj.calculate_scores(true_positives)
+        eval_obj.calculate_scores(true_positives=true_positives)
         eval_obj.report(self.method_configuration(),
                           export_to_df,
                           export_to_dict,
@@ -167,13 +167,6 @@ class AbstractBlockBuilding(AbstractBlockProcessing):
         self._progress_bar.close()
 
         return self.blocks
-
-    def method_configuration(self) -> dict:
-        return {
-            "name" : self._method_name,
-            "parameters" : self._configuration(),
-            "runtime": self.execution_time
-        }
 
     def report(self) -> None:
         """Prints Block Building method configuration
