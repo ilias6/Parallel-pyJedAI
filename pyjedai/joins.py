@@ -1,10 +1,10 @@
+import itertools
 import math
 import re
+from collections import defaultdict
 from queue import PriorityQueue
 from time import time
-from collections import defaultdict
 
-import itertools
 import networkx
 import nltk
 import numpy as np
@@ -12,9 +12,10 @@ import pandas as pd
 import tqdm
 from tqdm.autonotebook import tqdm
 
-from .datamodel import Data
+from .datamodel import Data, PYJEDAIFeature
+from .evaluation import Evaluation
 
-class AbstractJoin:
+class AbstractJoin(PYJEDAIFeature):
     """Abstract class of Joins module
     """
 
@@ -25,22 +26,26 @@ class AbstractJoin:
             qgrams: int = 2,
             similarity_threshold: float = None
     ) -> None:
+        """AbstractJoin Constructor
+
+        Args:
+            metric (str): String similarity metric
+            tokenization (str): Tokenizer
+            qgrams (int, optional): For Jaccard metric. Defaults to 2.
+            similarity_threshold (float, optional): Threshold for preserving pair. Defaults to None.
+        """
         self.metric = metric
         self.qgrams = qgrams
         self.tokenization = tokenization
         self._source_frequency: np.array
         self.similarity_threshold: float = similarity_threshold
-        self.data: Data
         self.reverse_order: bool
         self.attributes_1: list
         self.attributes_2: list
-        self.tqdm_disable: bool
-        self._progress_bar: tqdm
         self._flags: np.array
         self.pairs: networkx.Graph
 
-    def fit(
-            self,
+    def fit(self,
             data: Data,
             reverse_order: bool = False,
             attributes_1: list = None,
@@ -61,7 +66,7 @@ class AbstractJoin:
         """
         if reverse_order and data.is_dirty_er:
             raise ValueError("Can't have reverse order in Dirty Entity Resolution")
-        
+
         start_time = time()
         self.tqdm_disable, self.reverse_order, self.attributes_1, self.attributes_2, self.data = \
             tqdm_disable, reverse_order, attributes_1, attributes_2, data
@@ -243,27 +248,66 @@ class AbstractJoin:
         if self.similarity_threshold <= similarity:
             self.pairs.add_edge(entity_id1, entity_id2, weight=similarity)
 
+    def evaluate(self, prediction=None, export_to_df: bool = False,
+                 export_to_dict: bool = False, with_classification_report: bool = False,
+                 verbose: bool = True) -> any:
+        if self.data is None:
+            raise AttributeError("Can not proceed to evaluation without data object.")
+
+        if self.data.ground_truth is None:
+            raise AttributeError("Can not proceed to evaluation without a ground-truth file. " +
+                    "Data object has not been initialized with the ground-truth file")
+
+        eval_obj = Evaluation(self.data)
+        true_positives = 0
+        total_matching_pairs = prediction.number_of_edges()
+        for _, (id1, id2) in self.data.ground_truth.iterrows():
+            id1 = self.data._ids_mapping_1[id1]
+            id2 = self.data._ids_mapping_1[id2] if self.data.is_dirty_er \
+                                                else self.data._ids_mapping_2[id2]
+            if (id1 in prediction and id2 in prediction[id1]) or   \
+                 (id2 in prediction and id1 in prediction[id2]):
+                true_positives += 1
+
+        eval_obj.calculate_scores(true_positives=true_positives, 
+                                  total_matching_pairs=total_matching_pairs)
+        eval_obj.report(self.method_configuration(),
+                        export_to_df,
+                        export_to_dict,
+                        with_classification_report,
+                        verbose)
+
+    def _configuration(self) -> dict:
+        return {
+            "similarity_threshold" : self.similarity_threshold,
+            "metric" : self.metric,
+            "tokenization" : self.tokenization,
+            "qgrams": self.qgrams
+        }    
+
 class SchemaAgnosticΕJoin(AbstractJoin):
     """
     SchemaAgnostic Ε Join algorithm
     """
-    _method_name = "Schema Agnostic EJoin"
-    # TODO _method_info = ""
+    _method_name = "SchemaAgnostic-E Join"
+    _method_info = "SchemaAgnostic Ε Join algorithm"
+    _method_short_name = "SAEJ"
 
     def __init__(
         self,
-        threshold: float = 0.82,
+        similarity_threshold: float = 0.82,
         metric: str = 'cosine',
         tokenization: str = 'qgrams',
         qgrams: int = 2
     ) -> None:
-        super().__init__(metric, tokenization, qgrams, threshold)
+        super().__init__(metric, tokenization, qgrams, similarity_threshold)
 
     def _process_candidates(self, candidates: set, entity_id: int, tokens_size: int) -> None:
         for candidate_id in candidates:
             self._insert_to_graph(
-                candidate_id+self.data.dataset_limit if self.reverse_order and not self.data.is_dirty_er \
-                                else candidate_id,
+                candidate_id+self.data.dataset_limit if self.reverse_order \
+                                                        and not self.data.is_dirty_er \
+                                                    else candidate_id,
                 entity_id,
                 self._calc_similarity(
                     self._counters[candidate_id],
@@ -277,15 +321,15 @@ class TopKSchemaAgnosticJoin(AbstractJoin):
     """
 
     _method_name = "Top-K Schema Agnostic Join"
-    # TODO _method_info = ""
+    _method_info = "Top-K Schema Agnostic Join algorithm"
+    _method_short_name = "TopKSAJ"
 
-    def __init__(
-            self, 
-            K: int,
-            metric: str,
-            tokenization: str,
-            qgrams: int = 2
-    ) -> None:
+    def __init__(self,
+                 K: int,
+                 metric: str,
+                 tokenization: str,
+                 qgrams: int = 2
+        ) -> None:
         super().__init__(metric, tokenization, qgrams)
         self.K = K
 
@@ -313,3 +357,12 @@ class TopKSchemaAgnosticJoin(AbstractJoin):
                     tokens_size
                 )
             )
+
+    def _configuration(self) -> dict:
+        return {
+            "similarity_threshold" : self.similarity_threshold,
+            "K" : self.K,
+            "metric" : self.metric,
+            "tokenization" : self.tokenization,
+            "qgrams": self.qgrams
+        }

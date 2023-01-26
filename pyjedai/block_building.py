@@ -190,7 +190,6 @@ class AbstractBlockBuilding(AbstractBlockProcessing):
     def _configuration(self) -> dict:
         pass
 
-
 class StandardBlocking(AbstractBlockBuilding):
     """ Creates one block for every token in \
         the attribute values of at least two entities.
