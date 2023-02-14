@@ -77,7 +77,7 @@ class PretrainedSupervisedER():
 
     def fit(self):
         pass
-    
+
     def fit_blocks(self,
                 candidate_pairs: dict,
                 data: Data,
@@ -216,31 +216,3 @@ class PretrainedSupervisedER():
         report = classification_report(true_labels, predictions)
         print("Prediction done for test examples.F1: {}, Simple Accuracy: {}".format(
                 f1, simple_accuracy))
-        # print(f1)
-        # print(simple_accuracy)
-        
-        # if verbose:
-        #     print("Prediction done for {} examples.F1: {}, Simple Accuracy: {}".format(
-        #         len(test_data_loader), f1, simple_accuracy))
-        # # print(classification_report)
-        # # print(predictions)
-
-        # keys = ['precision', 'recall', 'fbeta_score', 'support']
-        # prfs = {f'class_{no}': {key: float(prfs[nok][no]) for nok, key in enumerate(keys)} for no in range(2)}
-        # scores = {
-        #     'simple_accuracy': simple_accuracy,
-        #     'f1': f1,
-        #     'model_type': self.model_type,
-        #     # 'data_dir': args.data_dir,
-        #     'training_time': training_time,
-        #     'testing_time': testing_time,
-        #     'prfs': prfs
-        # }
-        # print(scores)
-        # with open('test_scores.txt', 'a') as fout:
-        #     fout.write(json.dumps(scores)+"\n")
-
-
-    
-    
-    
