@@ -22,6 +22,7 @@ from py_stringmatching.similarity_measure.needleman_wunsch import \
 from py_stringmatching.similarity_measure.overlap_coefficient import \
     OverlapCoefficient
 from py_stringmatching.similarity_measure.partial_ratio import PartialRatio
+from py_stringmatching.similarity_measure.token_sort import TokenSort
 from py_stringmatching.similarity_measure.partial_token_sort import \
     PartialTokenSort
 from py_stringmatching.similarity_measure.ratio import Ratio
@@ -50,12 +51,43 @@ available_tokenizers = [
     'alphabetic_tokenizer', 'alphanumeric_tokenizer'
 ]
 
-available_metrics = [
-    'levenshtein', 'edit_distance', 'jaro_winkler', 'bag_distance', 'editex'
-    'cosine', 'soundex', 'jaro', 'partial_token_sort', 'ratio', 'partial_ratio',
-    'tfidf', 'monge_elkan', 'needleman_wunsch', 'hamming_distance', 'jaccard',
-    'dice', 'overlap_coefficient', 'tversky_index', 'affine'
+metrics_mapping = {
+    'levenshtein' : Levenshtein(),
+    'edit_distance': Levenshtein(),
+    'jaro_winkler' : JaroWinkler(),
+    'bag_distance' : BagDistance(),
+    'editex' : Editex(),
+    'cosine' : Cosine(),
+    'jaro' : Jaro(),
+    'soundex' : Soundex(),
+    'tfidf' : TfIdf(),
+    'tversky_index':TverskyIndex(),
+    'ratio' : Ratio(),
+    'partial_token_sort' : PartialTokenSort(),
+    'partial_ratio' : PartialRatio(),
+    'hamming_distance' : HammingDistance(),
+    'jaccard' : Jaccard(),
+    'generalized_jaccard' : GeneralizedJaccard(),
+    'dice': Dice(),
+    'overlap_coefficient' : OverlapCoefficient(),
+    'token_sort': TokenSort()
+}
+
+string_metrics = [
+    'bag_distance', 'editex', 'hamming_distance', 'jaro', 'jaro_winkler', 'levenshtein', 
+    'edit_distance', 'partial_ratio', 'partial_token_sort', 'ratio', 'soundex', 'token_sort'
 ]
+
+set_metrics = [
+    'cosine', 'dice', 'generalized_jaccard', 'jaccard', 'overlap_coefficient', 'tversky_index'
+]
+
+bag_metrics = [
+    'tfidf'
+]
+
+available_metrics = string_metrics + set_metrics + bag_metrics
+
 
 class EntityMatching(PYJEDAIFeature):
     """Calculates similarity from 0.0 to 1.0 for all blocks
@@ -70,7 +102,7 @@ class EntityMatching(PYJEDAIFeature):
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
             qgram: int = 2, # for jaccard
-            tokenizer_return_set = False, # unique values or not
+            tokenizer_return_set = True, # unique values or not
             embedings: str = None,
             attributes: any = None,
             delim_set: list = None, # DelimiterTokenizer
@@ -84,29 +116,37 @@ class EntityMatching(PYJEDAIFeature):
         self.embedings: str = embedings
         self.attributes: list = attributes
         self.similarity_threshold = similarity_threshold
+
         #
         # Selecting tokenizer
         #
+        if metric not in available_metrics:
+            raise AttributeError(
+                'Metric ({}) does not exist. Please select one of the available. ({})'.format(
+                    metric, available_metrics
+                )
+            )
+        else:
+            self._metric = metric
+
+        if metric in set_metrics:
+            tokenizer_return_set = True
+
         if tokenizer == 'white_space_tokenizer':
-            self._tokenizer = WhitespaceTokenizer(
-                return_set=tokenizer_return_set)
+            self._tokenizer = WhitespaceTokenizer(return_set=tokenizer_return_set)
         elif tokenizer == 'qgram_tokenizer':
-            self._tokenizer = QgramTokenizer(
-                return_set=tokenizer_return_set,
-                padding=padding,
-                suffix_pad=suffix_pad,
-                prefix_pad=prefix_pad
+            self._tokenizer = QgramTokenizer(return_set=tokenizer_return_set,
+                                             padding=padding,
+                                             suffix_pad=suffix_pad,
+                                             prefix_pad=prefix_pad
             )
         elif tokenizer == 'delimiter_tokenizer':
-            self._tokenizer = DelimiterTokenizer(
-                return_set=tokenizer_return_set,
-                delim_set=delim_set)
+            self._tokenizer = DelimiterTokenizer(return_set=tokenizer_return_set,
+                                                 delim_set=delim_set)
         elif tokenizer == 'alphabetic_tokenizer':
-            self._tokenizer = AlphabeticTokenizer(
-                return_set=tokenizer_return_set)
+            self._tokenizer = AlphabeticTokenizer(return_set=tokenizer_return_set)
         elif tokenizer == 'alphanumeric_tokenizer':
-            self._tokenizer = AlphanumericTokenizer(
-                return_set=tokenizer_return_set)
+            self._tokenizer = AlphanumericTokenizer(return_set=tokenizer_return_set)
         else:
             raise AttributeError(
                 'Tokenizer ({}) does not exist. Please select one of the available. ({})'.format(
@@ -117,55 +157,11 @@ class EntityMatching(PYJEDAIFeature):
         #
         # Selecting similarity measure
         #
-        if metric == 'levenshtein' or metric == 'edit_distance':
-            self._metric = Levenshtein()
-        elif metric == 'jaro_winkler':
-            self._metric = JaroWinkler()
-        elif metric == 'bag_distance':
-            self._metric = BagDistance()
-        elif metric == 'editex':
-            self._metric = Editex()
-        elif metric == 'cosine':
-            self._metric = Cosine()
-        elif metric == 'jaro':
-            self._metric = Jaro()
-        elif metric == 'soundex':
-            self._metric = Soundex()
-        elif metric == 'tfidf':
-            self._metric = TfIdf()
-        elif metric == 'tversky_index':
-            self._metric = TverskyIndex()
-        elif metric == 'smith_waterman':
-            self._metric = SmithWaterman()
-        elif metric == 'ratio':
-            self._metric = Ratio()
-        elif metric == 'partial_token_sort':
-            self._metric = PartialTokenSort()
-        elif metric == 'partial_ratio':
-            self._metric = PartialRatio()
-        elif metric == 'monge_elkan':
-            self._metric = MongeElkan()
-        elif metric == 'needleman_wunsch':
-            self._metric = NeedlemanWunsch()
-        elif metric == 'hamming_distance':
-            self._metric = HammingDistance()
-        elif metric == 'jaccard':
-            self._metric = Jaccard()
-        elif metric == 'generalized_jaccard':
-            self._metric = GeneralizedJaccard()
-        elif metric == 'dice':
-            self._metric = Dice()
-        elif metric == 'overlap_coefficient':
-            self._metric = OverlapCoefficient()
-        elif metric == 'affine':
-            self._metric = Affine()
-        else:
-            raise AttributeError(
-                'Metric ({}) does not exist. Please select one of the available. ({})'.format(
-                    metric, available_metrics
-                )
-            )
-
+        # if metric in metrics_mapping:
+        #     self._metric = metrics_mapping[metric]
+            
+        # else:
+        
     def predict(self,
                 blocks: dict,
                 data: Data,
@@ -255,23 +251,31 @@ class EntityMatching(PYJEDAIFeature):
         similarity: float = 0.0
         if isinstance(self.attributes, dict):
             for attribute, weight in self.attributes.items():
+                e1 = self.data.entities.iloc[entity_id1][attribute]
+                e2 = self.data.entities.iloc[entity_id2][attribute]
+
                 similarity += weight*self._metric.get_sim_score(
-                    self._tokenizer.tokenize(self.data.entities.iloc[entity_id1][attribute]),
-                    self._tokenizer.tokenize(self.data.entities.iloc[entity_id2][attribute])
+                    self._tokenizer.tokenize(e1),
+                    self._tokenizer.tokenize(e2)
                 )
-        if isinstance(self.attributes, list):
+        if isinstance(self.attributes, list):            
             for attribute in self.attributes:
+                e1 = self.data.entities.iloc[entity_id1][attribute]
+                e2 = self.data.entities.iloc[entity_id2][attribute]
                 similarity += self._metric.get_sim_score(
-                    self._tokenizer.tokenize(self.data.entities.iloc[entity_id1][attribute]),
-                    self._tokenizer.tokenize(self.data.entities.iloc[entity_id2][attribute])
+                    self._tokenizer.tokenize(e1),
+                    self._tokenizer.tokenize(e2)
                 )
                 similarity /= len(self.attributes)
         else:
             # concatenated row string
-            similarity = self._metric.get_sim_score(
-                self._tokenizer.tokenize(self.data.entities.iloc[entity_id1].str.cat(sep=' ')),
-                self._tokenizer.tokenize(self.data.entities.iloc[entity_id2].str.cat(sep=' '))
-            )
+            # print(self._tokenizer.tokenize(self.data.entities.iloc[entity_id1].str.cat(sep=' ')))
+            # print(self._tokenizer.tokenize(self.data.entities.iloc[entity_id2].str.cat(sep=' ')))
+            e1 = self.data.entities.iloc[entity_id1].str.cat(sep=' ')
+            e2 = self.data.entities.iloc[entity_id2].str.cat(sep=' ')
+            te1 = self._tokenizer.tokenize(e1) if self._metric in (set_metrics + bag_metrics) else e1
+            te2 = self._tokenizer.tokenize(e2) if self._metric in (set_metrics + bag_metrics) else e2
+            similarity = metrics_mapping[self._metric].get_sim_score(te1, te2)
 
         return similarity
 
@@ -294,7 +298,7 @@ class EntityMatching(PYJEDAIFeature):
             "Attributes" : self.attributes,
             "Similarity threshold" : self.similarity_threshold
         }
-        
+
     def evaluate(self,
                  prediction,
                  export_to_df: bool = False,
@@ -320,10 +324,10 @@ class EntityMatching(PYJEDAIFeature):
                  (id2 in prediction and id1 in prediction[id2]):
                 true_positives += 1
 
-        eval_obj.calculate_scores(true_positives=true_positives, 
+        eval_obj.calculate_scores(true_positives=true_positives,
                                   total_matching_pairs=total_matching_pairs)
-        eval_obj.report(self.method_configuration(),
-                          export_to_df,
-                          export_to_dict,
-                          with_classification_report,
-                          verbose)
+        return eval_obj.report(self.method_configuration(),
+                                export_to_df,
+                                export_to_dict,
+                                with_classification_report,
+                                verbose)
