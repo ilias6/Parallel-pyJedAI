@@ -117,11 +117,11 @@ class AbstractComparisonCleaning(PYJEDAIFeature):
 
         eval_obj.calculate_scores(true_positives=true_positives, 
                                   total_matching_pairs=total_matching_pairs)
-        eval_obj.report(self.method_configuration(),
-                        export_to_df,
-                        export_to_dict,
-                        with_classification_report,
-                        verbose)
+        return eval_obj.report(self.method_configuration(),
+                                export_to_df,
+                                export_to_dict,
+                                with_classification_report,
+                                verbose)
 
 
 class AbstractMetablocking(AbstractComparisonCleaning, ABC):

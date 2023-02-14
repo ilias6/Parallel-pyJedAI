@@ -13,13 +13,14 @@ class AbstractClustering(PYJEDAIFeature):
     
     def __init__(self) -> None:
         super().__init__()
+        self.data: Data
 
     def evaluate(self,
-                prediction,
-                export_to_df: bool = False,
-                export_to_dict: bool = False,
-                with_classification_report: bool = False,
-                verbose: bool = True) -> any:
+                 prediction,
+                 export_to_df: bool = False,
+                 export_to_dict: bool = False,
+                 with_classification_report: bool = False,
+                 verbose: bool = True) -> any:
 
         if prediction is None:
             if self.blocks is None:
@@ -47,7 +48,7 @@ class AbstractClustering(PYJEDAIFeature):
                 true_positives += 1
 
         eval_obj.calculate_scores(true_positives=true_positives)
-        eval_obj.report(self.method_configuration(),
+        return eval_obj.report(self.method_configuration(),
                         export_to_df,
                         export_to_dict,
                         with_classification_report,
@@ -109,7 +110,6 @@ class UniqueMappingClustering(AbstractClustering):
         """
         super().__init__()
         self.similarity_threshold: float = similarity_threshold
-        print("Unique Mapping Clustering can only be performed in Clean-Clean Entity Resolution.")
 
     def process(self, graph: Graph, data: Data) -> list:
         """NetworkX Connected Components Algorithm in the produced graph.
@@ -120,6 +120,9 @@ class UniqueMappingClustering(AbstractClustering):
         Returns:
             list: list of clusters
         """
+        if data.is_dirty_er:
+            raise AttributeError("Unique Mapping Clustering can only be performed in Clean-Clean Entity Resolution.")
+
         start_time = time()
         matched_entities = set()
         self.data = data

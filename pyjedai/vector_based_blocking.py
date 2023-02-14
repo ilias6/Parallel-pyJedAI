@@ -59,6 +59,7 @@ class EmbeddingsNNBlockBuilding(StandardBlocking):
             vectorizer: str,
             similarity_search: str
     ) -> None:
+        super().__init__()
         self.vectorizer, self.similarity_search = vectorizer, similarity_search
         self.embeddings: np.array
         self.vectors_1: np.array

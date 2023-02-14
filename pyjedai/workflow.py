@@ -1,3 +1,4 @@
+from abc import ABC
 from itertools import count
 from time import time
 from typing import Callable, List, Tuple
@@ -19,7 +20,7 @@ from .clustering import ConnectedComponentsClustering, UniqueMappingClustering
 
 plt.style.use('seaborn-whitegrid')
 
-class WorkFlow:
+class WorkFlow(ABC):
     """Main module of the pyjedAI and the simplest way to create an end-to-end ER workflow.
     """
 
@@ -49,19 +50,21 @@ class WorkFlow:
         self._workflow_bar: tqdm
         self.final_pairs = None
 
-    def run(
-            self,
+    def run(self,
             data: Data,
-            verbose=False,
-            workflow_step_tqdm_disable=True,
-            workflow_tqdm_enable=False
+            verbose: bool = False,
+            with_classification_report: bool = False,
+            workflow_step_tqdm_disable: bool = True,
+            workflow_tqdm_enable: bool = False
         ) -> None:
         """Main function for creating an Entity resolution workflow.
 
         Args:
             data (Data): Dataset module.
             verbose (bool, optional): Print detailed report for each step. Defaults to False.
-            workflow_step_tqdm_disable (bool, optional): Tqdm progress bar. Defaults to False.
+            with_classification_report (bool, optional): Print pairs counts. Defaults to False.
+            workflow_step_tqdm_disable (bool, optional):  Tqdm progress bar in each step. Defaults to True.
+            workflow_tqdm_enable (bool, optional): Overall progress bar. Defaults to False.
         """
         steps = [self.block_building, self.entity_matching, self.clustering, self.joins, self.block_cleaning, self.comparison_cleaning]
         num_of_steps = sum(x is not None for x in steps)
@@ -71,7 +74,6 @@ class WorkFlow:
         self.data = data
         self._init_experiment()
         start_time = time()
-        pj_eval = Evaluation(data)
         #
         # Block building step: Only one algorithm can be performed
         #
@@ -87,10 +89,11 @@ class WorkFlow:
                                                                 if "attributes_2" in self.block_building else None,
                                                 tqdm_disable=workflow_step_tqdm_disable)
         self.final_pairs = block_building_blocks
-        pj_eval.report(block_building_blocks,
-                       block_building_method.method_configuration(), 
-                       verbose=verbose)
-        self._save_step(pj_eval, block_building_method.method_configuration())
+        res = block_building_method.evaluate(block_building_blocks,
+                                            export_to_dict=True,
+                                            with_classification_report=with_classification_report,
+                                            verbose=verbose)
+        self._save_step(res, block_building_method.method_configuration())
         self._workflow_bar.update(1)
         #
         # Block cleaning step [optional]: Multiple algorithms
@@ -104,15 +107,16 @@ class WorkFlow:
                 block_cleaning_method = block_cleaning['method'](**block_cleaning["params"]) \
                                                     if "params" in block_cleaning \
                                                     else block_cleaning['method']()
-                block_cleaning_blocks = block_cleaning_method.process(bblocks, 
-                                                                      data, 
+                block_cleaning_blocks = block_cleaning_method.process(bblocks,
+                                                                      data,
                                                                       tqdm_disable=workflow_step_tqdm_disable)
                 
                 self.final_pairs = bblocks = block_cleaning_blocks
-                pj_eval.report(
-                    bblocks, block_cleaning_method.method_configuration(), verbose=verbose
-                )
-                self._save_step(pj_eval, block_cleaning_method.method_configuration())
+                res = block_cleaning_method.evaluate(bblocks,
+                                                    export_to_dict=True,
+                                                    with_classification_report=with_classification_report,
+                                                    verbose=verbose)
+                self._save_step(res, block_cleaning_method.method_configuration())
                 self._workflow_bar.update(1)
         #
         # Comparison cleaning step [optional]
@@ -128,10 +132,11 @@ class WorkFlow:
                                                     else block_building_blocks,
                                                 data,
                                                 tqdm_disable=workflow_step_tqdm_disable)
-            pj_eval.report(comparison_cleaning_blocks,
-                           comparison_cleaning_method.method_configuration(),
-                           verbose=verbose)
-            self._save_step(pj_eval, comparison_cleaning_method.method_configuration())
+            res = comparison_cleaning_method.evaluate(comparison_cleaning_blocks,
+                                                      export_to_dict=True,
+                                                      with_classification_report=with_classification_report,
+                                                      verbose=verbose)
+            self._save_step(res, comparison_cleaning_method.method_configuration())
             self._workflow_bar.update(1)
         #
         # Entity Matching step
@@ -145,10 +150,11 @@ class WorkFlow:
             data,
             tqdm_disable=workflow_step_tqdm_disable
         )
-        pj_eval.report(
-            em_graph, entity_matching_method.method_configuration(), verbose=verbose
-        )
-        self._save_step(pj_eval, entity_matching_method.method_configuration())
+        res = entity_matching_method.evaluate(em_graph,
+                                                export_to_dict=True,
+                                                with_classification_report=with_classification_report,
+                                                verbose=verbose)
+        self._save_step(res, entity_matching_method.method_configuration())
         self._workflow_bar.update(1)
         #
         # Clustering step [optional]
@@ -157,11 +163,12 @@ class WorkFlow:
             clustering_method = self.clustering['method'](**self.clustering["params"]) \
                                             if "params" in self.clustering \
                                             else self.clustering['method']()
-            self.final_pairs = components = clustering_method.process(em_graph)
-            pj_eval.report(
-                components, clustering_method.method_configuration(), verbose=verbose
-            )
-            self._save_step(pj_eval, clustering_method.method_configuration())
+            self.final_pairs = components = clustering_method.process(em_graph, data)
+            res = clustering_method.evaluate(components,
+                                            export_to_dict=True,
+                                            with_classification_report=False,
+                                            verbose=verbose)
+            self._save_step(res, clustering_method.method_configuration())
             self.workflow_exec_time = time() - start_time
             self._workflow_bar.update(1)
         # self.runtime.append(self.workflow_exec_time)
@@ -305,10 +312,10 @@ class WorkFlow:
         """
         return write(self.final_pairs, self.data)
 
-    def _save_step(self, evaluation: Evaluation, configuration: dict) -> None:
-        self.f1.append(evaluation.f1*100)
-        self.recall.append(evaluation.recall*100)
-        self.precision.append(evaluation.precision*100)
+    def _save_step(self, results: dict, configuration: dict) -> None:
+        self.f1.append(results['F1 %'])
+        self.recall.append(results['Recall %'])
+        self.precision.append(results['Precision %'])
         self.configurations.append(configuration)
         self.runtime.append(configuration['runtime'])
 

@@ -98,7 +98,6 @@ class BlockFiltering(AbstractBlockCleaning):
         new_blocks = drop_single_entity_blocks(filtered_blocks, self.data.is_dirty_er)
         self._progress_bar.close()
         self.execution_time = time() - start_time
-        self.evaluate(new_blocks)
         self.blocks = new_blocks
         
         return new_blocks

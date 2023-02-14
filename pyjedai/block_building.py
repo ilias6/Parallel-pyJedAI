@@ -23,11 +23,8 @@ class AbstractBlockProcessing(PYJEDAIFeature):
     def __init__(self):
         super().__init__()
         self.blocks: dict
-        # self._progress_bar: tqdm
         self.attributes_1: list
         self.attributes_2: list
-        # self.execution_time: float
-        # self.data: Data
 
     def report(self) -> None:
         """Prints Block Building method configuration
@@ -76,12 +73,11 @@ class AbstractBlockProcessing(PYJEDAIFeature):
                 true_positives += 1
 
         eval_obj.calculate_scores(true_positives=true_positives)
-        eval_obj.report(self.method_configuration(),
-                          export_to_df,
-                          export_to_dict,
-                          with_classification_report,
-                          verbose)
-
+        return eval_obj.report(self.method_configuration(),
+                                export_to_df,
+                                export_to_dict,
+                                with_classification_report,
+                                verbose)
 
 class AbstractBlockBuilding(AbstractBlockProcessing):
     """Abstract class for the block building method
