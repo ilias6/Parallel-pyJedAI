@@ -46,13 +46,13 @@ class AbstractClustering(PYJEDAIFeature):
             if id1 in entity_index and    \
                 id2 in entity_index and are_matching(entity_index, id1, id2):
                 true_positives += 1
-
+        print(entity_index)
         eval_obj.calculate_scores(true_positives=true_positives)
         return eval_obj.report(self.method_configuration(),
-                        export_to_df,
-                        export_to_dict,
-                        with_classification_report,
-                        verbose)
+                                export_to_df,
+                                export_to_dict,
+                                with_classification_report,
+                                verbose)
 
 class ConnectedComponentsClustering(AbstractClustering):
     """Creates the connected components of the graph. \
@@ -80,8 +80,10 @@ class ConnectedComponentsClustering(AbstractClustering):
         start_time = time()
         self.data = data
         clusters = list(connected_components(graph))
+        resulting_clusters = list(filter(lambda x: len(x) == 2, clusters)) \
+                                if not data.is_dirty_er else clusters
         self.execution_time = time() - start_time
-        return clusters
+        return resulting_clusters
 
     def _configuration(self) -> dict:
         return {}
@@ -107,6 +109,7 @@ class UniqueMappingClustering(AbstractClustering):
         Args:
             similarity_threshold (float, optional): Prunes all edges with a weight
                 lower than this. Defaults to 0.1.
+            data (Data): Dataset module.
         """
         super().__init__()
         self.similarity_threshold: float = similarity_threshold
