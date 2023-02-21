@@ -133,6 +133,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
 
         vectors_1 = []
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print("Device slected: ", device)
         if self.vectorizer in ['word2vec', 'fasttext', 'doc2vec', 'glove']:
             # ------------------- #
             # Gensim Embeddings
@@ -181,7 +182,8 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                 vectors = output.last_hidden_state[:, 0, :]
 
             print("D1: Finished tokenization")
-            self.vectors_1 = vectors.numpy()
+            if device.type == 'cuda':
+                self.vectors_1 = vectors.detach().numpy()
             self._progress_bar.update(len(self._entities_d1))
             self.vector_size = self.vectors_1[0].shape[0]
             # self.vectors_1 = np.array(vectors_1).astype('float32')
@@ -196,7 +198,9 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                 with torch.no_grad():
                     output = model(**encoded_input_d2)
                     vectors = output.last_hidden_state[:, 0, :]
-                self.vectors_2 = vectors.numpy()
+                
+                if device.type == 'cuda':
+                    self.vectors_2 = vectors.detach().numpy()
 
                 self._progress_bar.update(len(self._entities_d2))
                 print("D2: Finished tokenization")
