@@ -25,13 +25,13 @@ transformers.logging.set_verbosity_error()
 from .datamodel import Data, PYJEDAIFeature
 
 LINUX_ENV=False
-try:
-    if 'linux' in sys.platform:
-        import falconn
-        import scann
-        LINUX_ENV=True
-except:
-    warnings.warn(ImportWarning, "Can't use FALCONN/SCANN in windows environment")
+# try:
+#     if 'linux' in sys.platform:
+#         import falconn
+#         import scann
+#         LINUX_ENV=True
+# except:
+#     warnings.warn(ImportWarning, "Can't use FALCONN/SCANN in windows environment")
 
 class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
     """Block building via creation of embeddings and a Nearest Neighbor Approach.
