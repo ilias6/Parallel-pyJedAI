@@ -45,10 +45,12 @@ class PYJEDAIFeature(ABC):
     def report(self) -> None:
         """Prints Block Building method configuration
         """
+        parameters = ("\n" + ''.join(['\t{0}: {1}\n'.format(k, v) for k, v in self._configuration().items()])) \
+                        if len(self._configuration().items()) != 0 else ' None'
         print(
             "Method name: " + self._method_name +
             "\nMethod info: " + self._method_info +
-            "\nParameters: \n" + ''.join(['\t{0}: {1}\n'.format(k, v) for k, v in self._configuration().items()]) +
+            "\nParameters: " + parameters +
             "\nRuntime: {:2.4f} seconds".format(self.execution_time)
         )
 

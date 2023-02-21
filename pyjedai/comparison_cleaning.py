@@ -89,7 +89,7 @@ class AbstractComparisonCleaning(PYJEDAIFeature):
     @abstractmethod
     def _configuration(self) -> dict:
         pass
-    
+
     def evaluate(self,
                  prediction,
                  export_to_df: bool = False,
@@ -122,7 +122,6 @@ class AbstractComparisonCleaning(PYJEDAIFeature):
                                 export_to_dict,
                                 with_classification_report,
                                 verbose)
-
 
 class AbstractMetablocking(AbstractComparisonCleaning, ABC):
     """Restructure a redundancy-positive block collection into a new

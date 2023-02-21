@@ -206,11 +206,9 @@ class DeepMatcherProcessor(object):
         diff_pairs = []
         for entity_id, pairs_ids in matches.items():
             non_matches = all_ids.difference(pairs_ids)
-            
             for no_match_id in non_matches:
                 entity_1 = entities_d1[entity_id] if entity_id < data.dataset_limit else entities_d2[entity_id-data.dataset_limit]
                 entity_2 = entities_d1[no_match_id] if no_match_id < data.dataset_limit else entities_d2[no_match_id-data.dataset_limit]
-                
                 diff_pairs.append((entity_1, entity_2, "0"))
                 non_matches_count += 1
             # print(len(all_ids), " - ", len(pairs_ids), " = ", len(non_matches))

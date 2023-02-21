@@ -178,7 +178,7 @@ class Evaluation:
             blocks: dict
     ) -> dict:
         entity_index = dict()
-        for block_id, block in blocks.items():       
+        for block_id, block in blocks.items():
             for entity_id in block.entities_D1:
                 entity_index.setdefault(entity_id, set())
                 entity_index[entity_id].add(block_id)

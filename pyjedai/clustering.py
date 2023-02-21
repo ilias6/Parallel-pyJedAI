@@ -88,7 +88,6 @@ class ConnectedComponentsClustering(AbstractClustering):
     def _configuration(self) -> dict:
         return {}
 
-
 class UniqueMappingClustering(AbstractClustering):
     """Prunes all edges with a weight lower than t, sorts the remaining ones in
         decreasing weight/similarity and iteratively forms a partition for

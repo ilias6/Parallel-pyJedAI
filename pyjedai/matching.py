@@ -1,7 +1,11 @@
 """Entity Matching Module
 """
+import numpy as np
 from time import time
 
+from sklearn.metrics.pairwise import (
+    cosine_similarity    
+)
 from networkx import Graph
 from py_stringmatching.similarity_measure.affine import Affine
 from py_stringmatching.similarity_measure.bag_distance import BagDistance
@@ -41,7 +45,6 @@ from py_stringmatching.tokenizer.whitespace_tokenizer import \
 from tqdm.autonotebook import tqdm
 
 from .evaluation import Evaluation
-
 from .datamodel import Data, PYJEDAIFeature
 
 # Package import from https://anhaidgroup.github.io/py_stringmatching/v0.4.2/index.html
@@ -70,11 +73,12 @@ metrics_mapping = {
     'generalized_jaccard' : GeneralizedJaccard(),
     'dice': Dice(),
     'overlap_coefficient' : OverlapCoefficient(),
-    'token_sort': TokenSort()
+    'token_sort': TokenSort(),
+    'cosine_vector_similarity': cosine_similarity
 }
 
 string_metrics = [
-    'bag_distance', 'editex', 'hamming_distance', 'jaro', 'jaro_winkler', 'levenshtein', 
+    'bag_distance', 'editex', 'hamming_distance', 'jaro', 'jaro_winkler', 'levenshtein',
     'edit_distance', 'partial_ratio', 'partial_token_sort', 'ratio', 'soundex', 'token_sort'
 ]
 
@@ -86,7 +90,11 @@ bag_metrics = [
     'tfidf'
 ]
 
-available_metrics = string_metrics + set_metrics + bag_metrics
+vector_metrics = [
+    'cosine_vector_similarity'
+]
+
+available_metrics = string_metrics + set_metrics + bag_metrics + vector_metrics
 
 
 class EntityMatching(PYJEDAIFeature):
@@ -103,7 +111,6 @@ class EntityMatching(PYJEDAIFeature):
             similarity_threshold: float = 0.5,
             qgram: int = 2, # for jaccard
             tokenizer_return_set = True, # unique values or not
-            embedings: str = None,
             attributes: any = None,
             delim_set: list = None, # DelimiterTokenizer
             padding: bool = True, # QgramTokenizer
@@ -113,9 +120,10 @@ class EntityMatching(PYJEDAIFeature):
         self.pairs: Graph
         self.metric = metric
         self.qgram: int = qgram
-        self.embedings: str = embedings
         self.attributes: list = attributes
         self.similarity_threshold = similarity_threshold
+        self.vectors_d1 = None
+        self.vectors_d2 = None
 
         #
         # Selecting tokenizer
@@ -165,7 +173,9 @@ class EntityMatching(PYJEDAIFeature):
     def predict(self,
                 blocks: dict,
                 data: Data,
-                tqdm_disable: bool = False) -> Graph:
+                tqdm_disable: bool = False,
+                vectors_d1: np.array = None,
+                vectors_d2: np.array = None) -> Graph:
         """Main method of entity matching. Inputs a set of blocks and outputs a graph \
             that contains of the entity ids (nodes) and the similarity scores between them (edges).
 
@@ -179,16 +189,16 @@ class EntityMatching(PYJEDAIFeature):
         """
         start_time = time()
         self.tqdm_disable = tqdm_disable
+        self.vectors_d1 = vectors_d1
+        self.vectors_d2 = vectors_d2
         if not blocks:
             raise ValueError("Empty blocks structure")
         self.data = data
         self.pairs = Graph()
         all_blocks = list(blocks.values())
-        self._progress_bar = tqdm(
-            total=len(blocks),
-            desc=self._method_name+" ("+self.metric+")",
-            disable=self.tqdm_disable
-        )
+        self._progress_bar = tqdm(total=len(blocks),
+                                  desc=self._method_name+" ("+self.metric+")",
+                                  disable=self.tqdm_disable)
         if 'Block' in str(type(all_blocks[0])):
             self._predict_raw_blocks(blocks)
         elif isinstance(all_blocks[0], set):
@@ -197,6 +207,7 @@ class EntityMatching(PYJEDAIFeature):
             raise AttributeError("Wrong type of Blocks")
         self.execution_time = time() - start_time
         self._progress_bar.close()
+
         return self.pairs
 
     def _predict_raw_blocks(self, blocks: dict) -> None:
@@ -210,14 +221,11 @@ class EntityMatching(PYJEDAIFeature):
                 entities_array = list(block.entities_D1)
                 for index_1 in range(0, len(entities_array), 1):
                     for index_2 in range(index_1+1, len(entities_array), 1):
-                        similarity = self._similarity(
-                            entities_array[index_1], entities_array[index_2]
-                        )
-                        self._insert_to_graph(
-                            entities_array[index_1],
-                            entities_array[index_2],
-                            similarity
-                        )
+                        similarity = self._similarity(entities_array[index_1],
+                                                      entities_array[index_2])
+                        self._insert_to_graph(entities_array[index_1],
+                                              entities_array[index_2],
+                                              similarity)
                 self._progress_bar.update(1)
         else:
             for _, block in blocks.items():
@@ -246,9 +254,20 @@ class EntityMatching(PYJEDAIFeature):
             (self.similarity_threshold and similarity > self.similarity_threshold):
             self.pairs.add_edge(entity_id1, entity_id2, weight=similarity)
 
+    def _calculate_vector_similarity(self, entity_id1: int, entity_id2: int) -> float:
+        if self.metric in vector_metrics:
+            return metrics_mapping[self._metric](self.vectors_d1[entity_id1],
+                                                 self.vectors_d1[entity_id2] if self.data.is_dirty_er \
+                                                     else self.vectors_d2[entity_id2])
+        else:
+            raise AttributeError("Please select one vector similarity metric from the given: " + ','.join(vector_metrics))
+    
     def _similarity(self, entity_id1: int, entity_id2: int) -> float:
 
         similarity: float = 0.0
+        if self.vectors_d1 is not None:
+            return self._calculate_vector_similarity(entity_id1, entity_id2)
+
         if isinstance(self.attributes, dict):
             for attribute, weight in self.attributes.items():
                 e1 = self.data.entities.iloc[entity_id1][attribute]
@@ -294,7 +313,6 @@ class EntityMatching(PYJEDAIFeature):
     def _configuration(self) -> dict:
         return {
             "Metric" : self.metric,
-            "Embeddings" : self.embedings,
             "Attributes" : self.attributes,
             "Similarity threshold" : self.similarity_threshold
         }
