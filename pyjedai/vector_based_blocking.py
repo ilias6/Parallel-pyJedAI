@@ -23,6 +23,7 @@ from transformers import (AlbertModel, AlbertTokenizer, BertModel,
 transformers.logging.set_verbosity_error()
 
 from .datamodel import Data, PYJEDAIFeature
+from .evaluation import Evaluation
 
 LINUX_ENV=False
 # try:
