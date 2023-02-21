@@ -183,7 +183,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
 
             print("D1: Finished tokenization")
             if device.type == 'cuda':
-                self.vectors_1 = vectors.detach().numpy()
+                self.vectors_1 = vectors.cpu().numpy()
             self._progress_bar.update(len(self._entities_d1))
             self.vector_size = self.vectors_1[0].shape[0]
             # self.vectors_1 = np.array(vectors_1).astype('float32')
@@ -200,7 +200,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                     vectors = output.last_hidden_state[:, 0, :]
                 
                 if device.type == 'cuda':
-                    self.vectors_2 = vectors.detach().numpy()
+                    self.vectors_2 = vectors.cpu().numpy()
 
                 self._progress_bar.update(len(self._entities_d2))
                 print("D2: Finished tokenization")
