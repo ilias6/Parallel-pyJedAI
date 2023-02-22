@@ -46,7 +46,7 @@ class AbstractClustering(PYJEDAIFeature):
             if id1 in entity_index and    \
                 id2 in entity_index and are_matching(entity_index, id1, id2):
                 true_positives += 1
-        print(entity_index)
+        # print(entity_index)
         eval_obj.calculate_scores(true_positives=true_positives)
         return eval_obj.report(self.method_configuration(),
                                 export_to_df,

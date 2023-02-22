@@ -11,8 +11,6 @@ class PYJEDAIFeature(ABC):
     _method_info: str
     _method_short_name: str
 
-    # def fit(self):
-    #     pass
     def __init__(self) -> None:
         super().__init__()
         self._progress_bar: tqdm

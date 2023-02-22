@@ -2,9 +2,10 @@
 """
 import numpy as np
 from time import time
+import matplotlib.pyplot as plt
 
 from sklearn.metrics.pairwise import (
-    cosine_similarity    
+    cosine_similarity
 )
 from networkx import Graph
 from py_stringmatching.similarity_measure.affine import Affine
@@ -191,6 +192,8 @@ class EntityMatching(PYJEDAIFeature):
         self.tqdm_disable = tqdm_disable
         self.vectors_d1 = vectors_d1
         self.vectors_d2 = vectors_d2
+        self.vectors = self.vectors_d1 if data.is_dirty_er else np.concatenate((vectors_d1,vectors_d2), axis=0)
+
         if not blocks:
             raise ValueError("Empty blocks structure")
         self.data = data
@@ -256,16 +259,19 @@ class EntityMatching(PYJEDAIFeature):
 
     def _calculate_vector_similarity(self, entity_id1: int, entity_id2: int) -> float:
         if self.metric in vector_metrics:
-            return metrics_mapping[self._metric](self.vectors_d1[entity_id1],
-                                                 self.vectors_d1[entity_id2] if self.data.is_dirty_er \
-                                                     else self.vectors_d2[entity_id2])
+            # print(entity_id1, entity_id2)
+            # # print(self.vectors[entity_id1].reshape(1, -1))
+            print(metrics_mapping[self._metric](self.vectors[entity_id1].reshape(1, -1),
+                                                 self.vectors[entity_id2].reshape(1, -1))[0][0])
+            return metrics_mapping[self._metric](self.vectors[entity_id1].reshape(1, -1),
+                                                 self.vectors[entity_id2].reshape(1, -1))[0][0]
         else:
             raise AttributeError("Please select one vector similarity metric from the given: " + ','.join(vector_metrics))
     
     def _similarity(self, entity_id1: int, entity_id2: int) -> float:
 
         similarity: float = 0.0
-        if self.vectors_d1 is not None:
+        if self.vectors_d1 is not None and self.metric in vector_metrics:
             return self._calculate_vector_similarity(entity_id1, entity_id2)
 
         if isinstance(self.attributes, dict):
@@ -273,7 +279,7 @@ class EntityMatching(PYJEDAIFeature):
                 e1 = self.data.entities.iloc[entity_id1][attribute]
                 e2 = self.data.entities.iloc[entity_id2][attribute]
 
-                similarity += weight*self._metric.get_sim_score(
+                similarity += weight*metrics_mapping[self._metric].get_sim_score(
                     self._tokenizer.tokenize(e1),
                     self._tokenizer.tokenize(e2)
                 )
@@ -281,7 +287,7 @@ class EntityMatching(PYJEDAIFeature):
             for attribute in self.attributes:
                 e1 = self.data.entities.iloc[entity_id1][attribute]
                 e2 = self.data.entities.iloc[entity_id2][attribute]
-                similarity += self._metric.get_sim_score(
+                similarity += metrics_mapping[self._metric].get_sim_score(
                     self._tokenizer.tokenize(e1),
                     self._tokenizer.tokenize(e2)
                 )
@@ -316,6 +322,38 @@ class EntityMatching(PYJEDAIFeature):
             "Attributes" : self.attributes,
             "Similarity threshold" : self.similarity_threshold
         }
+
+    def plot_distribution_of_scores(self) -> None:
+        title = "Distribution of predicted scores"
+        def weight_distribution(G):
+            bins = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+            distribution = [0] * (len(bins)-1)
+            for u, v, w in G.edges(data='weight'):
+                for i in range(len(bins) - 1):
+                    if bins[i] <= w < bins[i + 1]:
+                        distribution[i] += 1
+                        break
+            return distribution, len(G.edges(data='weight'))
+
+        labels = [f'{(i)/10:.1f} - {(i+1)/10:.1f}' for i in range(0, 10)]
+
+        distribution, num_of_pairs = weight_distribution(self.pairs)
+        width = 0.5
+        x = np.arange(len(labels))  # the label locations
+        distribution = list(map(lambda x: (x/num_of_pairs)*100, distribution))
+        print("Distribution-% of predicted scores: ", distribution)
+
+        fig, ax = plt.subplots(figsize=(10,6))
+        r1 = ax.bar(x, distribution, width, align='center', color='red')
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels)
+
+        # Add some text for labels, title and custom x-axis tick labels, etc.
+        ax.set_ylabel('Percentage of pairs in each range to all (%)')
+        ax.set_title(title)
+        ax.set_xlabel('Similarity score range')
+        fig.tight_layout()
+        plt.show()
 
     def evaluate(self,
                  prediction,

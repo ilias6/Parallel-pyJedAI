@@ -134,7 +134,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
 
         vectors_1 = []
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print("Device slected: ", device)
+        print("Device selected: ", device)
         if self.vectorizer in ['word2vec', 'fasttext', 'doc2vec', 'glove']:
             # ------------------- #
             # Gensim Embeddings
@@ -172,40 +172,41 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                 model = AlbertModel.from_pretrained("albert-base-v2")
 
             model = model.to(device)
-            print("D1: Started tokenization")
-            encoded_input_d1 = tokenizer(self._entities_d1,
-                                      return_tensors='pt',
-                                      truncation=True,
-                                      max_length=100,
-                                      padding='max_length').to(device)
-            with torch.no_grad():
-                output = model(**encoded_input_d1)
-                vectors = output.last_hidden_state[:, 0, :]
-
-            print("D1: Finished tokenization")
-            if device.type == 'cuda':
-                self.vectors_1 = vectors.cpu().numpy()
-            self._progress_bar.update(len(self._entities_d1))
-            self.vector_size = self.vectors_1[0].shape[0]
-            # self.vectors_1 = np.array(vectors_1).astype('float32')
-
-            if not data.is_dirty_er:
-                print("D2: Started tokenization")
-                encoded_input_d2 = tokenizer(self._entities_d2,
-                                             return_tensors='pt',
-                                             truncation=True,
-                                             max_length=100,
-                                             padding='max_length').to(device)
+            
+            for i in range(0, data.num_of_entities_1, 1):
+                encoded_input = tokenizer(self._entities_d1[i],
+                                          return_tensors='pt',
+                                          truncation=True,
+                                          return_attention_mask = True, # Return attention mask
+                                          max_length=128,
+                                          padding='max_length')
                 with torch.no_grad():
-                    output = model(**encoded_input_d2)
-                    vectors = output.last_hidden_state[:, 0, :]
-                
-                if device.type == 'cuda':
-                    self.vectors_2 = vectors.cpu().numpy()
+                    output = model(**encoded_input)
+                    vector = output.last_hidden_state[:, 0, :]
+                vector = vector.cpu().numpy()
+                print(vector)
+                vectors_1.append(vector.reshape(-1))
+                print("after: ")
+                print(vector.reshape(-1))
 
-                self._progress_bar.update(len(self._entities_d2))
-                print("D2: Finished tokenization")
-                # self.vectors_2 = np.array(vectors_2).astype('float32')
+                self._progress_bar.update(1)
+            self.vector_size = vectors_1[0].shape[0]
+            self.vectors_1 = np.array(vectors_1).astype('float32')
+            if not data.is_dirty_er:
+                vectors_2 = []
+                for i in range(0, data.num_of_entities_2, 1):
+                    encoded_input = tokenizer(self._entities_d2[i],
+                                              return_tensors='pt',
+                                              truncation=True,
+                                              max_length=128,
+                                              padding='max_length')
+                    with torch.no_grad():
+                        output = model(**encoded_input)
+                        vector = output.last_hidden_state[:, 0, :]
+                    vector = vector.cpu().detach().numpy()
+                    vectors_2.append(vector.reshape(-1))
+                    self._progress_bar.update(1)
+                self.vectors_2 = np.array(vectors_2).astype('float32')
                 
         elif self.vectorizer in ['smpnet', 'st5', 'glove', 'sdistilroberta', 'sminilm']:
             # ---------------------------- #
@@ -214,9 +215,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
             model = SentenceTransformer(self._sentence_transformer_mapping[self.vectorizer], 
                                         device=device)
             for i in range(0, data.num_of_entities_1, 1):
-                record = isolated_attr_dataset_1.iloc[i] if attributes_1 \
-                            else data.entities_d1.iloc[i]
-                vector = model.encode(record)
+                vector = model.encode(self._entities_d1[i])
                 vectors_1.append(vector)
                 self._progress_bar.update(1)
             self.vector_size = len(vectors_1[0])
@@ -224,9 +223,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
             if not data.is_dirty_er:
                 vectors_2 = []
                 for i in range(0, data.num_of_entities_2, 1):
-                    record = isolated_attr_dataset_2.iloc[i] if attributes_2 \
-                                else data.entities_d2.iloc[i]
-                    vector = model.encode(record)
+                    vector = model.encode(self._entities_d2[i])
                     vectors_2.append(vector)
                     self._progress_bar.update(1)
                 self.vector_size = vectors_2[0].shape[1]
@@ -245,7 +242,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                                        faiss.METRIC_L2)
             index.train(self.vectors_1)  # train on the vectors of dataset 1
             index.add(self.vectors_1)   # add the vectors and update the index
-            _, indices = index.search(self.vectors_1 if self.data.is_dirty_er else self.vectors_2, 
+            _, indices = index.search(self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
                                       self.top_k)
             if self.data.is_dirty_er:
                 self.blocks = {
@@ -265,11 +262,13 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
             if not LINUX_ENV:
                 raise ImportError("Can't use SCANN in windows environment. Use FAISS instead.")
 
-            searcher = scann.scann_ops_pybind.builder(self.vectors_1, num_neighbors=self.top_k, distance_measure="dot_product") \
-                            .tree(num_leaves=2000, num_leaves_to_search=100, training_sample_size=250000) \
-                            .score_ah(2, anisotropic_quantization_threshold=0.2) \
-                            .reorder(100) \
-                            .build()
+            searcher = scann.scann_ops_pybind.builder(self.vectors_1, 
+                                                      num_neighbors=self.top_k, 
+                                                      distance_measure="dot_product") \
+                                            .tree(num_leaves=2000, num_leaves_to_search=100, training_sample_size=250000) \
+                                            .score_ah(2, anisotropic_quantization_threshold=0.2) \
+                                            .reorder(100) \
+                                            .build()
 
             neighbors, distances = searcher.search_batched(
                 self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
