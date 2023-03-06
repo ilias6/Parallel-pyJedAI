@@ -184,11 +184,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                     output = model(**encoded_input)
                     vector = output.last_hidden_state[:, 0, :]
                 vector = vector.cpu().numpy()
-                print(vector)
                 vectors_1.append(vector.reshape(-1))
-                print("after: ")
-                print(vector.reshape(-1))
-
                 self._progress_bar.update(1)
             self.vector_size = vectors_1[0].shape[0]
             self.vectors_1 = np.array(vectors_1).astype('float32')
@@ -257,12 +253,11 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         elif self.similarity_search == 'falconn':
             if not LINUX_ENV:
                 raise ImportError("Can't use FALCONN in windows environment. Use FAISS instead.")
-            # TODO FALCONN
         elif self.similarity_search == 'scann'  and LINUX_ENV:
             if not LINUX_ENV:
                 raise ImportError("Can't use SCANN in windows environment. Use FAISS instead.")
 
-            searcher = scann.scann_ops_pybind.builder(self.vectors_1, 
+            searcher = scann.scann_ops_pybind.builder(self.vectors_1,
                                                       num_neighbors=self.top_k, 
                                                       distance_measure="dot_product") \
                                             .tree(num_leaves=2000, num_leaves_to_search=100, training_sample_size=250000) \
@@ -274,7 +269,6 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                 self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
                 final_num_neighbors=self.top_k
             )
-            print(neighbors.shape, distances.shape)
             if self.data.is_dirty_er:
                 self.blocks = {
                     i : set(x for x in neighbors[i] if x not in [-1, i]) \
