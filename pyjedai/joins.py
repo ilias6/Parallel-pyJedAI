@@ -136,7 +136,7 @@ class AbstractJoin(PYJEDAIFeature):
                 entities = self._entities_d1
                 num_of_entities = self.data.num_of_entities_1
             else:
-                entities = self.data.entities_d2
+                entities = self._entities_d2
                 num_of_entities = self.data.num_of_entities_2
 
             for i in range(0, num_of_entities):
