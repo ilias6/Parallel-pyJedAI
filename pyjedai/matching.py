@@ -4,9 +4,8 @@ import numpy as np
 from time import time
 import matplotlib.pyplot as plt
 
-from sklearn.metrics.pairwise import (
-    cosine_similarity
-)
+from scipy.spatial.distance import cosine
+
 from networkx import Graph
 from py_stringmatching.similarity_measure.affine import Affine
 from py_stringmatching.similarity_measure.bag_distance import BagDistance
@@ -75,7 +74,7 @@ metrics_mapping = {
     'dice': Dice(),
     'overlap_coefficient' : OverlapCoefficient(),
     'token_sort': TokenSort(),
-    'cosine_vector_similarity': cosine_similarity
+    'cosine_vector_similarity': cosine
 }
 
 string_metrics = [
@@ -162,14 +161,6 @@ class EntityMatching(PYJEDAIFeature):
                     tokenizer, available_tokenizers
                 )
             )
-
-        #
-        # Selecting similarity measure
-        #
-        # if metric in metrics_mapping:
-        #     self._metric = metrics_mapping[metric]
-            
-        # else:
         
     def predict(self,
                 blocks: dict,
@@ -192,7 +183,10 @@ class EntityMatching(PYJEDAIFeature):
         self.tqdm_disable = tqdm_disable
         self.vectors_d1 = vectors_d1
         self.vectors_d2 = vectors_d2
-        self.vectors = self.vectors_d1 if data.is_dirty_er else np.concatenate((vectors_d1,vectors_d2), axis=0)
+        print(self.metric)
+        if self.metric in vector_metrics:
+            self.vectors = self.vectors_d1 if data.is_dirty_er \
+                            else np.concatenate((vectors_d1,vectors_d2), axis=0)
 
         if not blocks:
             raise ValueError("Empty blocks structure")
@@ -261,17 +255,19 @@ class EntityMatching(PYJEDAIFeature):
         if self.metric in vector_metrics:
             # print(entity_id1, entity_id2)
             # # print(self.vectors[entity_id1].reshape(1, -1))
-            print(metrics_mapping[self._metric](self.vectors[entity_id1].reshape(1, -1),
-                                                 self.vectors[entity_id2].reshape(1, -1))[0][0])
-            return metrics_mapping[self._metric](self.vectors[entity_id1].reshape(1, -1),
-                                                 self.vectors[entity_id2].reshape(1, -1))[0][0]
+            # print(self.vectors[entity_id1].shape)
+            # print("-")
+            print(1-metrics_mapping[self._metric](self.vectors[entity_id1], self.vectors[entity_id2]))
+            return 1-metrics_mapping[self._metric](self.vectors[entity_id1],
+                                                 self.vectors[entity_id2])
         else:
             raise AttributeError("Please select one vector similarity metric from the given: " + ','.join(vector_metrics))
-    
+
     def _similarity(self, entity_id1: int, entity_id2: int) -> float:
 
         similarity: float = 0.0
         if self.vectors_d1 is not None and self.metric in vector_metrics:
+            # print('HERE')
             return self._calculate_vector_similarity(entity_id1, entity_id2)
 
         if isinstance(self.attributes, dict):
