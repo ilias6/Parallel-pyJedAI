@@ -5,7 +5,7 @@ and then performing NNs methods for cluster formation.
 import sys
 import warnings
 from time import time
-from typing import List
+from typing import List, Tuple
 import re
 
 import faiss
@@ -100,10 +100,14 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                 Qaution for the hugging face embeddings has no effect.
             num_of_clusters (int, optional): Number of clusters for FAISS. Defaults to 5.
             top_k (int, optional): Top K similar candidates. Defaults to 30.
-            attributes_1 (list, optional): Vectorization of specific attributes for D1. Defaults to None.
-            attributes_2 (list, optional): Vectorization of specific attributes for D2. Defaults to None.
-            return_vectors (bool, optional): If true, returns the vectors created from the pretrained embeddings instead of the blocks. Defaults to False.
-            tqdm_disable (bool, optional): Disable progress bar. For experiment purposes. Defaults to False.
+            attributes_1 (list, optional): Vectorization of specific attributes for D1. \
+                                            Defaults to None.
+            attributes_2 (list, optional): Vectorization of specific attributes for D2. \
+                                            Defaults to None.
+            return_vectors (bool, optional): If true, returns the vectors created from the pretrained \
+                                            embeddings instead of the blocks. Defaults to False.
+            tqdm_disable (bool, optional): Disable progress bar. For experiment purposes. \
+                                            Defaults to False.
 
         Raises:
             AttributeError: Vectorizer check
@@ -125,105 +129,22 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                             .apply(" ".join, axis=1) \
                             .apply(self._tokenize_entity) \
                             .values.tolist()
-                        # if attributes_1 else data.entities_d1.apply(self._tokenize_entity)
-        if not data.is_dirty_er:
-            self._entities_d2 = data.dataset_2[attributes_2 if attributes_2 else data.attributes_2] \
+        
+        self._entities_d2 = data.dataset_2[attributes_2 if attributes_2 else data.attributes_2] \
                     .apply(" ".join, axis=1) \
                     .apply(self._tokenize_entity) \
-                    .values.tolist()
+                    .values.tolist() if not data.is_dirty_er else None
 
         vectors_1 = []
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print("Device selected: ", device)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print("Device selected: ", self.device)
+        
         if self.vectorizer in ['word2vec', 'fasttext', 'doc2vec', 'glove']:
-            # ------------------- #
-            # Gensim Embeddings
-            # More: https://github.com/RaRe-Technologies/gensim-data
-            # ------------------- #
-            vocabulary = api.load(self._gensim_mapping_download[self.vectorizer])
-            for e1 in self._entities_d1:
-                vectors_1.append(self._create_vector(e1, vocabulary))
-                self._progress_bar.update(1)
-            self.vectors_1 = np.array(vectors_1).astype('float32')
-            if not data.is_dirty_er:
-                vectors_2 = []
-                for e2 in self._entities_d1:
-                    vectors_2.append(self._create_vector(e2, vocabulary))
-                    self._progress_bar.update(1)
-                self.vectors_2 = np.array(vectors_2).astype('float32')
+            vectors_1, vectors_2 = self._create_gensim_embeddings()
         elif self.vectorizer in ['bert', 'distilbert', 'roberta', 'xlnet', 'albert']:
-            # ---------------------------- #
-            # Pre-trained Word Embeddings
-            # ---------------------------- #
-            if self.vectorizer == 'bert':
-                tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-                model = BertModel.from_pretrained("bert-base-uncased")
-            elif self.vectorizer == 'distilbert':
-                tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
-                model = DistilBertModel.from_pretrained("distilbert-base-uncased")
-            elif self.vectorizer == 'roberta':
-                tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
-                model = RobertaModel.from_pretrained('roberta-base')
-            elif self.vectorizer == 'xlnet':
-                tokenizer = XLNetTokenizer.from_pretrained('xlnet-base-cased')
-                model = XLNetModel.from_pretrained('xlnet-base-cased')
-            elif self.vectorizer == 'albert':
-                tokenizer = AlbertTokenizer.from_pretrained('albert-base-v2')
-                model = AlbertModel.from_pretrained("albert-base-v2")
-
-            model = model.to(device)
-            
-            for i in range(0, data.num_of_entities_1, 1):
-                encoded_input = tokenizer(self._entities_d1[i],
-                                          return_tensors='pt',
-                                          truncation=True,
-                                          return_attention_mask = True, # Return attention mask
-                                          max_length=128,
-                                          padding='max_length')
-                with torch.no_grad():
-                    output = model(**encoded_input)
-                    vector = output.last_hidden_state[:, 0, :]
-                vector = vector.cpu().numpy()
-                vectors_1.append(vector.reshape(-1))
-                self._progress_bar.update(1)
-            self.vector_size = vectors_1[0].shape[0]
-            self.vectors_1 = np.array(vectors_1).astype('float32')
-            if not data.is_dirty_er:
-                vectors_2 = []
-                for i in range(0, data.num_of_entities_2, 1):
-                    encoded_input = tokenizer(self._entities_d2[i],
-                                              return_tensors='pt',
-                                              truncation=True,
-                                              max_length=128,
-                                              padding='max_length')
-                    with torch.no_grad():
-                        output = model(**encoded_input)
-                        vector = output.last_hidden_state[:, 0, :]
-                    vector = vector.cpu().detach().numpy()
-                    vectors_2.append(vector.reshape(-1))
-                    self._progress_bar.update(1)
-                self.vectors_2 = np.array(vectors_2).astype('float32')
-                
+            vectors_1, vectors_2 = self._create_pretrained_word_embeddings()
         elif self.vectorizer in ['smpnet', 'st5', 'glove', 'sdistilroberta', 'sminilm']:
-            # ---------------------------- #
-            # Pre-trained Sentence Embeddings
-            # ---------------------------- #
-            model = SentenceTransformer(self._sentence_transformer_mapping[self.vectorizer], 
-                                        device=device)
-            for i in range(0, data.num_of_entities_1, 1):
-                vector = model.encode(self._entities_d1[i])
-                vectors_1.append(vector)
-                self._progress_bar.update(1)
-            self.vector_size = len(vectors_1[0])
-            self.vectors_1 = np.array(vectors_1).astype('float32')
-            if not data.is_dirty_er:
-                vectors_2 = []
-                for i in range(0, data.num_of_entities_2, 1):
-                    vector = model.encode(self._entities_d2[i])
-                    vectors_2.append(vector)
-                    self._progress_bar.update(1)
-                self.vector_size = vectors_2[0].shape[1]
-                self.vectors_2 = np.array(vectors_2).astype('float32')
+            vectors_1, vectors_2 = self._create_pretrained_sentence_embeddings()
         else:
             raise AttributeError("Not available vectorizer")
 
@@ -231,60 +152,168 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
             return (vectors_1, _) if data.is_dirty_er else (vectors_1, vectors_2)
 
         if self.similarity_search == 'faiss':
-            quantiser = faiss.IndexFlatL2(self.vectors_1.shape[1])
-            index = faiss.IndexIVFFlat(quantiser,
-                                       self.vectors_1.shape[1],
-                                       self.num_of_clusters,
-                                       faiss.METRIC_L2)
-            index.train(self.vectors_1)  # train on the vectors of dataset 1
-            index.add(self.vectors_1)   # add the vectors and update the index
-            _, indices = index.search(self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
-                                      self.top_k)
-            if self.data.is_dirty_er:
-                self.blocks = {
-                    i : set(x for x in indices[i] if x not in [-1, i]) \
-                            for i in range(0, indices.shape[0])
-                }
-            else:
-                self.blocks = {
-                    i+self.data.dataset_limit : set(x for x in indices[i] if x != -1) \
-                            for i in range(0, indices.shape[0])
-                }
+            self._similarity_search_with_FAISS()
         elif self.similarity_search == 'falconn':
-            if not LINUX_ENV:
-                raise ImportError("Can't use FALCONN in windows environment. Use FAISS instead.")
+            raise NotImplementedError("FALCONN")
         elif self.similarity_search == 'scann'  and LINUX_ENV:
-            if not LINUX_ENV:
-                raise ImportError("Can't use SCANN in windows environment. Use FAISS instead.")
-
-            searcher = scann.scann_ops_pybind.builder(self.vectors_1,
-                                                      num_neighbors=self.top_k, 
-                                                      distance_measure="dot_product") \
-                                            .tree(num_leaves=2000, num_leaves_to_search=100, training_sample_size=250000) \
-                                            .score_ah(2, anisotropic_quantization_threshold=0.2) \
-                                            .reorder(100) \
-                                            .build()
-
-            neighbors, distances = searcher.search_batched(
-                self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
-                final_num_neighbors=self.top_k
-            )
-            if self.data.is_dirty_er:
-                self.blocks = {
-                    i : set(x for x in neighbors[i] if x not in [-1, i]) \
-                            for i in range(0, neighbors.shape[0])
-                }
-            else:
-                self.blocks = {
-                    i+self.data.dataset_limit : set(x for x in neighbors[i] if x != -1) \
-                            for i in range(0, neighbors.shape[0])
-                }
+            self._similarity_search_with_SCANN()
         else:
             raise AttributeError("Not available method")
         self._progress_bar.close()
         self.execution_time = time() - _start_time
 
         return self.blocks
+
+    def _create_gensim_embeddings(self) -> Tuple[np.array, np.array]:
+        """Embeddings with Gensim. More on https://github.com/RaRe-Technologies/gensim-data
+
+        Args:
+            entities_d1 (list): Entities from D1
+            entities_d2 (list, optional): Entities from D2 (CCER). Defaults to None.
+
+        Returns:
+            Tuple[np.array, np.array]: Embeddings from D1 and D2
+        """
+        vectors_1 = []
+        vocabulary = api.load(self._gensim_mapping_download[self.vectorizer])
+        for e1 in self._entities_d1:
+            vectors_1.append(self._create_vector(e1, vocabulary))
+            self._progress_bar.update(1)
+        self.vectors_1 = np.array(vectors_1).astype('float32')
+
+        vectors_2 = []
+        if not self.data.is_dirty_er:
+            for e2 in self._entities_d2:
+                vectors_2.append(self._create_vector(e2, vocabulary))
+                self._progress_bar.update(1)
+            self.vectors_2 = np.array(vectors_2).astype('float32')
+
+        return vectors_1, vectors_2
+
+    def _create_pretrained_word_embeddings(self) -> Tuple[np.array, np.array]:
+        if self.vectorizer == 'bert':
+            tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+            model = BertModel.from_pretrained("bert-base-uncased")
+        elif self.vectorizer == 'distilbert':
+            tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
+            model = DistilBertModel.from_pretrained("distilbert-base-uncased")
+        elif self.vectorizer == 'roberta':
+            tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
+            model = RobertaModel.from_pretrained('roberta-base')
+        elif self.vectorizer == 'xlnet':
+            tokenizer = XLNetTokenizer.from_pretrained('xlnet-base-cased')
+            model = XLNetModel.from_pretrained('xlnet-base-cased')
+        elif self.vectorizer == 'albert':
+            tokenizer = AlbertTokenizer.from_pretrained('albert-base-v2')
+            model = AlbertModel.from_pretrained("albert-base-v2")
+
+        model = model.to(self.device)
+        vectors_1 = []
+        for i in range(0, self.data.num_of_entities_1, 1):
+            encoded_input = tokenizer(self._entities_d1[i],
+                                        return_tensors='pt',
+                                        truncation=True,
+                                        max_length=256,
+                                        padding='max_length')
+            with torch.no_grad():
+                output = model(**encoded_input)
+                vector = output.last_hidden_state[:, 0, :]
+            vector = vector.cpu().numpy()
+            vectors_1.append(vector.reshape(-1))
+            self._progress_bar.update(1)
+        self.vector_size = vectors_1[0].shape[0]
+        self.vectors_1 = np.array(vectors_1).astype('float32')
+        vectors_2 = []
+        if not self.data.is_dirty_er:
+            for i in range(0, self.data.num_of_entities_2, 1):
+                encoded_input = tokenizer(self._entities_d2[i],
+                                            return_tensors='pt',
+                                            truncation=True,
+                                            max_length=256,
+                                            padding='max_length')
+                with torch.no_grad():
+                    output = model(**encoded_input)
+                    vector = output.last_hidden_state[:, 0, :]
+                vector = vector.cpu().numpy()
+                vectors_2.append(vector.reshape(-1))
+                self._progress_bar.update(1)
+            self.vectors_2 = np.array(vectors_2).astype('float32')
+
+        return vectors_1, vectors_2
+
+    def _create_pretrained_sentence_embeddings(self):
+        model = SentenceTransformer(self._sentence_transformer_mapping[self.vectorizer],
+                                    device=self.device)
+        vectors_1 = []
+        for i in range(0, self.data.num_of_entities_1, 1):
+            vector = model.encode(self._entities_d1[i])
+            vectors_1.append(vector)
+            self._progress_bar.update(1)
+        self.vector_size = len(vectors_1[0])
+        self.vectors_1 = np.array(vectors_1).astype('float32')
+        vectors_2 = []
+        if not self.data.is_dirty_er:            
+            for i in range(0, self.data.num_of_entities_2, 1):
+                vector = model.encode(self._entities_d2[i])
+                vectors_2.append(vector)
+                # print(vector)
+                self._progress_bar.update(1)
+            self.vector_size = len(vectors_2[0])
+            self.vectors_2 = np.array(vectors_2).astype('float32')
+
+        return vectors_1, vectors_2 
+
+    def _similarity_search_with_FAISS(self):
+        quantiser = faiss.IndexFlatL2(self.vectors_1.shape[1])
+        index = faiss.IndexIVFFlat(quantiser,
+                                    self.vectors_1.shape[1],
+                                    self.num_of_clusters,
+                                    faiss.METRIC_L2)
+        index.train(self.vectors_1)  # train on the vectors of dataset 1
+        index.add(self.vectors_1)   # add the vectors and update the index
+        _, indices = index.search(self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
+                                    self.top_k)
+        print(indices)
+        if self.data.is_dirty_er:
+            self.blocks = {
+                i : set(x for x in indices[i] if x not in [-1, i]) \
+                        for i in range(0, indices.shape[0])
+            }
+        else:
+            self.blocks = {
+                i+self.data.dataset_limit : set(x for x in indices[i] if x != -1) \
+                        for i in range(0, indices.shape[0])
+            }
+
+    def _similarity_search_with_FALCONN(self):
+        pass
+
+    def _similarity_search_with_SCANN(self):
+        if not LINUX_ENV:
+            raise ImportError("Can't use SCANN in windows environment. Use FAISS instead.")
+
+        searcher = scann.scann_ops_pybind.builder(self.vectors_1,
+                                                    num_neighbors=self.top_k, 
+                                                    distance_measure="dot_product") \
+                                        .tree(num_leaves=2000, num_leaves_to_search=100, training_sample_size=250000) \
+                                        .score_ah(2, anisotropic_quantization_threshold=0.2) \
+                                        .reorder(100) \
+                                        .build()
+
+        neighbors, distances = searcher.search_batched(
+            self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
+            final_num_neighbors=self.top_k
+        )
+        if self.data.is_dirty_er:
+            self.blocks = {
+                i : set(x for x in neighbors[i] if x not in [-1, i]) \
+                        for i in range(0, neighbors.shape[0])
+            }
+        else:
+            self.blocks = {
+                i+self.data.dataset_limit : set(x for x in neighbors[i] if x != -1) \
+                        for i in range(0, neighbors.shape[0])
+            }
 
     def _create_vector(self, tokens: List[str], vocabulary) -> np.array:
         num_of_tokens = 0
