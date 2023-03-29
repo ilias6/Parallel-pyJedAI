@@ -85,6 +85,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                      vector_size: int = 300,
                      num_of_clusters: int = 5,
                      top_k: int = 30,
+                     max_word_embeddings_size: int = 256,
                      attributes_1: list = None,
                      attributes_2: list = None,
                      return_vectors: bool = False,
@@ -119,10 +120,11 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         """
         _start_time = time()
         self.blocks = dict()
+        self.max_word_embeddings_size = max_word_embeddings_size
         self.data, self.attributes_1, self.attributes_2, self.vector_size, self.num_of_clusters, self.top_k \
             = data, attributes_1, attributes_2, vector_size, num_of_clusters, top_k
         self._progress_bar = tqdm(total=data.num_of_entities,
-                                  desc=self._method_name,
+                                  desc=(self._method_name + ' [' + self.vectorizer + ', ' + self.similarity_search + ']'),
                                   disable=tqdm_disable)
 
         self._entities_d1 = data.dataset_1[attributes_1 if attributes_1 else data.attributes_1] \
@@ -138,7 +140,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         vectors_1 = []
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print("Device selected: ", self.device)
-        
+
         if self.vectorizer in ['word2vec', 'fasttext', 'doc2vec', 'glove']:
             vectors_1, vectors_2 = self._create_gensim_embeddings()
         elif self.vectorizer in ['bert', 'distilbert', 'roberta', 'xlnet', 'albert']:
@@ -208,38 +210,27 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
             model = AlbertModel.from_pretrained("albert-base-v2")
 
         model = model.to(self.device)
-        vectors_1 = []
-        for i in range(0, self.data.num_of_entities_1, 1):
-            encoded_input = tokenizer(self._entities_d1[i],
-                                        return_tensors='pt',
-                                        truncation=True,
-                                        max_length=256,
-                                        padding='max_length')
-            with torch.no_grad():
-                output = model(**encoded_input)
-                vector = output.last_hidden_state[:, 0, :]
-            vector = vector.cpu().numpy()
-            vectors_1.append(vector.reshape(-1))
-            self._progress_bar.update(1)
-        self.vector_size = vectors_1[0].shape[0]
-        self.vectors_1 = np.array(vectors_1).astype('float32')
-        vectors_2 = []
-        if not self.data.is_dirty_er:
-            for i in range(0, self.data.num_of_entities_2, 1):
-                encoded_input = tokenizer(self._entities_d2[i],
-                                            return_tensors='pt',
-                                            truncation=True,
-                                            max_length=256,
-                                            padding='max_length')
-                with torch.no_grad():
-                    output = model(**encoded_input)
-                    vector = output.last_hidden_state[:, 0, :]
-                vector = vector.cpu().numpy()
-                vectors_2.append(vector.reshape(-1))
-                self._progress_bar.update(1)
-            self.vectors_2 = np.array(vectors_2).astype('float32')
+        self.vectors_1 = self._transform_entities_to_word_embeddings(self._entities_d1,
+                                                                     model,
+                                                                     tokenizer)
+        self.vector_size = self.vectors_1[0].shape[0]
+        print("Vector size: ", self.vectors_1.shape)
+        self.vectors_2 = self._transform_entities_to_word_embeddings(self._entities_d2,
+                                                                     model,
+                                                                     tokenizer) if not self.data.is_dirty_er else None
+        return self.vectors_1, self.vectors_2
 
-        return vectors_1, vectors_2
+    def _transform_entities_to_word_embeddings(self, entities, model, tokenizer) -> np.array:
+        encoded_input = tokenizer(entities,
+                                    return_tensors='pt',
+                                    truncation=True,
+                                    max_length=self.max_word_embeddings_size,
+                                    padding='max_length')
+        with torch.no_grad():
+            outputs = model(**encoded_input)
+        self._progress_bar.update(len(entities))
+
+        return outputs.last_hidden_state[:, 0, :].numpy()
 
     def _create_pretrained_sentence_embeddings(self):
         model = SentenceTransformer(self._sentence_transformer_mapping[self.vectorizer],
@@ -256,7 +247,6 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
             for i in range(0, self.data.num_of_entities_2, 1):
                 vector = model.encode(self._entities_d2[i])
                 vectors_2.append(vector)
-                # print(vector)
                 self._progress_bar.update(1)
             self.vector_size = len(vectors_2[0])
             self.vectors_2 = np.array(vectors_2).astype('float32')
@@ -264,16 +254,20 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         return vectors_1, vectors_2 
 
     def _similarity_search_with_FAISS(self):
+        print("Vectors-1 entering FAISS", self.vectors_1.shape)
         quantiser = faiss.IndexFlatL2(self.vectors_1.shape[1])
         index = faiss.IndexIVFFlat(quantiser,
                                     self.vectors_1.shape[1],
                                     self.num_of_clusters,
                                     faiss.METRIC_L2)
+        print("Train FAISS with ", self.vectors_1.shape)
         index.train(self.vectors_1)  # train on the vectors of dataset 1
         index.add(self.vectors_1)   # add the vectors and update the index
+        
         _, indices = index.search(self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
                                     self.top_k)
-        print(indices)
+        print("Indices returned: ", indices.shape)
+        
         if self.data.is_dirty_er:
             self.blocks = {
                 i : set(x for x in indices[i] if x not in [-1, i]) \
@@ -318,7 +312,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
     def _create_vector(self, tokens: List[str], vocabulary) -> np.array:
         num_of_tokens = 0
         vector = np.zeros(self.vector_size)
-        for token in tokens:
+        for token in tokens.split():
             if token in vocabulary:
                 vector += vocabulary[token]
                 num_of_tokens += 1
