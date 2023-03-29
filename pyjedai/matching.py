@@ -183,7 +183,6 @@ class EntityMatching(PYJEDAIFeature):
         self.tqdm_disable = tqdm_disable
         self.vectors_d1 = vectors_d1
         self.vectors_d2 = vectors_d2
-        print(self.metric)
         if self.metric in vector_metrics:
             self.vectors = self.vectors_d1 if data.is_dirty_er \
                             else np.concatenate((vectors_d1,vectors_d2), axis=0)
@@ -248,16 +247,11 @@ class EntityMatching(PYJEDAIFeature):
 
     def _insert_to_graph(self, entity_id1, entity_id2, similarity):
         if self.similarity_threshold is None or \
-            (self.similarity_threshold and similarity > self.similarity_threshold):
+            (self.similarity_threshold is not None and similarity > self.similarity_threshold):
             self.pairs.add_edge(entity_id1, entity_id2, weight=similarity)
 
     def _calculate_vector_similarity(self, entity_id1: int, entity_id2: int) -> float:
         if self.metric in vector_metrics:
-            # print(entity_id1, entity_id2)
-            # # print(self.vectors[entity_id1].reshape(1, -1))
-            # print(self.vectors[entity_id1].shape)
-            # print("-")
-            print(1-metrics_mapping[self._metric](self.vectors[entity_id1], self.vectors[entity_id2]))
             return 1-metrics_mapping[self._metric](self.vectors[entity_id1],
                                                  self.vectors[entity_id2])
         else:
@@ -267,7 +261,6 @@ class EntityMatching(PYJEDAIFeature):
 
         similarity: float = 0.0
         if self.vectors_d1 is not None and self.metric in vector_metrics:
-            # print('HERE')
             return self._calculate_vector_similarity(entity_id1, entity_id2)
 
         if isinstance(self.attributes, dict):
