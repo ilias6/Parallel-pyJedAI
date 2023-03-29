@@ -14,7 +14,8 @@ class AbstractClustering(PYJEDAIFeature):
     def __init__(self) -> None:
         super().__init__()
         self.data: Data
-
+        self.similarity_threshold: float = 0.1
+        
     def evaluate(self,
                  prediction,
                  export_to_df: bool = False,
@@ -65,8 +66,9 @@ class ConnectedComponentsClustering(AbstractClustering):
     _method_info: str = "Gets equivalence clusters from the " + \
                     "transitive closure of the similarity graph."
 
-    def __init__(self) -> None:
+    def __init__(self, similarity_threshold: float = None) -> None:
         super().__init__()
+        self.similarity_threshold: float = similarity_threshold
 
     def process(self, graph: Graph, data: Data) -> list:
         """NetworkX Connected Components Algorithm in the produced graph.
@@ -79,7 +81,12 @@ class ConnectedComponentsClustering(AbstractClustering):
         """
         start_time = time()
         self.data = data
-        clusters = list(connected_components(graph))
+        graph_copy = graph.copy()
+        if self.similarity_threshold is not None:
+            for x in graph.edges(data=True):
+                if x[2]['weight'] < self.similarity_threshold:
+                    graph_copy.remove_edge(x[0], x[1])
+        clusters = list(connected_components(graph_copy))
         resulting_clusters = list(filter(lambda x: len(x) == 2, clusters)) \
                                 if not data.is_dirty_er else clusters
         self.execution_time = time() - start_time
@@ -142,9 +149,34 @@ class UniqueMappingClustering(AbstractClustering):
             matched_entities.add(entity_1)
             matched_entities.add(entity_2)
 
-        clusters = ConnectedComponentsClustering().process(new_graph, data)
+        clusters = ConnectedComponentsClustering(similarity_threshold=None).process(new_graph, data)
         self.execution_time = time() - start_time
         return clusters
+
+    def _configuration(self) -> dict:
+        return {}
+
+class ExactClustering(AbstractClustering):
+    """Implements an adapted, simplified version of the Exact THRESHOLD algorithm,
+        introduced in "Similarity Flooding: A Versatile Graph Matching Algorithm and Its Application to Schema Matching",
+        also referred in "BIGMAT: A Distributed Affinity-Preserving Random Walk Strategy for Instance Matching on Knowledge Graphs".
+        In essence, it keeps the top-1 candidate per entity, as long as the candidate also considers this node as its top candidate.
+    """
+
+    _method_name: str = "Exact Clustering"
+    _method_short_name: str = "EC"
+    _method_info: str = "Ιmplements an adapted, simplified version of the Exact THRESHOLD algorithm," + \
+        "In essence, it keeps the top-1 candidate per entity, as long as the candidate also considers this node as its top candidate."
+
+    def __init__(self, similarity_threshold: float = 0.1) -> None:
+        """"""
+        super().__init__()
+        self.similarity_threshold = similarity_threshold
+
+    def process(self, graph: Graph, data: Data) -> list:
+        """
+        """
+        pass
 
     def _configuration(self) -> dict:
         return {}
