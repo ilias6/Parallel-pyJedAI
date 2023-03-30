@@ -143,7 +143,8 @@ class EntityMatching(PYJEDAIFeature):
         if tokenizer == 'white_space_tokenizer':
             self._tokenizer = WhitespaceTokenizer(return_set=tokenizer_return_set)
         elif tokenizer == 'qgram_tokenizer':
-            self._tokenizer = QgramTokenizer(return_set=tokenizer_return_set,
+            self._tokenizer = QgramTokenizer(qval=self.qgram,
+                                             return_set=tokenizer_return_set,
                                              padding=padding,
                                              suffix_pad=suffix_pad,
                                              prefix_pad=prefix_pad
@@ -161,7 +162,7 @@ class EntityMatching(PYJEDAIFeature):
                     tokenizer, available_tokenizers
                 )
             )
-        
+
     def predict(self,
                 blocks: dict,
                 data: Data,
@@ -184,6 +185,9 @@ class EntityMatching(PYJEDAIFeature):
         self.vectors_d1 = vectors_d1
         self.vectors_d2 = vectors_d2
         if self.metric in vector_metrics:
+            if vectors_d1 is None or vectors_d2 is None:
+                raise ValueError("Vectors are not provided for vector metrics")
+            
             self.vectors = self.vectors_d1 if data.is_dirty_er \
                             else np.concatenate((vectors_d1,vectors_d2), axis=0)
 
