@@ -71,22 +71,10 @@ class AbstractJoin(PYJEDAIFeature):
         self.tqdm_disable, self.reverse_order, self.attributes_1, self.attributes_2, self.data = \
             tqdm_disable, reverse_order, attributes_1, attributes_2, data
 
-        # if attributes_1:
-        #     isolated_attr_dataset_1 = data.dataset_1[attributes_1].apply(" ".join, axis=1)
-        # if attributes_2:
-        #     isolated_attr_dataset_2 = data.dataset_2[attributes_1].apply(" ".join, axis=1)
-
-        # # if weights per attribute provided
-        # if self.attributes_1 and isinstance(self.attributes_1, dict):
-        #     self.attributes_1 = list(self.attributes_1.keys())
-        # if self.attributes_2 and isinstance(self.attributes_2, dict):
-        #     self.attributes_2 = list(self.attributes_2.keys())
-
         self._entities_d1 = data.dataset_1[attributes_1 if attributes_1 else data.attributes_1] \
                             .apply(" ".join, axis=1) \
                             .apply(self._tokenize_entity) \
                             .values.tolist()
-                        # if attributes_1 else data.entities_d1.apply(self._tokenize_entity)
 
         if not data.is_dirty_er:
             self._entities_d2 = data.dataset_2[attributes_2 if attributes_2 else data.attributes_2] \
@@ -285,13 +273,13 @@ class AbstractJoin(PYJEDAIFeature):
             "qgrams": self.qgrams
         }    
 
-class SchemaAgnosticΕJoin(AbstractJoin):
+class ΕJoin(AbstractJoin):
     """
-    SchemaAgnostic Ε Join algorithm
+     Ε Join algorithm
     """
-    _method_name = "SchemaAgnostic-E Join"
-    _method_info = "SchemaAgnostic Ε Join algorithm"
-    _method_short_name = "SAEJ"
+    _method_name = "EJoin"
+    _method_info = " ΕJoin algorithm"
+    _method_short_name = "EJ"
 
     def __init__(
         self,
@@ -316,13 +304,13 @@ class SchemaAgnosticΕJoin(AbstractJoin):
                 )
             )
 
-class TopKSchemaAgnosticJoin(AbstractJoin):
-    """Top-K Schema Agnostic Join algorithm
+class TopKJoin(AbstractJoin):
+    """Top-K Join algorithm
     """
 
-    _method_name = "Top-K Schema Agnostic Join"
-    _method_info = "Top-K Schema Agnostic Join algorithm"
-    _method_short_name = "TopKSAJ"
+    _method_name = "Top-K Join"
+    _method_info = "Top-K Join algorithm"
+    _method_short_name = "TopKJ"
 
     def __init__(self,
                  K: int,
