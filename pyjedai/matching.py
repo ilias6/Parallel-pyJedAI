@@ -110,7 +110,7 @@ class EntityMatching(PYJEDAIFeature):
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
             qgram: int = 2, # for jaccard
-            tokenizer_return_set = True, # unique values or not
+            tokenizer_return_set = False, # unique values or not
             attributes: any = None,
             delim_set: list = None, # DelimiterTokenizer
             padding: bool = True, # QgramTokenizer
@@ -124,7 +124,7 @@ class EntityMatching(PYJEDAIFeature):
         self.similarity_threshold = similarity_threshold
         self.vectors_d1 = None
         self.vectors_d2 = None
-
+        self.tokenizer = tokenizer
         #
         # Selecting tokenizer
         #
@@ -138,24 +138,25 @@ class EntityMatching(PYJEDAIFeature):
             self._metric = metric
 
         if metric in set_metrics:
-            tokenizer_return_set = True
+            self.tokenizer_return_set = True
+        else:
+            self.tokenizer_return_set = tokenizer_return_set
 
         if tokenizer == 'white_space_tokenizer':
-            self._tokenizer = WhitespaceTokenizer(return_set=tokenizer_return_set)
+            self._tokenizer = WhitespaceTokenizer(return_set=self.tokenizer_return_set)
         elif tokenizer == 'qgram_tokenizer':
             self._tokenizer = QgramTokenizer(qval=self.qgram,
-                                             return_set=tokenizer_return_set,
+                                             return_set=self.tokenizer_return_set,
                                              padding=padding,
                                              suffix_pad=suffix_pad,
-                                             prefix_pad=prefix_pad
-            )
+                                             prefix_pad=prefix_pad)
         elif tokenizer == 'delimiter_tokenizer':
-            self._tokenizer = DelimiterTokenizer(return_set=tokenizer_return_set,
+            self._tokenizer = DelimiterTokenizer(return_set=self.tokenizer_return_set,
                                                  delim_set=delim_set)
         elif tokenizer == 'alphabetic_tokenizer':
-            self._tokenizer = AlphabeticTokenizer(return_set=tokenizer_return_set)
+            self._tokenizer = AlphabeticTokenizer(return_set=self.tokenizer_return_set)
         elif tokenizer == 'alphanumeric_tokenizer':
-            self._tokenizer = AlphanumericTokenizer(return_set=tokenizer_return_set)
+            self._tokenizer = AlphanumericTokenizer(return_set=self.tokenizer_return_set)
         else:
             raise AttributeError(
                 'Tokenizer ({}) does not exist. Please select one of the available. ({})'.format(
@@ -273,22 +274,20 @@ class EntityMatching(PYJEDAIFeature):
                 e2 = self.data.entities.iloc[entity_id2][attribute]
 
                 similarity += weight*metrics_mapping[self._metric].get_sim_score(
-                    self._tokenizer.tokenize(e1),
-                    self._tokenizer.tokenize(e2)
+                    self._tokenizer.tokenize(e1) if self._metric in (set_metrics + bag_metrics) else e1,
+                    self._tokenizer.tokenize(e2) if self._metric in (set_metrics + bag_metrics) else e2
                 )
         if isinstance(self.attributes, list):            
             for attribute in self.attributes:
                 e1 = self.data.entities.iloc[entity_id1][attribute]
                 e2 = self.data.entities.iloc[entity_id2][attribute]
                 similarity += metrics_mapping[self._metric].get_sim_score(
-                    self._tokenizer.tokenize(e1),
-                    self._tokenizer.tokenize(e2)
+                    self._tokenizer.tokenize(e1) if self._metric in (set_metrics + bag_metrics) else e1,
+                    self._tokenizer.tokenize(e2) if self._metric in (set_metrics + bag_metrics) else e2
                 )
                 similarity /= len(self.attributes)
         else:
             # concatenated row string
-            # print(self._tokenizer.tokenize(self.data.entities.iloc[entity_id1].str.cat(sep=' ')))
-            # print(self._tokenizer.tokenize(self.data.entities.iloc[entity_id2].str.cat(sep=' ')))
             e1 = self.data.entities.iloc[entity_id1].str.cat(sep=' ')
             e2 = self.data.entities.iloc[entity_id2].str.cat(sep=' ')
             te1 = self._tokenizer.tokenize(e1) if self._metric in (set_metrics + bag_metrics) else e1
@@ -380,3 +379,10 @@ class EntityMatching(PYJEDAIFeature):
                                 export_to_dict,
                                 with_classification_report,
                                 verbose)
+
+    def _configuration(self) -> dict:
+        return {
+            "Tokenizer" : self.tokenizer,
+            "Metric" : self.metric,
+            "Similarity Threshold" : self.similarity_threshold
+        }
