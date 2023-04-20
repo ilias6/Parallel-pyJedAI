@@ -141,7 +141,7 @@ class Evaluation:
                     int(self.false_negatives), int(self.total_matching_pairs))
                 )
                 print(u'\u2500' * 123)
-
+                
         if export_to_df:
             pd.set_option("display.precision", 2)
             results = pd.DataFrame.from_dict(results_dict, orient='index').T

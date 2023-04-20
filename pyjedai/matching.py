@@ -110,7 +110,7 @@ class EntityMatching(PYJEDAIFeature):
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
             qgram: int = 2, # for jaccard
-            tokenizer_return_set = False, # unique values or not
+            tokenizer_return_set = False, # unique values or not,
             attributes: any = None,
             delim_set: list = None, # DelimiterTokenizer
             padding: bool = True, # QgramTokenizer
@@ -277,7 +277,7 @@ class EntityMatching(PYJEDAIFeature):
                     self._tokenizer.tokenize(e1) if self._metric in (set_metrics + bag_metrics) else e1,
                     self._tokenizer.tokenize(e2) if self._metric in (set_metrics + bag_metrics) else e2
                 )
-        if isinstance(self.attributes, list):            
+        if isinstance(self.attributes, list):
             for attribute in self.attributes:
                 e1 = self.data.entities.iloc[entity_id1][attribute]
                 e2 = self.data.entities.iloc[entity_id2][attribute]
