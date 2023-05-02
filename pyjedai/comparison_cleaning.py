@@ -584,7 +584,75 @@ class ReciprocalWeightedNodePruning(WeightedNodePruning):
                              self._average_weight[neighbor_id] <= weight) and
                                 entity_id < neighbor_id) else 0
 
-def get_meta_blocking_approach(acronym: str, w_scheme: str) -> any:
+class ProgressiveCardinalityEdgePruning(CardinalityEdgePruning):
+    def __init__(self, weighting_scheme: str = 'JS', budget: int = 0) -> None:
+        super().__init__(weighting_scheme)
+        self._budget = budget
+
+    def _set_threshold(self) -> None:
+        self._threshold = self._budget
+
+    def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, cc: AbstractMetablocking = None) -> dict:
+
+        if(cc is None):
+            return super().process(blocks, data, tqdm_disable)
+        else:
+            self._threshold = self._budget
+            self._top_k_edges = PriorityQueue(int(2*self._threshold))
+            self._minimum_weight = sys.float_info.min            
+            self.trimmed_blocks : dict = defaultdict(set)
+
+            for entity_id, neighbors in blocks.items():
+                for neighbor_id in neighbors:
+                    weight = cc._get_weight(entity_id, neighbor_id)
+                    if weight >= self._minimum_weight:
+                        self._top_k_edges.put(
+                        (weight, entity_id, neighbor_id)
+                        )
+                        if self._threshold < self._top_k_edges.qsize():
+                            self._minimum_weight = self._top_k_edges.get()[0]
+
+            while not self._top_k_edges.empty():
+                comparison = self._top_k_edges.get()
+                self.trimmed_blocks[comparison[1]].add(comparison[2])
+
+            return self.trimmed_blocks
+
+class ProgressiveCardinalityNodePruning(CardinalityNodePruning):
+    def __init__(self, weighting_scheme: str = 'CBS', budget: int = 0) -> None:
+        super().__init__(weighting_scheme)
+        self._budget = budget
+
+    def _set_threshold(self) -> None:
+        self._threshold = max(1, 2 * self._budget / self.data.num_of_entities)
+
+    def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, cc: AbstractMetablocking = None) -> dict:
+
+        if(cc is None):
+            return super().process(blocks, data, tqdm_disable)
+        else:
+            self._threshold = max(1, 2 * self._budget / data.num_of_entities)           
+            self.trimmed_blocks : dict = defaultdict(set)
+
+            for entity_id, neighbors in blocks.items():
+                self._minimum_weight = sys.float_info.min
+                self._top_k_edges = PriorityQueue(int(2*self._threshold))
+                for neighbor_id in neighbors:
+                    weight = cc._get_weight(entity_id, neighbor_id)
+                    if weight >= self._minimum_weight:
+                        self._top_k_edges.put(
+                        (weight, entity_id, neighbor_id)
+                        )
+                        if self._threshold < self._top_k_edges.qsize():
+                            self._minimum_weight = self._top_k_edges.get()[0]
+
+                while not self._top_k_edges.empty():
+                    comparison = self._top_k_edges.get()
+                    self.trimmed_blocks[entity_id].add(comparison[2])
+
+        return self.trimmed_blocks        
+
+def get_meta_blocking_approach(acronym: str, w_scheme: str, budget: int = 0) -> any:
     """Return method by acronym
 
     Args:
@@ -608,6 +676,10 @@ def get_meta_blocking_approach(acronym: str, w_scheme: str) -> any:
         return WeightedEdgePruning(w_scheme)
     elif acronym == "WNP":
         return WeightedNodePruning(w_scheme)
+    elif acronym == "PCEP":
+        return ProgressiveCardinalityEdgePruning(w_scheme, budget)
+    elif acronym == "PCNP":
+        return ProgressiveCardinalityNodePruning(w_scheme, budget)
     else:
         warnings.warn("Wrong meta-blocking approach selected. Returning Comparison Propagation.")
         return ComparisonPropagation()
