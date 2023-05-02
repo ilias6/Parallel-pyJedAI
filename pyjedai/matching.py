@@ -4,9 +4,8 @@ import numpy as np
 from time import time
 import matplotlib.pyplot as plt
 
-from sklearn.metrics.pairwise import (
-    cosine_similarity
-)
+from scipy.spatial.distance import cosine
+
 
 from networkx import Graph
 from py_stringmatching.similarity_measure.affine import Affine
@@ -76,7 +75,7 @@ metrics_mapping = {
     'dice': Dice(),
     'overlap_coefficient' : OverlapCoefficient(),
     'token_sort': TokenSort(),
-    'cosine_vector_similarity': cosine_similarity
+    'cosine_vector_similarity': cosine
 }
 
 string_metrics = [
