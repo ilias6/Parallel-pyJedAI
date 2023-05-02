@@ -1,6 +1,8 @@
 from collections import defaultdict
 import numpy as np
 from pyjedai.datamodel import Block
+from pyjedai.datamodel import Data
+from abc import ABC
 
 # ----------------------- #
 # Constants
@@ -140,4 +142,69 @@ def chi_square(in_array: np.array) -> float:
             expected = (row_sum[r]*column_sum[c])/total
             sum_sq += ((in_array[r][c]-expected)**2)/expected
     return sum_sq
+
+
+def batch_pairs(iterable, batch_size: int = 1):
+    """
+    Generator function that breaks an iterable into batches of a set size.
+    :param iterable: The iterable to be batched.
+    :param batch_size: The size of each batch.
+    """
+    return (iterable[pos:pos + batch_size] for pos in range(0, len(iterable), batch_size))
+
+
+class SubsetIndexer(ABC):
+    """Stores the indices of retained entities of the initial datasets,
+       calculates and stores the mapping of element indices from new to old dataset (id in subset -> id in original)
+    """
+
+    def __init__(self):
+        self.d1_retained_ids: list[int] = None
+        self.d2_retained_ids : list[int] = None
+
+    def __init__(self, blocks: dict, data: Data):
+        self.d1_retained_ids: list[int] = None
+        self.d2_retained_ids : list[int] = None
+        self.store_retained_ids(blocks, data)
+
+    def from_source_dataset(self, entity_id : int, data: Data) -> bool:
+        return entity_id < data.dataset_limit
+
+    def store_retained_ids(self, blocks: dict, data: Data) -> None:
+        """Stores lists contains the ids of entities that we retained from both datasets
+           in ascending order
+        Args:
+            blocks (dict): Mapping from entity id to a set of its neighbors ids
+            data (Data): Dataset Module
+        """
+
+        if(blocks is None):
+            self.d1_retained_ids = list(range(self.num_of_entities_1))
+
+            if(not data.is_dirty_er):
+                self.d2_retained_ids = list(range(self.num_of_entities_1, self.num_of_entities_1 + self.num_of_entities_2))
+        else:
+            _d1_retained_ids_set: set[int] = set()
+            _d2_retained_ids_set: set[int] = set()
+
+            if(data.is_dirty_er):
+                _d1_retained_ids_set = set(blocks.keys())
+                for neighbors in blocks.values():
+                    _d1_retained_ids_set = _d1_retained_ids_set.union(neighbors)
+                self.d1_retained_ids = sorted(list(_d1_retained_ids_set))
+                self.d2_retained_ids = []
+            else:
+
+                for entity in blocks.keys():
+                    if(self.from_source_dataset(entity, data)): _d1_retained_ids_set.add(entity) 
+                    else: _d2_retained_ids_set.add(entity)
+
+                    neighbors = blocks[entity]
+                    for neighbor in neighbors:
+                        if(self.from_source_dataset(neighbor, data)): _d1_retained_ids_set.add(entity)
+                        else: _d2_retained_ids_set.add(entity)
+
+                self.d1_retained_ids = sorted(list(_d1_retained_ids_set))
+                self.d2_retained_ids = sorted(list(_d2_retained_ids_set))
+
         

@@ -9,7 +9,7 @@ from typing import Tuple
 
 import nltk
 import numpy as np
-from tqdm.autonotebook import tqdm
+from tqdm.auto import tqdm
 
 from .datamodel import Block, Data, PYJEDAIFeature
 from .utils import (are_matching, drop_big_blocks_by_size,

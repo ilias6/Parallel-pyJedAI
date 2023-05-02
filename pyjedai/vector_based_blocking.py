@@ -24,6 +24,8 @@ transformers.logging.set_verbosity_error()
 
 from .datamodel import Data, PYJEDAIFeature
 from .evaluation import Evaluation
+from .utils import SubsetIndexer
+
 
 LINUX_ENV=False
 # try:
@@ -127,6 +129,8 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                                   desc=(self._method_name + ' [' + self.vectorizer + ', ' + self.similarity_search + ']'),
                                   disable=tqdm_disable)
 
+        self._si = SubsetIndexer(None, self.data)
+        
         self._entities_d1 = data.dataset_1[attributes_1 if attributes_1 else data.attributes_1] \
                             .apply(" ".join, axis=1) \
                             .apply(self._tokenize_entity) \
@@ -220,32 +224,116 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                                                                      tokenizer) if not self.data.is_dirty_er else None
         return self.vectors_1, self.vectors_2
 
-    def _transform_entities_to_word_embeddings(self, entities, model, tokenizer) -> np.array:
-        encoded_input = tokenizer(entities,
-                                    return_tensors='pt',
-                                    truncation=True,
-                                    max_length=self.max_word_embeddings_size,
-                                    padding='max_length')
-        with torch.no_grad():
-            outputs = model(**encoded_input)
-        self._progress_bar.update(len(entities))
 
-        return outputs.last_hidden_state[:, 0, :].numpy()
+    def _transform_entities_to_word_embeddings(self, entities, model, tokenizer) -> np.array:
+    
+        model = model.to(self.device)
+        embeddings = []
+        
+        for entity in entities:
+            encoded_input = tokenizer(entity,
+                                        return_tensors='pt',
+                                        truncation=True,
+                                        return_attention_mask = True,
+                                        max_length=self.max_word_embeddings_size,
+                                        padding='max_length')
+            with torch.no_grad():
+                output = model(**encoded_input)
+                vector = output.last_hidden_state[:, 0, :]
+                
+            vector = vector.cpu().numpy()
+            embeddings.append(vector.reshape(-1))
+            self._progress_bar.update(1)
+        
+        self.vector_size = embeddings[0].shape[0]
+        return np.array(embeddings).astype('float32')
+
+
+    
+    # def _transform_entities_to_word_embeddings(self, entities, model, tokenizer) -> np.array:
+    #     vectors = []
+    #     for entity in entities:
+    #         encoded_input = tokenizer(entity,
+    #                                 return_tensors='pt',
+    #                                 truncation=True,
+    #                                 max_length=self.max_word_embeddings_size,
+    #                                 padding='max_length')
+    #         with torch.no_grad():
+    #             output = model(**encoded_input)
+    #             vector = output.last_hidden_state[:, 0, :]
+    #             vector = vector.cpu().detach().numpy()
+    #             vectors.append(vector.reshape(-1))
+    #             self._progress_bar.update(1)
+                
+    #     return np.array(vectors).astype('float32')
+
+
+
+    # def _transform_entities_to_word_embeddings(self, entities, model, tokenizer, batch_size=2) -> np.array:
+    #     entities_num = len(entities)
+    #     encoded_input = tokenizer(entities,
+    #                                 return_tensors='pt',
+    #                                 truncation=True,
+    #                                 max_length=self.max_word_embeddings_size,
+    #                                 padding='max_length')
+    #     input_ids = encoded_input['input_ids']
+    #     attention_masks = encoded_input['attention_mask']
+        
+    #     total_batches = int(np.ceil(len(input_ids) / batch_size))
+        
+    #     embeddings = []
+        
+    #     with torch.no_grad():
+    #         model.eval()
+    #         for batch in range(total_batches):
+    #             start = batch * batch_size
+    #             end = int(max((batch + 1) * batch_size, entities_num))
+                
+    #             batch_ids = input_ids[start:end].to(self.device)
+    #             batch_masks = attention_masks[start:end].to(self.device)
+                
+    #             batch_outputs = model(input_ids=batch_ids, attention_mask=batch_masks)
+    #             batch_embeddings = batch_outputs.last_hidden_state.to('cpu').numpy()
+                
+    #             embeddings.append(batch_embeddings)
+    #             del batch_ids, batch_masks, batch_outputs, batch_embeddings
+                
+    #     embeddings = np.concatenate(embeddings, axis=0)
+        
+    #     return embeddings
+
+
+
+    # def _transform_entities_to_word_embeddings(self, entities, model, tokenizer) -> np.array:
+    #     encoded_input = tokenizer(entities,
+    #                                 return_tensors='pt',
+    #                                 truncation=True,
+    #                                 max_length=self.max_word_embeddings_size,
+    #                                 padding='max_length')
+    #     encoded_input = encoded_input.to(self.device)
+    #     with torch.no_grad():
+    #         model.eval()
+    #         outputs = model(**encoded_input).last_hidden_state
+            
+    #     outputs = outputs.to('cpu').numpy()  
+    #     self._progress_bar.update(len(entities))
+
+    #     return outputs
 
     def _create_pretrained_sentence_embeddings(self):
         model = SentenceTransformer(self._sentence_transformer_mapping[self.vectorizer],
                                     device=self.device)
         vectors_1 = []
-        for i in range(0, self.data.num_of_entities_1, 1):
-            vector = model.encode(self._entities_d1[i])
+        for e1 in self._entities_d1:
+            vector = model.encode(e1)
             vectors_1.append(vector)
             self._progress_bar.update(1)
         self.vector_size = len(vectors_1[0])
         self.vectors_1 = np.array(vectors_1).astype('float32')
         vectors_2 = []
         if not self.data.is_dirty_er:            
-            for i in range(0, self.data.num_of_entities_2, 1):
-                vector = model.encode(self._entities_d2[i])
+            for e2 in self._entities_d2:
+                vector = model.encode(e2)
                 vectors_2.append(vector)
                 self._progress_bar.update(1)
             self.vector_size = len(vectors_2[0])
@@ -264,19 +352,19 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         index.train(self.vectors_1)  # train on the vectors of dataset 1
         index.add(self.vectors_1)   # add the vectors and update the index
         
-        _, indices = index.search(self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
+        self.distances, self.neighbors = index.search(self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
                                     self.top_k)
-        print("Indices returned: ", indices.shape)
+        print("Indices returned: ", self.neighbors.shape)
         
         if self.data.is_dirty_er:
             self.blocks = {
-                i : set(x for x in indices[i] if x not in [-1, i]) \
-                        for i in range(0, indices.shape[0])
+                self._si.d1_retained_ids[i] : set(x for x in self.neighbors[i] if x not in [-1, i]) \
+                        for i in range(0, self.neighbors.shape[0])
             }
         else:
             self.blocks = {
-                i+self.data.dataset_limit : set(x for x in indices[i] if x != -1) \
-                        for i in range(0, indices.shape[0])
+                self._si.d2_retained_ids[i] : set(x for x in self.neighbors[i] if x != -1) \
+                        for i in range(0, self.neighbors.shape[0])
             }
 
     def _similarity_search_with_FALCONN(self):
@@ -294,19 +382,19 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                                         .reorder(100) \
                                         .build()
 
-        neighbors, distances = searcher.search_batched(
+        self.neighbors, self.distances = searcher.search_batched(
             self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
             final_num_neighbors=self.top_k
         )
         if self.data.is_dirty_er:
             self.blocks = {
-                i : set(x for x in neighbors[i] if x not in [-1, i]) \
-                        for i in range(0, neighbors.shape[0])
+                self._si.d1_retained_ids[i] : set(x for x in self.neighbors[i] if x not in [-1, i]) \
+                        for i in range(0, self.neighbors.shape[0])
             }
         else:
             self.blocks = {
-                i+self.data.dataset_limit : set(x for x in neighbors[i] if x != -1) \
-                        for i in range(0, neighbors.shape[0])
+                self._si.d2_retained_ids[i] : set(x for x in self.neighbors[i] if x != -1) \
+                        for i in range(0, self.neighbors.shape[0])
             }
 
     def _create_vector(self, tokens: List[str], vocabulary) -> np.array:
@@ -361,3 +449,144 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
             "Top-K" : self.top_k,
             "Vector size": self.vector_size
         }
+        
+class PREmbeddingsNNBlockBuilding(EmbeddingsNNBlockBuilding):
+    """Block building via creation of embeddings and a Nearest Neighbor Approach with specified budget
+    """
+
+    _method_name = "Progressive Embeddings-NN Block Building"
+    _method_info = "Creates a set of candidate pairs for every entity id " + \
+        "based on Progresssive Similarity Search over the entity embeddings neighborhood"
+
+    def __init__(
+            self,
+            vectorizer: str,
+            similarity_search: str,
+            budget: int
+    ) -> None:
+        super().__init__(vectorizer, similarity_search)
+        self._budget = budget
+        self.vectorizer, self.similarity_search = vectorizer, similarity_search
+        self.embeddings: np.array
+        self.vectors_1: np.array
+        self.vectors_2: np.array = None
+        self.vector_size: int
+        self.num_of_clusters: int
+        self.top_k: int
+
+    def precomputed_vectors(self,
+                    data: Data,
+                    vectors_1: np.array = None,
+                    vectors_2: np.array = None
+    ) -> bool:
+
+        if(not vectors_1):
+            return False
+
+        if(not data.is_dirty_er):
+            return vectors_2 is not None
+
+        return True
+
+    def build_blocks(self,
+                     data: Data,
+                     cc_blocks: dict = None,
+                     vectors_1: np.array = None,
+                     vectors_2: np.array = None, 
+                     vector_size: int = 300,
+                     num_of_clusters: int = 5,
+                     top_k: int = 30,
+                     max_word_embeddings_size: int = 256,
+                     attributes_1: list = None,
+                     attributes_2: list = None,
+                     return_vectors: bool = False,
+                     tqdm_disable: bool = True
+    ) -> any:
+        """Retrieves the entities retained after the last step, produces/retrieves their embeddings and applies popular NN neighbor techniques
+           to produce pair candidates
+        Args:
+            data (Data): Data Module
+            cc_blocks (dict, optional): Blocks, subset of the initial dataset retrieved from the last CC step. Defaults to None.
+            vectors_1 (np.array, optional): Precalculated embeddings of entities of dataset 1. Defaults to None.
+            vectors_2 (np.array, optional): Precalculated embeddings of entities of dataset 2. Defaults to None.
+            vector_size (int, optional): The size of the embeddings. Defaults to 300.
+            num_of_clusters (int, optional): The number of clusters. Defaults to 5.
+            top_k (int, optional): The number of candidates that will be produced per entity. Defaults to 30.
+            attributes_1 (list, optional): Attributes of entities in dataset 1 that we want to take into consideration. Defaults to None.
+            attributes_2 (list, optional): Attributes of entities in dataset 2 that we want to take into consideration. Defaults to None.
+            return_vectors (bool, optional): If true, returns the entities vector embeddings. Defaults to True.
+            tqdm_disable (bool, optional): Disable progress bar. For experiment purposes. Defaults to False.
+        Returns:
+            any: Blocks produced by Vector Based BB, vector distances and entity embeddings
+        """
+        _start_time = time()
+        self.blocks = dict()
+        self.max_word_embeddings_size = max_word_embeddings_size
+        self.data, self.attributes_1, self.attributes_2, self.vector_size, self.num_of_clusters, self.top_k \
+            = data, attributes_1, attributes_2, vector_size, num_of_clusters, top_k
+        self._progress_bar = tqdm(total=data.num_of_entities,
+                                  desc=self._method_name,
+                                  disable=tqdm_disable)
+
+        self._si = SubsetIndexer(cc_blocks, self.data)
+        self._d1_valid_indices: list[int] = self._si.d1_retained_ids
+        self._d2_valid_indices: list[int] = [x - self.data.dataset_limit for x in self._si.d2_retained_ids]       
+
+
+        self._entities_d1 = data.dataset_1[attributes_1 if attributes_1 else data.attributes_1] \
+                            .apply(" ".join, axis=1) \
+                            .apply(self._tokenize_entity) \
+                            .values.tolist()
+        self._entities_d1 = [self._entities_d1[x] for x in self._d1_valid_indices]
+                            
+                            
+        self._entities_d2 = data.dataset_2[attributes_2 if attributes_2 else data.attributes_2] \
+                            .apply(" ".join, axis=1) \
+                            .apply(self._tokenize_entity) \
+                            .values.tolist() if not data.is_dirty_er else None
+        self._entities_d2 = [self._entities_d2[x] for x in self._d2_valid_indices] if not data.is_dirty_er else None
+                                               
+
+        self.vectors_1 = vectors_1
+        self.vectors_2 = vectors_2
+        self.create_vectors()
+        if(return_vectors): return self.vectors_1, self.vectors_2       
+        self.blocks = self.create_blocks()
+        self._progress_bar.close()
+        self.execution_time = time() - _start_time
+
+        return self.blocks
+
+    def create_vectors(self):      
+
+        if(self.precomputed_vectors(data = self.data)):
+            self.vectors_1 = self.vectors_1[self._d1_valid_indices]
+
+            if(not self.data.is_dirty_er):
+                self.vectors_2 = self.vectors_2[self._d2_valid_indices]
+        else:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            print("Device selected: ", self.device)
+            
+            if self.vectorizer in ['word2vec', 'fasttext', 'doc2vec', 'glove']:
+                vectors_1, vectors_2 = self._create_gensim_embeddings()
+            elif self.vectorizer in ['bert', 'distilbert', 'roberta', 'xlnet', 'albert']:
+                vectors_1, vectors_2 = self._create_pretrained_word_embeddings()
+            elif self.vectorizer in ['smpnet', 'st5', 'glove', 'sdistilroberta', 'sminilm']:
+                vectors_1, vectors_2 = self._create_pretrained_sentence_embeddings()
+            else:
+                raise AttributeError("Not available vectorizer")
+        
+        self.vectors_1 = vectors_1
+        self.vectors_2 = vectors_2
+
+    def create_blocks(self):
+        if self.similarity_search == 'faiss':
+            self._similarity_search_with_FAISS()
+        elif self.similarity_search == 'falconn':
+            raise NotImplementedError("FALCONN")
+        elif self.similarity_search == 'scann'  and LINUX_ENV:
+            self._similarity_search_with_SCANN()
+        else:
+            raise AttributeError("Not available method")
+        return self.blocks

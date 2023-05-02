@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 from scipy.spatial.distance import cosine
 
+
 from networkx import Graph
 from py_stringmatching.similarity_measure.affine import Affine
 from py_stringmatching.similarity_measure.bag_distance import BagDistance
@@ -185,12 +186,17 @@ class EntityMatching(PYJEDAIFeature):
         self.tqdm_disable = tqdm_disable
         self.vectors_d1 = vectors_d1
         self.vectors_d2 = vectors_d2
+        
         if self.metric in vector_metrics:
-            if vectors_d1 is None or vectors_d2 is None:
-                raise ValueError("Vectors are not provided for vector metrics")
-            
-            self.vectors = self.vectors_d1 if data.is_dirty_er \
-                            else np.concatenate((vectors_d1,vectors_d2), axis=0)
+            if(vectors_d2 and not vectors_d1):
+                raise ValueError("Embeddings of the first dataset not given")
+
+            if(vectors_d1):
+                self.vectors = vectors_d1
+                if(not data.is_dirty_er):
+                    if(not vectors_d2):
+                        raise ValueError("Embeddings of the second dataset not given")
+                    self.vectors = np.concatenate((vectors_d1,vectors_d2), axis=0)
 
         if not blocks:
             raise ValueError("Empty blocks structure")
