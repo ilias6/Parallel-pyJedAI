@@ -52,6 +52,10 @@ class PYJEDAIFeature(ABC):
             "\nRuntime: {:2.4f} seconds".format(self.execution_time)
         )
 
+    @abstractmethod
+    def stats(self) -> None:
+        pass
+
 class Data:
     """The corpus of the dataset that will be processed with pyjedai. \
         Contains all the information of the dataset and will be passed to each step \

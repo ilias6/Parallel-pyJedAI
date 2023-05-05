@@ -70,6 +70,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         self.vector_size: int
         self.num_of_clusters: int
         self.top_k: int
+        self._faiss_metric_type = None
 
     def _tokenize_entity(self, entity: str) -> str:
         """Produces a list of workds of a given string
@@ -158,6 +159,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
             return (vectors_1, _) if data.is_dirty_er else (vectors_1, vectors_2)
 
         if self.similarity_search == 'faiss':
+            self._faiss_metric_type = faiss.METRIC_L2
             self._similarity_search_with_FAISS()
         elif self.similarity_search == 'falconn':
             raise NotImplementedError("FALCONN")
@@ -248,78 +250,6 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         self.vector_size = embeddings[0].shape[0]
         return np.array(embeddings).astype('float32')
 
-
-    
-    # def _transform_entities_to_word_embeddings(self, entities, model, tokenizer) -> np.array:
-    #     vectors = []
-    #     for entity in entities:
-    #         encoded_input = tokenizer(entity,
-    #                                 return_tensors='pt',
-    #                                 truncation=True,
-    #                                 max_length=self.max_word_embeddings_size,
-    #                                 padding='max_length')
-    #         with torch.no_grad():
-    #             output = model(**encoded_input)
-    #             vector = output.last_hidden_state[:, 0, :]
-    #             vector = vector.cpu().detach().numpy()
-    #             vectors.append(vector.reshape(-1))
-    #             self._progress_bar.update(1)
-                
-    #     return np.array(vectors).astype('float32')
-
-
-
-    # def _transform_entities_to_word_embeddings(self, entities, model, tokenizer, batch_size=2) -> np.array:
-    #     entities_num = len(entities)
-    #     encoded_input = tokenizer(entities,
-    #                                 return_tensors='pt',
-    #                                 truncation=True,
-    #                                 max_length=self.max_word_embeddings_size,
-    #                                 padding='max_length')
-    #     input_ids = encoded_input['input_ids']
-    #     attention_masks = encoded_input['attention_mask']
-        
-    #     total_batches = int(np.ceil(len(input_ids) / batch_size))
-        
-    #     embeddings = []
-        
-    #     with torch.no_grad():
-    #         model.eval()
-    #         for batch in range(total_batches):
-    #             start = batch * batch_size
-    #             end = int(max((batch + 1) * batch_size, entities_num))
-                
-    #             batch_ids = input_ids[start:end].to(self.device)
-    #             batch_masks = attention_masks[start:end].to(self.device)
-                
-    #             batch_outputs = model(input_ids=batch_ids, attention_mask=batch_masks)
-    #             batch_embeddings = batch_outputs.last_hidden_state.to('cpu').numpy()
-                
-    #             embeddings.append(batch_embeddings)
-    #             del batch_ids, batch_masks, batch_outputs, batch_embeddings
-                
-    #     embeddings = np.concatenate(embeddings, axis=0)
-        
-    #     return embeddings
-
-
-
-    # def _transform_entities_to_word_embeddings(self, entities, model, tokenizer) -> np.array:
-    #     encoded_input = tokenizer(entities,
-    #                                 return_tensors='pt',
-    #                                 truncation=True,
-    #                                 max_length=self.max_word_embeddings_size,
-    #                                 padding='max_length')
-    #     encoded_input = encoded_input.to(self.device)
-    #     with torch.no_grad():
-    #         model.eval()
-    #         outputs = model(**encoded_input).last_hidden_state
-            
-    #     outputs = outputs.to('cpu').numpy()  
-    #     self._progress_bar.update(len(entities))
-
-    #     return outputs
-
     def _create_pretrained_sentence_embeddings(self):
         model = SentenceTransformer(self._sentence_transformer_mapping[self.vectorizer],
                                     device=self.device)
@@ -342,19 +272,22 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         return vectors_1, vectors_2 
 
     def _similarity_search_with_FAISS(self):
-        print("Vectors-1 entering FAISS", self.vectors_1.shape)
         quantiser = faiss.IndexFlatL2(self.vectors_1.shape[1])
+        
         index = faiss.IndexIVFFlat(quantiser,
                                     self.vectors_1.shape[1],
                                     self.num_of_clusters,
-                                    faiss.METRIC_L2)
-        print("Train FAISS with ", self.vectors_1.shape)
+                                    self._faiss_metric_type)
         index.train(self.vectors_1)  # train on the vectors of dataset 1
         index.add(self.vectors_1)   # add the vectors and update the index
-        
+        # index.print_stats()
+
+        # Stats
+        # Get the number of lists in the index
+        self._faiss_num_lists = index.invlists.nlist
+
         self.distances, self.neighbors = index.search(self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
                                     self.top_k)
-        print("Indices returned: ", self.neighbors.shape)
         
         if self.data.is_dirty_er:
             self.blocks = {
@@ -414,7 +347,8 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                  export_to_df: bool = False,
                  export_to_dict: bool = False,
                  with_classification_report: bool = False,
-                 verbose: bool = True) -> any:
+                 verbose: bool = True,
+                 with_stats: bool = False) -> any:
 
         if self.data is None:
             raise AttributeError("Can not proceed to evaluation without data object.")
@@ -436,11 +370,16 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
 
         eval_obj.calculate_scores(true_positives=true_positives, 
                                   total_matching_pairs=total_matching_pairs)
-        return eval_obj.report(self.method_configuration(),
+        evaluation = eval_obj.report(self.method_configuration(),
                                 export_to_df,
                                 export_to_dict,
                                 with_classification_report,
                                 verbose)
+
+        if with_stats:
+            self.stats()
+
+        return evaluation
 
     def _configuration(self) -> dict:
         return {
@@ -449,6 +388,20 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
             "Top-K" : self.top_k,
             "Vector size": self.vector_size
         }
+    
+    def stats(self) -> None:
+        print("Statistics:")
+        if self.similarity_search == 'faiss':
+            print(" FAISS:" +
+                "\n\tNumber of entries in each list:  " + str(self._faiss_num_lists) + 
+                "\n\tIndices shape returned after search: " + str(self.neighbors.shape)
+            )
+        elif self.similarity_search == 'falconn':           
+            pass
+        elif self.similarity_search == 'scann'  and LINUX_ENV:
+            pass
+        
+        print(u'\u2500' * 123)
         
 class PREmbeddingsNNBlockBuilding(EmbeddingsNNBlockBuilding):
     """Block building via creation of embeddings and a Nearest Neighbor Approach with specified budget

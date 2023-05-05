@@ -179,10 +179,10 @@ class SubsetIndexer(ABC):
         """
 
         if(blocks is None):
-            self.d1_retained_ids = list(range(self.num_of_entities_1))
+            self.d1_retained_ids = list(range(data.num_of_entities_1))
 
             if(not data.is_dirty_er):
-                self.d2_retained_ids = list(range(self.num_of_entities_1, self.num_of_entities_1 + self.num_of_entities_2))
+                self.d2_retained_ids = list(range(data.num_of_entities_1, data.num_of_entities_1 + data.num_of_entities_2))
         else:
             _d1_retained_ids_set: set[int] = set()
             _d2_retained_ids_set: set[int] = set()
