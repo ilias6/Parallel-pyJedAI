@@ -59,3 +59,9 @@ dev-only/*
 testBlocking.py
 testEmbeddings.py
 testJoin.py
+AbtBuy.py
+AmazonGp.py
+blockingTest.py
+d1Blocking.py
+sbd1blocking.py
+WalmartAmazon.py
