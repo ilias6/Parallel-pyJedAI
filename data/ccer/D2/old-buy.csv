@@ -1,4 +1,4 @@
-id|name|description|price||||
+id|name|description|price
 0|Linksys EtherFast EZXS88W Ethernet Switch - EZXS88W|Linksys EtherFast 8-Port 10/100 Switch (New/Workgroup)|
 1|Linksys EtherFast EZXS55W Ethernet Switch|5 x 10/100Base-TX LAN|
 2|Netgear ProSafe FS105 Ethernet Switch - FS105NA|NETGEAR FS105 Prosafe 5 Port 10/100 Desktop Switch|
@@ -36,7 +36,7 @@ id|name|description|price||||
 34|Panasonic KX-TS108W Corded Phone|1 x Phone Line(s) - White|
 35|Panasonic KX-TS208W Corded Phone|2 x Phone Line(s) - Headset - White|
 36|Garmin Canvas Deluxe Carry Case - 010-10231-01|Top Loading - Handle - Nylon - Black|17.45
-37|Sony h.ear Stereo Earphones - MDRJ10/BLUE|- Blue|12.38
+37|Sony h.ear Stereo Earphones - MDRJ10/BLUE|#�����?|12.38
 38|BELKIN PRO SERIES USB DEVICE CABLE 16 - F3U133-16||12.21
 39|OmniMount Universal Wall Speaker Mounting Kit - 20.0 WALL-B|Stainless Steel - 20 lb|24.34
 40|OmniMount Stainless Steel Speaker Mount - 20.0 WALL-W|Stainless Steel - 20 lb|
@@ -67,7 +67,7 @@ id|name|description|price||||
 65|Panasonic 3x DVD-RAM Media|Panasonic LM-AF120LU5 Rewritable DVD-RAM Disc without Cartridge|
 66|Canon CB-2LV Battery Charger - 9764A001|for NB-4L|
 67|Canon EF-S 17-85MM f/4-5.6 IS USM Standard Zoom Lens|Canon 9517A002 EF-S 17-85mm f4-5.6 IS USM Standard Zoom Lens with Optical Image Stabilizer|515
-68|Sennheiser RS 140 Wireless RF Headphone - RS-140|- Black Silver|144.97
+68|Sennheiser RS 140 Wireless RF Headphone - RS-140|#�����?|144.97
 69|Sennheiser RS 130 Wireless Headphone - RS130||144.95
 70|Sony Fontopia Earbuds - MDREX81LPB|Sony MDR-EX81LP/B Stereo Earphones - Black|34.88
 71|Sanus VisionMount Flat Panel TV Wall Mount - VMPL3B|Steel - 280 lb|144.05
@@ -225,9 +225,9 @@ id|name|description|price||||
 223|Harmony EL6985A Vacuum (Canister HEPA)||
 224|Cuisinart GR-4 Griddler Four Multifunctional Cooking Options||129
 225|Cuisinart Brew & Serve Stainless Therm Black 10-Cup Coffee Maker||99.95
-226|Belkin CushTop - F8N044-ORG|- Orange|
-227|Belkin CushTop - F8N044-GRN|- Green|
-228|Belkin CushTop - F8N044-SLV|- Silver|
+226|Belkin CushTop - F8N044-ORG|#�����?|
+227|Belkin CushTop - F8N044-GRN|#�����?|
+228|Belkin CushTop - F8N044-SLV|#�����?|
 229|Canon PG-40 Black Ink Cartridge - PG-40-BK-TWIN|Black|41.46
 230|DCC-2000 Coffee Maker (12 Cup Stainless Steel)||99.95
 231|Hoover EmPower U5269-900 Vacuum (Upright HEPA Bagless)||
@@ -263,7 +263,7 @@ id|name|description|price||||
 261|Nyko PS3 Dual AC Charger - 83015||
 262|Sony 1GB Memory Stick Micro (M2) Card - MSA1GD|1 GB|21.47
 263|Monster Game 127961 GameLink(tm) 2M HDMI Digital Video/Audio Cable for PS3||45.79
-264|Bose In-Ear Earphone - INEARHEADPHONES|- Black|99.95
+264|Bose In-Ear Earphone - INEARHEADPHONES|#�����?|99.95
 265|Panasonic KX-FP145 Plain Paper Thermal Transfer Fax/Copier - KXFP145|Panasonic Slim Cabinet Plain Paper Fax/Copier with All-digital Answering System|94.88
 266|Oregon Scientific Helmet Video Camera - ATC-2000||81.74
 267|Waring Pro Deep Fryer 3qt -Black||
@@ -332,7 +332,7 @@ id|name|description|price||||
 330|Garmin Lightweight GPS Case - 010-10704-00|Clam Shell|
 331|Panasonic KX-TG6702B Cordless Telephone - KX-TG6702B|Panasonic 5.8GHz 2 Line Expandable Phone With Extra Handset|159.92
 332|Olympus PS-BLS1 Lithium Ion Digital Camera Battery - 260236|Lithium Ion (Li-Ion) - Photo Battery|
-333|Sony Noise Cancelling Earphone - MDRNC22/BLK|- Black|
+333|Sony Noise Cancelling Earphone - MDRNC22/BLK|#�����?|
 334|GN Jabra BT5010 Wireless Earset|Jabra BT5010 Bluetooth Headset|26.37
 335|Olympus DS-40 512MB Digital Voice Recorder - 141910|512MB Flash Memory - LCD - Portable|110.24
 336|Panasonic NN-SD377S 0.8 cu.ft. 800 WATT Microwave Oven||
@@ -371,7 +371,7 @@ id|name|description|price||||
 369|LG Electronics DLG2526W 27' Gas Dryer with 7.0 cu. ft. Capacity 5 Dry Programs 5 Temperature Controls 5 Drying Levels and Sensor Dry System||
 370|LG Electronics WM2016CW 27' Front-Load Washer with 3.5 cu. ft. Capacity 5 Wash Programs 5 Temperature Levels 1050 RPM Maximum and SenseClean System||699
 371|Computer Speakers - SRSA212/BLK||22.53
-372|Sony MDR-Q68LW Stereo Earphone - MDRQ68LW|- Stereo|19.05
+372|Sony MDR-Q68LW Stereo Earphone - MDRQ68LW|#�����?|19.05
 373|Sony SRS-BTM30 Wireless Stereo Bluetooth Speaker - SRSBTM30||
 374|Logitech Digital Precision PC Gaming Headset - 981-000040|Logitech Digital Precision PC Headset|31.99
 375|Logitech QuickCam Pro 9000 Webcam - 960-000048|Logitech QuickCam Pro 9000|
@@ -405,7 +405,7 @@ id|name|description|price||||
 403|Peerless SmartMount 700 Series Articulating Wall Arm|Peerless SA750PU - Articulating Wall Arm for 32' to 50' LCD and Plasma Screens - Piano Black|
 404|Sony LCS-TWA/R Cyber-shot Camera Case|Top Loading - Leather - Red|27.92
 405|Sony LCS-TWA/B Cyber-shot Camera Case - LCSTWA/B|Top Loading - Leather - Black|34
-406|Denon AVR-3808CI A/V Receiver - AVR3808CI|Dolby Pro Logic IIx Dolby Digital Surround DTS-ES DTS Neo:6 DTS 96/24 Neural SurroundFM AM XM|1698.00
+406|Denon AVR-3808CI A/V Receiver - AVR3808CI|Dolby Pro Logic IIx Dolby Digital Surround DTS-ES DTS Neo:6 DTS 96/24 Neural SurroundFM AM XM|1698
 407|Denon AVR-4308CI A/V Receiver - AVR4308CI|Dolby Pro Logic IIx Dolby Digital Surround DTS-ES DTS Neo:6 DTS 96/24 Neural SurroundFM AM XM|1849.77
 408|Canon EOS 40D Digital SLR Camera - 1901B004|Canon EOS 40D 10 Megapixel Digital SLR Camera - Body Only|849.95
 409|Canon EOS 40D Digital SLR Camera with EF 28-135mm f/3.5-5.6 IS USM Lens - 1901B017|Canon EOS 40D Digital SLR Camera with 28-135mm Lens|1029.88
@@ -545,7 +545,7 @@ id|name|description|price||||
 543|Plantronics .Audio 920 Wireless Earset - 78592-01|PLANTRONICS 920 .AUDIO DIGITAL USB PC HEADSET|
 544|Panasonic Viera TH-50PX80U 50' Plasma TV|50' - ATSC NTSC - 16:9 - 1366 x 768 - Surround - HDTV|
 545|Panasonic Viera TH-42PZ85U 42' Plasma TV|42' - ATSC NTSC - 16:9 - 1920 x 1080 - Surround - HDTV|
-546|Panasonic VIERA TH-50PZ85U 50' Plasma TV|50' - ATSC NTSC - 16:9 - 1920 x 1080 - HDTV|1499.00
+546|Panasonic VIERA TH-50PZ85U 50' Plasma TV|50' - ATSC NTSC - 16:9 - 1920 x 1080 - HDTV|1499
 547|Panasonic Viera TH-46PZ85U 46' Plasma TV|46' - ATSC NTSC - 16:9 - 1920 x 1080 - Surround - HDTV|1149.99
 548|Panasonic TH-42PZ80U - 42' Widescreen 1080p Plasma HDTV - 1000000:1 Dynamic Contrast Ratio||845.48
 549|Panasonic Viera TH-50PZ80U 50' Plasma TV|50' - ATSC NTSC - 16:9 - 1920 x 1080 - Surround - HDTV|1364.96
@@ -554,7 +554,7 @@ id|name|description|price||||
 552|Sony RDRVXD655 DVD/VCR Combo|S-VHS VHS DVD+RW DVD-RW DVD+R DVD-R DVD-RAM CD-RW - DVD Video Video CD SVCD CD-DA JPEG MP3 SQPB Playback - 1 Disc(s) - Progressive Scan - 14.46Hour Recording|261.96
 553|polkaudio PSW Series PSW110 Powered Subwoofer|Woofer - Cable|249.95
 554|Panasonic Lithium Ion Camcorder Battery - VW-VBG130|Lithium Ion (Li-Ion) - 7.2V DC - Photo Battery|56.69
-555|Bose Lifestyle 48 Home Theater System - 43479|DVD Player 5.1 Speakers - Progressive Scan - White|3999.00
+555|Bose Lifestyle 48 Home Theater System - 43479|DVD Player 5.1 Speakers - Progressive Scan - White|3999
 556|Polk Audio RM705 Black 5.1 Channel Home Theater System - RM 705||398.72
 557|OmniMount Ultra Low Profile ULPT-L Flat Panel Wall Mount - ULPT-L A|200 lb - Anthracite|278.95
 558|Sony HESV1000 Blu-ray Player/Recorder|DVD+RW DVD-RW BD-RE CD-RW xD-Picture Card CompactFlash (CF) Secure Digital (SD) Mini Secure Digital (miniSD) Memory Stick Memory Stick Duo Memory Stick PRO - BD Video DVD Video JPEG MP3 CD-DA MPE|
@@ -636,7 +636,7 @@ id|name|description|price||||
 634|Samsung LN46A650 46' LCD TV|Samsung LN46A650 - 46' 1080p LCD HDTV - 50000:1 Dynamic Contrast Ratio - 120Hz - 4ms Response Time|1599.98
 635|Samsung LN40A550 40' LCD TV|Samsung LN40A550 - 40' Widescreen 1080p LCD HDTV - 30000:1 Dynamic Contrast Ratio - 5ms Response Time - Piano Black|910.99
 636|Panasonic Palmcorder SDR-H60 Digital Camcorder - SDR-H60S|Panasonic SDR-H60 60GB Hard Disk Drive/SD Hybrid Camcorder with 50x Optical Zoom Advanced Optical Image Stabilization One-Touch DVD Copy Anti-Shock Shield and One-Touch Navigation Records to Internal Hard Drive or SD Card|
-637|Samsung LN52A650 52' LCD TV|Samsung LN52A650 - 52' 1080p LCD HDTV - 50000:1 Dynamic Contrast Ratio - 120Hz - 4ms Response Time|1895.00
+637|Samsung LN52A650 52' LCD TV|Samsung LN52A650 - 52' 1080p LCD HDTV - 50000:1 Dynamic Contrast Ratio - 120Hz - 4ms Response Time|1895
 638|Samsung HT-Z510 Home Theater System|DVD Player 5.1 Speakers - 5 Disc(s) - Progressive Scan - 1200W RMS - Dolby Digital Dolby Pro Logic II DTS|321.55
 639|Samsung PN50A450 50' Plasma TV|Samsung PN50A450 - 50' Widescreen 720p Plasma HDTV - 1000000:1 Dynamic Contrast Ratio - Piano Black|995
 640|Samsung DVD-VR375 DVD/VCR Combo - DVD+RW DVD-RW DVD-RAM DVD+R DVD-R VHS CD-RW - DVD Video CD-DA MP3 MPEG-4 WMA JPEG DivX Playback - Progressive Scan||154.64
@@ -644,10 +644,10 @@ id|name|description|price||||
 642|Canon PowerShot SD890 IS Digital Camera - 2566B001|Canon PowerShot SD890 IS 10 Megapixel 5x Optical Zoom 2.5' LCD UA Lens Digital Camera|198
 643|Canon EF-S 55-250mm f/4-5.6 IS Telephoto Zoom Lens - 2044B002|55mm to 250mm - f/4 to 5.6|232.98
 644|SAMSUNG DVD HM THEATER SYS 5 DISC NIC - HT-Z410/XAA||235.14
-645|Samsung LN52A550 - 52' Widescreen 1080p LCD HDTV - 30000:1 Dynamic Contrast Ratio - 5ms Response Time - Piano Black||1579.00
+645|Samsung LN52A550 - 52' Widescreen 1080p LCD HDTV - 30000:1 Dynamic Contrast Ratio - 5ms Response Time - Piano Black||1579
 646|Samsung LN46A550 46' LCD TV|Samsung LN46A550 - 46' Widescreen 1080p LCD HDTV - 30000:1 Dynamic Contrast Ratio - 5ms Response Time - Piano Black|1143.99
 647|OmniMount Stellar G303 Series 3 Shelf Component Stand - Black - G303 DARK||299.95
-648|Samsung PN58A550 58' Plasma TV|Samsung PN58A550 - 58' Widescreen 1080p Plasma HDTV - 1000000:1 Dynamic Contrast Ratio - Piano Black|2294.90
+648|Samsung PN58A550 58' Plasma TV|Samsung PN58A550 - 58' Widescreen 1080p Plasma HDTV - 1000000:1 Dynamic Contrast Ratio - Piano Black|2294.9
 649|Canon EOS Rebel XSi Digital SLR Camera with EF-S 18-55mm f/3.5-5.6 IS Lens - Silver - 2757B003|Canon EOS Rebel XSi 12 Megapixel Digital SLR Camera with 18-55mm IS Lens - Silver|649.88
 650|Canon EOS Rebel XSi Digital SLR Camera with EF-S 18-55mm f/3.5-5.6 IS Lens - Black - 2756B003|Canon EOS Rebel XSi 12 Megapixel Digital SLR Camera with 18-55mm IS Lens - Black|649.88
 651|Samsung 4 Series LN37A450 37' LCD TV|Samsung LN37A450 - 37' Widescreen 720p LCD HDTV - 10000:1 Dynamic Contrast Ratio - 6ms Response Time - Piano Black|796.82
@@ -789,7 +789,7 @@ id|name|description|price||||
 787|Logitech QuickCam Vision Pro Webcam - 960-000254|for Mac|
 788|Pure Digital Flip Mino Digital Camcorder - F360B|Flip Video Mino 60 min Black|
 789|Pure Digital Flip Mino Digital Camcorder - F360W|Flip Video Mino 60 min White|
-790|Samsung HL72A650 - 72' Widescreen 1080p DLP HDTV - 2500:1 Contrast Ratio||2188.70
+790|Samsung HL72A650 - 72' Widescreen 1080p DLP HDTV - 2500:1 Contrast Ratio||2188.7
 791|Boston Acoustics Horizon Duo-i AM/FM Stereo Radio - HDUOIMDNT|5 x AM 10 x FM|135.52
 792|Samsung YP-S2ZW 1GB Flash MP3 Player - YP-S2ZW/XAA|1GB Flash Memory - White|29.67
 793|Samsung YP-S2ZW 1GB Flash MP3 Player - YP-S2ZG/XAA|1GB Flash Memory - Green|29.67
@@ -868,7 +868,7 @@ id|name|description|price||||
 866|Denon DVD-3800BDCI Blu-ray Disc Player - DVD3800BDCI|BD-R DVD-RW CD-RW Secure Digital (SD) - DVD Video CD-DA MP3 WMA JPEG DivX 6 PCM Playback - Progressive Scan|
 867|Sony BRAVIA KDL32XBR6 32' LCD TV|32' - ATSC NTSC - 16:9 - 1920 x 1080 - Dolby Surround - HDTV|998.72
 868|Panasonic KXTH1212B||79.99
-869|Mitsubishi WD-60735 60' Projection TV|60' - DLP - HDTV Ready|1288.00
+869|Mitsubishi WD-60735 60' Projection TV|60' - DLP - HDTV Ready|1288
 870|Sony BRAVIA XBR Series KDL-37XBR6 37' LCD TV - KDL37XBR6|37' - Active Matrix TFT - ATSC NTSC NTSC-M - 16:9 - 1920 x 1080 - Surround - HDTV - 1080i 1080p|1197.66
 871|Onkyo HTS5100 Home Theater System - HTS5100B| A/V Receiver 7.1 Speakers - 1200W RMS - Dolby Pro Logic IIx Dolby Digital Dolby Digital EX DTS DTS-ES DTS Neo:6 DTS 96/24 - Black|478.72
 872|Sony HT7200DH Home Theater System|DVD Player A/V Receiver 5.1 Speakers - 1 Disc(s) - Progressive Scan - 1000W RMS - Dolby Digital Dolby Pro Logic Dolby Pro Logic II DTS|376.96
@@ -877,20 +877,20 @@ id|name|description|price||||
 875|Sony BRAVIA Z Series KDL-46Z4100 46' LCD TV - KDL46Z4100/B|46' - ATSC NTSC - 16:9 - 1920 x 1080 - Dolby - HDTV - 1080i 1080p|1687.98
 876|Sony BRAVIA M Series KDL-32M4000 32' LCD TV - KDL32M4000|32' - ATSC NTSC - 16:9 - 1366 x 768 - HDTV|639.95
 877|Sony BRAVIA W Series KDL-46W4100 46' LCD TV - KDL46W4100|46' - ATSC NTSC - 16:9 - 1920 x 1080 - HDTV|1399.99
-878|Sony BRAVIA V Series KDL-52V4100 52' LCD TV - KDL52V4100|52' - ATSC NTSC - 16:9 - 1920 x 1080 - HDTV|1599.00
+878|Sony BRAVIA V Series KDL-52V4100 52' LCD TV - KDL52V4100|52' - ATSC NTSC - 16:9 - 1920 x 1080 - HDTV|1599
 879|LG 52LG50 52' LCD TV|LG 52LG50 - 52' Widescreen 1080p LCD HDTV - 15000:1 Dynamic Contrast Ratio - 6ms Response Time|
 880|LG 47LG50 47' LCD TV|LG 47LG50 - 47' Widescreen 1080p LCD HDTV - 15000:1 Dynamic Contrast Ratio - 5ms Response Time|
 881|LG 32LG40 32' TV/DVD Combo|LG 32LG40 - 32' Widescreen 720p LCD HDTV w/ Built-in DVD Player - 12000:1 Dynamic Contrast Ratio - 8ms Response Time|
 882|Mitsubishi MB-S73 TV Stand||499
-883|Mitsubishi Diamond WD-73835 73' Projection TV - WD73835|73' - DLP|3299.00
+883|Mitsubishi Diamond WD-73835 73' Projection TV - WD73835|73' - DLP|3299
 884|LG LG70 Series 52LG70 52' LCD TV|LG 52LG70 - 52' Widescreen 1080p LCD HDTV - 120Hz - 15000:1 Dynamic Contrast Ratio - 4ms Response Time|
 885|Sony BRAVIA W Series KDL-52W4100 52' LCD TV - KDL52W4100|52' - 16:9 - 1920 x 1080 - HDTV|1998.72
-886|Mitsubishi Diamond WD-65835 65' Projection TV|65' - DLP|2399.00
+886|Mitsubishi Diamond WD-65835 65' Projection TV|65' - DLP|2399
 887|Sony STR-DG920 A/V Receiver - STRDG920|Dolby Digital Dolby Pro Logic II DTS 96/24 DTS Neo:6 Dolby Digital EX Dolby Pro Logic IIx Dolby Pro Logic DTS-ES Digital Cinema Sound DTSFM AM XM|404.07
 888|Denon AVR-1609 A/V Receiver - AVR1609|Dolby Digital Surround Dolby Pro Logic IIx DTS-ES DTS Neo:6 DTS 96/24FM AM|348
 889|Denon AVR-1709 A/V Receiver - AVR1709|Dolby Digital Surround DTS-ES DTS Neo:6 DTS 96/24 Dolby Pro Logic IIxFM AM|448
-890|Nikon D700 Digtal SLR Camera - 25444|12.1 Megapixel - 3' Active Matrix TFT Color LCD|2699.00
-891|Klipsch KS7502THX (Each) - KS-7502-THX||1000.00
+890|Nikon D700 Digtal SLR Camera - 25444|12.1 Megapixel - 3' Active Matrix TFT Color LCD|2699
+891|Klipsch KS7502THX (Each) - KS-7502-THX||1000
 892|Sony DPFD70 Digital Photo Frame|Photo Viewer - 7' LCD|107.58
 893|Sony DPFV900 Digital Photo Frame - DPF-V900|Photo Viewer - 9' LCD|199.95
 894|Sony Picture Station Digital Photo Printer - DPPFP95||
@@ -899,12 +899,12 @@ id|name|description|price||||
 897|Sony RDR-GX360 DVD Player/Recorder|DVD+RW DVD-R DVD-RAM CD-RW - DVD Video CD-DA Video CD Playback - 1 Disc(s) - Progressive Scan|109.99
 898|Sony BDP-S550 - Blu-ray DVD Player||322.7
 899|Samsung HT-BD2T Blu-ray 7.1 Home Theater System - Blu-ray DVD & CD Playback FM Receiver w/30 Station Presets 1100W Total Output 4 Tower Speakers & Subwoofer - HT-BD2T/XAA||
-900|Samsung LN46A850 - 46' 1080P LCD HDTV - 50000:1 Dynamic Contrast Ratio - 120Hz - 4ms Response Time - Super Slim 1.9' Thick!||1769.00
+900|Samsung LN46A850 - 46' 1080P LCD HDTV - 50000:1 Dynamic Contrast Ratio - 120Hz - 4ms Response Time - Super Slim 1.9' Thick!||1769
 901|Samsung LN52A850 - 52' 1080P LCD HDTV - 50000:1 Dynamic Contrast Ratio - 120Hz - 4ms Response Time - Super Slim 1.9' Thick!||2399.98
 902|7.0 Cu. Ft. Super Capacity Electric Dryer - MED5900TW||479
 903|Full Console Dishwasher with 4 Automatic Cycles - DU1055XTSB||378.29
 904|Pedistal for Duet Sport Electric Washer/Dryer - WHP1000SQ||174.29
-905|Samsung PN63A650 - 63' Widescreen 1080p Plasma HDTV - 1000000:1 Dynamic Contrast Ratio - Touch of Color Design - PN63A650T||3448.00
+905|Samsung PN63A650 - 63' Widescreen 1080p Plasma HDTV - 1000000:1 Dynamic Contrast Ratio - Touch of Color Design - PN63A650T||3448
 906|Dlo 004-0107 Hybridshell(tm) For Iphone(tm) 3g||
 907|15' LCD HDTV/DVD Combo Black - 15LV505||
 908|Toshiba 22LV506 22' TV/DVD Combo|21.9' - LCD - Active Matrix - ATSC NTSC - 16:9 - 1680 x 1050 - - HDTV - DVD-R DVD-RW CD-R CD-RW - 720p|
@@ -1002,18 +1002,18 @@ id|name|description|price||||
 1000|Apple iPod touch 8GB Flash Portable Media Player - MB528LLA|Audio Player Video Player Photo Viewer - 3.5' Color LCD - 8GB Flash Memory|229
 1001|Apple iPod touch 16GB Flash Portable Media Player - MB531LLA|Audio Player Video Player Photo Viewer - 3.5' Color LCD - 16GB Flash Memory|309.99
 1002|Canon EOS 50D 15 Megapixel SLR Digital Camera with Live View & Face Detection 3' LCD 6.3fps & DIGIC 4 Image Processor - Body Only - 2807B006||1127.95
-1003|Canon EOS 50D 15 Megapixel SLR Digital Camera w/28-135MM IS USM Lens Live View & Face Detection 3' LCD 6.3fps DIGIC 4 Image Processor & HDMI output - 2807B005||1301.30
+1003|Canon EOS 50D 15 Megapixel SLR Digital Camera w/28-135MM IS USM Lens Live View & Face Detection 3' LCD 6.3fps DIGIC 4 Image Processor & HDMI output - 2807B005||1301.3
 1004|Coby Electronics TF-TV1514 15' LCD TV|15' - Active Matrix TFT - ATSC NTSC - 16:9 - 1280 x 800 - HDTV|149.99
 1005|LG 42PG20 - 42' Widescreen 720p Plasma HDTV - 20000:1 Dynamic Contrast Ratio||
 1006|SONY 42IN BRAVIA LCD V-SERIES 1080P HDTV - KDL42V4100||1098.72
 1007|Sony DPFD80 Digital Photo Frame|Photo Viewer - 8' LCD|
 1008|Transcend 2.5 Solid State Disk (SSD) 128GB SATA MLC with Build-In ECC - TS128GSSD25S-M||
 1009|VholdR 2200 Mount Adhesive (Black)||
-1010|Denon AVR2809CI A/V Receiver|Dolby Pro Logic IIx Dolby Digital EX DTS-ES Discrete DTS-ES Matrix DTS Neo:6 Dolby TrueHD Dolby Digital Plus Neural SurroundAM FM|1198.00
+1010|Denon AVR2809CI A/V Receiver|Dolby Pro Logic IIx Dolby Digital EX DTS-ES Discrete DTS-ES Matrix DTS Neo:6 Dolby TrueHD Dolby Digital Plus Neural SurroundAM FM|1198
 1011|TH-58PZ850U 58' Plasma TV (Widescreen 1920x1080 30000:1 HDTV) - TH58PZ850U||2999.97
 1012|MOTOROLA T305 BLUETOOTH VISOR SPEAKER PHONE CAR KIT - RETAIL - 89082J||46.93
 1013|Aliph Jawbone 2 Silver Bluetooth Headset - Retail - 84442VRP||89.99
-1014|Sony VAIO CS Series VGN-CS180J/W 14.1-Inch Notebook 2.26 GHz Intel Core 2 Duo P8400 Processor 4 GB RAM 320 GB Hard Drive Blu-ray Drive Vista Home Premium- White - VGNCS180J/W||1219.00
+1014|Sony VAIO CS Series VGN-CS180J/W 14.1-Inch Notebook 2.26 GHz Intel Core 2 Duo P8400 Processor 4 GB RAM 320 GB Hard Drive Blu-ray Drive Vista Home Premium- White - VGNCS180J/W||1219
 1015|Sony VAIO CS180J/Q Notebook - VGNCS180J/Q|Sony VAIO CS Series VGN-CS180J/Q 14.1-Inch Notebook 2.26 GHz Intel Core 2 Duo P8400 Processor 4 GB RAM 320 GB Hard Drive Blu-ray Drive Vista Home Premium- Black|1239.97
 1016|Sony VAIO CS180J/P Notebook - VGNCS180J/P|Sony VAIO CS Series VGN-CS180J/P 14.1-Inch Notebook 2.26 GHz Intel Core 2 Duo P8400 Processor 4 GB RAM 320 GB Hard Drive Blu-ray Drive Vista Home Premium- Pink|1199.99
 1017|Sony VAIO CS Series VGN-CS180J/R 14.1-Inch Notebook 2.26 GHz Intel Core 2 Duo P8400 Processor 4 GB RAM 320 GB Hard Drive Blu-ray Drive Vista Home Premium- Red - VGNCS180J/R||
@@ -1036,7 +1036,7 @@ id|name|description|price||||
 1034|Canon PSC-4000 Deluxe Leather Case N - 3528B001||35.99
 1035|Canon CLI-221 Color Ink 4-Pack (Black/ Cyan/ Magenta/ Yellow) - 2946B004||44.99
 1036|Sony BRAVIA VPL-HW10 Digital Projector - VPLHW10|1920 x 1080 - 22.05lb|
-1037|Apple MacBook Pro Notebook - MB471LL/A|Intel Core 2 Duo 2.53GHz - 15.4' WXGA+ - 4GB DDR3 SDRAM - 320GB HDD - DVD-Writer (DVDR/RW) - Gigabit Ethernet Wi-Fi Bluetooth - Mac OS X 10.5 Leopard|2369.00
+1037|Apple MacBook Pro Notebook - MB471LL/A|Intel Core 2 Duo 2.53GHz - 15.4' WXGA+ - 4GB DDR3 SDRAM - 320GB HDD - DVD-Writer (DVDR/RW) - Gigabit Ethernet Wi-Fi Bluetooth - Mac OS X 10.5 Leopard|2369
 1038|Altec Lansing IMT702 inMotion MAX Portable Speaker System for iPhone||133.96
 1039|Transcend 8GB microSDHC Card - Class 6 - TS8GUSDHC6||14.95
 1040|Flip Video MinoHD 60 min Black - F460B||232.5
@@ -1051,12 +1051,12 @@ id|name|description|price||||
 1049|Denon DHT-589BA Home Theater System| A/V Receiver 5.1 Speakers - Dolby Pro Logic II DTS|448.8
 1050|LG 42LG30 42' LCD TV|LG 42LG30 42' LCD HDTV - 12000:1 Dynamic Contrast Ratio - Invisible Speaker|
 1051|Apple 8x DVDRW Drive - MB397G/A|(Double-layer) - DVD-RAM/R/RW - 8x 8x 8x (DVD) - 24x 16x 24x (CD) - USB - External|95.71
-1052|Apple MacBook Pro Notebook - MB470LL/A|Intel Core 2 Duo 2.4GHz - 15.4' WXGA+ - 2GB DDR3 SDRAM - 250GB HDD - DVD-Writer (DVDR/RW) - Gigabit Ethernet Wi-Fi Bluetooth - Mac OS X 10.5 Leopard|1849.00
+1052|Apple MacBook Pro Notebook - MB470LL/A|Intel Core 2 Duo 2.4GHz - 15.4' WXGA+ - 2GB DDR3 SDRAM - 250GB HDD - DVD-Writer (DVDR/RW) - Gigabit Ethernet Wi-Fi Bluetooth - Mac OS X 10.5 Leopard|1849
 1053|Apple iPod nano Armband - MB769G/A|Grey|29
 1054|Polk Audio I-Sonic ES2 Entertainment System 2 AM/FM and HD Table Radio - AM1195-A||336.71
 1055|Samsung SBH500 Stereo Bluetooth Headset||49.72
 1056|Sony DPFD100 Digital Photo Frame|Photo Viewer - 10' LCD|249.12
-1057|Danby DBC2760BLS 5.0 cu.ft beverage center / 27 bottle wine cooler||1000.00
+1057|Danby DBC2760BLS 5.0 cu.ft beverage center / 27 bottle wine cooler||1000
 1058|Danby DDW497W Countertop Dishwasher||247.05
 1059|Sony XDR-S10HDiP Clock Radio with iPod Dock - XDRS10HDIP|LCD|149.95
 1060|Panasonic Kx-tg9391t Dect 6.0 Two-line Corded/cordless Phone Combo - KX-TG9391T||149.72
@@ -1069,7 +1069,7 @@ id|name|description|price||||
 1067|Garmin 010-00577-30 Nvi(r) 885t Travel Assistant||
 1068|Maytag MDB7851AWB Full Console Dishwasher (Black)||
 1069|Whirlpool DU1100XTPS 24' Undercounter Dishwasher (Stainless Steel)||537.29
-1070|Canon XH A1S - 3238B001||3999.00
+1070|Canon XH A1S - 3238B001||3999
 1071|Sony VAIO FW378J/B Notebook - VGNFW378J/B|Intel Centrino 2 Core 2 Duo P8600 2.4GHz - 16.4' - 4GB DDR2 SDRAM - 320GB HDD - BD-Reader/DVD-Writer (BD-ROM/DVD-RAM/R/RW) - Wi-Fi Gigabit Ethernet Bluetooth - Windows Vista Home Premium x64 - Black|
 1072|Sennheiser CX380 Sennheiser CX 380 Sport II Grey/Orange||
 1073|IWORK 09 RETAIL-INT DVD - MB942Z/A||
