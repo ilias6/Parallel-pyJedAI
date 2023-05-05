@@ -27,10 +27,6 @@ class AbstractBlockProcessing(PYJEDAIFeature):
         self.attributes_2: list
         self.num_of_blocks_dropped: int
         self.original_num_of_blocks: int
-
-    @abstractmethod
-    def stats(self, blocks: dict) -> None:
-        pass
     
     def report(self) -> None:
         """Prints Block Building method configuration
@@ -88,6 +84,42 @@ class AbstractBlockProcessing(PYJEDAIFeature):
         if with_stats:
             self.stats(eval_blocks)
         return eval_result
+    
+    
+    def stats(self, blocks: dict) -> None:
+        self.list_of_sizes = []
+        self.entities_in_blocks = set()
+        for block in blocks.values():
+            self.sum_of_sizes += block.get_size()
+            self.min_block_size = min(self.min_block_size, block.get_size()) if self.min_block_size else block.get_size()
+            self.max_block_size = max(self.max_block_size, block.get_size()) if self.max_block_size else block.get_size()
+            self.min_block_comparisons = min(self.min_block_comparisons, block.get_cardinality(self.data.is_dirty_er)) if self.min_block_comparisons else block.get_cardinality(self.data.is_dirty_er)
+            self.max_block_comparisons = max(self.max_block_comparisons, block.get_cardinality(self.data.is_dirty_er)) if self.max_block_comparisons else block.get_cardinality(self.data.is_dirty_er)
+            self.list_of_sizes.append(block.get_size())
+            self.entities_in_blocks = self.entities_in_blocks.union(block.entities_D1)
+            if not self.data.is_dirty_er:
+                self.entities_in_blocks = self.entities_in_blocks.union(block.entities_D2)
+            self.total_num_of_comparisons += block.get_cardinality(self.data.is_dirty_er)
+        
+        self.num_of_blocks = len(blocks)
+        self.average_block_size = int(self.sum_of_sizes / self.num_of_blocks)
+        self.list_of_sizes = sorted(self.list_of_sizes)
+        median = self.list_of_sizes[int(len(self.list_of_sizes)/2)]
+        print(
+            "Statistics:" +
+            "\n\tNumber of blocks: " + str(self.num_of_blocks) +
+            "\n\tAverage block size: " + str(self.average_block_size) +
+            "\n\tMedian block size: " + str(median) +
+            "\n\tMax block size: " + str(self.max_block_size) +
+            "\n\tMin block size: " + str(self.min_block_size) +
+            "\n\tNumber of blocks dropped: " + str(self.num_of_blocks_dropped) +
+            "\n\tNumber of comparisons: " + str(self.total_num_of_comparisons) +
+            "\n\tMax comparisons per block: " + str(self.max_block_comparisons) +
+            "\n\tMin comparisons per block: " + str(self.min_block_comparisons) +
+            "\n\tEntities in blocks: " + str(len(self.entities_in_blocks))
+        )
+        print(u'\u2500' * 123)
+
 
 class AbstractBlockBuilding(AbstractBlockProcessing):
     """Abstract class for the block building method
@@ -110,7 +142,9 @@ class AbstractBlockBuilding(AbstractBlockProcessing):
         self.total_num_of_comparisons: int = 0
         self.min_block_size: int = None
         self.max_block_size: int = None
-        
+        self.min_block_comparisons: int = None
+        self.max_block_comparisons: int = None
+
     def build_blocks(
             self,
             data: Data,
@@ -194,31 +228,6 @@ class AbstractBlockBuilding(AbstractBlockProcessing):
                 else self.data.dataset_2.columns)) if not self.data.is_dirty_er else "") +
             "\nRuntime: {:2.4f} seconds".format(self.execution_time)
         )
-
-    def stats(self, blocks: dict) -> None:
-        self.list_of_sizes = []
-        for block in blocks.values():
-            self.sum_of_sizes += block.get_size()
-            self.min_block_size = min(self.min_block_size, block.get_size()) if self.min_block_size else block.get_size()
-            self.max_block_size = max(self.max_block_size, block.get_size()) if self.max_block_size else block.get_size()
-            self.list_of_sizes.append(block.get_size())
-            self.total_num_of_comparisons += block.get_cardinality(self.data.is_dirty_er)
-        
-        self.num_of_blocks = len(blocks)
-        self.average_block_size = int(self.sum_of_sizes / self.num_of_blocks)
-        self.list_of_sizes = sorted(self.list_of_sizes)
-        median = self.list_of_sizes[int(len(self.list_of_sizes)/2)]
-        print(
-            "Statistics:" +
-            "\n\tNumber of blocks: " + str(self.num_of_blocks) +
-            "\n\tAverage block size: " + str(self.average_block_size) +
-            "\n\tMedian block size: " + str(median) +
-            "\n\tMax block size: " + str(self.max_block_size) +
-            "\n\tMin block size: " + str(self.min_block_size) +
-            "\n\tNumber of blocks dropped: " + str(self.num_of_blocks_dropped) +
-            "\n\tNumber of comparisons: " + str(self.total_num_of_comparisons)
-        )
-        print(u'\u2500' * 123)
 
     @abstractmethod
     def _clean_blocks(self, blocks: dict) -> dict:

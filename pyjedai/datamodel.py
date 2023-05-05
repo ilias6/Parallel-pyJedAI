@@ -192,15 +192,19 @@ class Data:
     def print_specs(self) -> None:
         """Dataset report.
         """
+        print(25*"-", "Data", 25*"-")
         print("Type of Entity Resolution: ", "Dirty" if self.is_dirty_er else "Clean-Clean" )
-        print("Number of entities in D1: ", self.num_of_entities_1)
-        print("Attributes provided for D1: ", self.attributes_1)
+        print("Dataset-1:")
+        print("\tNumber of entities: ", self.num_of_entities_1)
+        print("\tAttributes: \n\t\t", self.attributes_1)
         if not self.is_dirty_er:
-            print("\nNumber of entities in D2: ", self.num_of_entities_2)
-            print("Attributes provided for D2: ", self.attributes_2)
+            print("Dataset-2:")
+            print("\tNumber of entities: ", self.num_of_entities_2)
+            print("\tAttributes: \n\t\t", self.attributes_2)
         print("\nTotal number of entities: ", self.num_of_entities)
         if self.ground_truth is not None:
             print("Number of matching pairs in ground-truth: ", len(self.ground_truth))
+        print(56*"-", "\n")
 
 class Block:
     """The main module used for storing entities in the blocking steps of pyjedai module. \

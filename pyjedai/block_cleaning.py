@@ -30,9 +30,6 @@ class AbstractBlockCleaning(AbstractBlockProcessing):
             "Runtime: {:2.4f} seconds".format(self.execution_time)
         )
 
-    def stats(self, blocks: dict) -> None:
-        pass
-
 class BlockFiltering(AbstractBlockCleaning):
     """Retains every entity in a subset of its smallest blocks.
 
