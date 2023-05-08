@@ -8,14 +8,16 @@ from queue import PriorityQueue
 from time import time
 
 import numpy as np
+import math
 from tqdm.autonotebook import tqdm
 
 from .evaluation import Evaluation
 
 from .datamodel import Data, PYJEDAIFeature
-from .utils import chi_square, create_entity_index
+from .utils import chi_square, create_entity_index, get_sorted_blocks_shuffled_entities, PositionIndex
 
 from abc import ABC, abstractmethod
+from typing import Tuple, List
 
 
 class AbstractComparisonCleaning(PYJEDAIFeature):
@@ -268,7 +270,7 @@ class ComparisonPropagation(AbstractComparisonCleaning):
                 self.blocks[i] = self._valid_entities.copy()
             self._progress_bar.update(1)
         return self.blocks
-
+ 
     def _configuration(self) -> dict:
         return {
             "Node centric" : self._node_centric
@@ -650,8 +652,229 @@ class ProgressiveCardinalityNodePruning(CardinalityNodePruning):
                     comparison = self._top_k_edges.get()
                     self.trimmed_blocks[entity_id].add(comparison[2])
 
-        return self.trimmed_blocks        
+        return self.trimmed_blocks 
+    
+    
+class ProgressiveSortedNeighborhood(AbstractMetablocking):
+    """Progressive Sorted Neighborhood"""
 
+    _method_name = "Progressive Sorted Neighborhood"
+    _method_short_name: str = "PSN"
+    _method_info = "Sorts and iterates over entities in an incremental, windowed manner, compares the entities within defined windows " + \
+                    "and orders non-reduntant comparisons within the windows by decreasing frequency"
+
+    def __init__(self, weighting_scheme: str = 'ACF', budget: int = 0) -> None:
+        self.weighting_scheme: str = weighting_scheme
+        self._budget : int = budget
+        super().__init__()
+        
+    
+    def process(
+            self,
+            blocks: dict,
+            data: Data,
+            tqdm_disable: bool = False
+    ) -> PriorityQueue:
+        """Main method for comparison cleaning
+
+        Args:
+            blocks (dict): blocks creted from previous steps of pyjedai
+            data (Data): dataset module
+            tqdm_disable (bool, optional): Disables tqdm progress bars. Defaults to False.
+
+        Returns:
+            dict: cleaned blocks
+        """
+        start_time = time()
+        self.tqdm_disable, self.data = tqdm_disable, data
+        self._limit = self.data.num_of_entities \
+                if self.data.is_dirty_er or self._node_centric else self.data.dataset_limit
+        self._progress_bar = tqdm(
+            total=self._limit,
+            desc=self._method_name,
+            disable=self.tqdm_disable
+        )
+
+        self._num_of_blocks = len(blocks)
+        self._blocks: dict = blocks
+        
+        self._sorted_entity_ids = get_sorted_blocks_shuffled_entities(self._blocks)
+        self._total_sorted_entities = len(self._sorted_entity_ids)
+        self._position_index = PositionIndex(self.data.num_of_entities, self._sorted_entity_ids)
+        
+        self._counters = np.empty([self.data.num_of_entities], dtype=float)
+        self._flags = np.empty([self.data.num_of_entities], dtype=int)
+        self._counters[:] = 0
+        self._flags[:] = -1
+        self._pairs = self._apply_main_processing()
+        self.execution_time = time() - start_time
+        self._progress_bar.close()
+
+        return self._pairs    
+    
+    def _get_weight(self, entity_id: int, neighbor_id: int) -> float:
+        ws = self.weighting_scheme
+        
+        if ws == 'NCF':
+            denominator : float = len(self._position_index.get_positions(entity_id)) + len(self._position_index.get_positions(neighbor_id)) - self._counters[neighbor_id]
+            return self._counters[neighbor_id] / denominator
+        elif ws == 'ACF' or ws == 'ID':
+            return self._counters[neighbor_id]
+        else:
+            raise ValueError("This weighting scheme does not exist")
+        
+    def valid_entity_neighbor_index(self, entity: int, neighbor_index: int) -> bool:
+        """Verifies if the neighbor identifier at the specified index is valid for candidate (the pair hasn't been considered previously)
+
+        Args:
+            entity (int): Identifier of the current entity
+            neighbor_index (int): Index of the neighbor identifier within the list of sorted indices
+
+        Returns:
+            bool: Valid / Not Valid candidate for pair
+        """
+        neighbor = self._sorted_entity_ids[neighbor_index]
+        return self.data.dataset_limit <= neighbor if self.data.is_dirty_er else neighbor < entity
+
+        
+class GlobalProgressiveSortedNeighborhood(ProgressiveSortedNeighborhood):
+    """Global Progressive Sorted Neighborhood"""
+
+    _method_name = "Global Progressive Sorted Neighborhood"
+    _method_short_name: str = "GPSN"
+    _method_info = "For each sorted entity, conducts incrementally expanding window wise iteration over all the sorted entities, " + \
+                    "calculates local scores for the entities present within current window and stores the best comparisons on a global scale"
+        
+    def __init__(self, weighting_scheme: str = 'ACF', budget: int = 0) -> None:
+        super().__init__(weighting_scheme, budget)
+        
+    def _apply_main_processing(self) -> PriorityQueue:
+        self._max_window = 2 if self.data.num_of_entities <= 100 else int(2 ** (math.log(self.data.num_of_entities) + 1) + 1)
+        self._top_pairs: PriorityQueue = PriorityQueue(2 * int(self._budget))
+        
+        for entity in range(self.data.dataset_limit):
+            entity_positions = self._position_index.get_positions(entity)
+            self._neighbors.clear()
+            for current_window in range(1,self._max_window):
+                for entity_position in entity_positions:
+                    right_neighbor = entity_position + current_window
+                    left_neighbor = entity_position - current_window
+                    
+                    if(right_neighbor < self._total_sorted_entities):
+                         if(self.valid_entity_neighbor_index(entity, right_neighbor)):
+                            self._update_local_weight(current_window, entity, self._sorted_entity_ids[right_neighbor])
+                    if(left_neighbor >= 0):
+                        if(self.valid_entity_neighbor_index(entity, left_neighbor)):
+                            self._update_local_weight(current_window, entity, self._sorted_entity_ids[left_neighbor])
+            
+            current_minimum_weight = -1               
+            for neighbor in self._neighbors:
+                self._flags[neighbor] = -1
+                pair_weight = self._get_weight(entity, neighbor)
+                
+                if(pair_weight >= current_minimum_weight):
+                    self._top_pairs.put(
+                    (pair_weight, entity, neighbor)
+                    )
+                    if self._budget < self._top_pairs.qsize():
+                        self._minimum_weight = self._top_pairs.get()[0]
+                        
+        return self._top_pairs
+                                            
+    def _update_local_weight(self, window : int, entity: int, neighbor: int):
+        """Updates the weight of the entity & neighbor pair for current window
+
+        Args:
+            window (int): Current Window Size
+            entity (int): Current Entity ID
+            neighbor (int): Current Neighbor ID
+        """
+        
+        if(self._flags[neighbor] != entity):
+            self._counters[neighbor] = 0
+            self._flags[neighbor] = entity
+        
+        pwScheme = self._weighting_scheme
+        if pwScheme == 'ID':
+            self._counters[neighbor] += 1.0 / window
+        else:
+            self._counters[neighbor] += 1.0
+            
+        self._neighbors.add(neighbor)
+        
+
+class LocalProgressiveSortedNeighborhood(ProgressiveSortedNeighborhood):
+    """Local Progressive Sorted Neighborhood"""
+
+    _method_name = "Local Progressive Sorted Neighborhood"
+    _method_short_name: str = "LPSN"
+    _method_info = "Iteratively increments window size. For each one, derives the distinct neighbors for each entity, " + \
+                    "calculates their similarity, and emits the pairs in decreasing similarity score order"
+        
+    def __init__(self, weighting_scheme: str = 'ACF', budget: int = 0) -> None:
+        super().__init__(weighting_scheme, budget)
+        
+    def _has_next(self) -> bool:
+        """Validates if more pairs can be emitted
+
+        Returns:
+            bool: Another pair can be emitted
+        """
+        return self._emitted_comparisons < self._budget and self._current_window < self._total_sorted_entities
+        
+    def _apply_main_processing(self) -> PriorityQueue:
+        self._emitted_comparisons = 0
+        self._current_window = 1 
+        self._top_pairs: PriorityQueue(self._budget)
+        
+        while(self._has_next()):
+            _window_top_pairs = PriorityQueue()
+            for entity in range(self.data.dataset_limit):
+                entity_positions = self._position_index.get_positions(entity)
+                self._neighbors.clear()
+            
+                for entity_position in entity_positions:
+                    right_neighbor = entity_position + self._current_window
+                    left_neighbor = entity_position - self._current_window
+                    
+                    if(right_neighbor < self._total_sorted_entities):
+                        if(self.valid_entity_neighbor_index(entity, right_neighbor)):
+                            self._update_counters(entity, self._sorted_entity_ids[right_neighbor])
+                    if(left_neighbor >= 0):
+                        if(self.valid_entity_neighbor_index(entity, left_neighbor)):
+                            self._update_counters(entity, self._sorted_entity_ids[left_neighbor])
+                          
+                for neighbor in self._neighbors:
+                    self._flags[neighbor] = -1
+                    pair_weight = self._get_weight(entity, neighbor)
+                    
+                    _window_top_pairs.put(
+                    (pair_weight, entity, neighbor)
+                    )
+                    
+                while(self._top_pairs.qsize() < self._budget and not _window_top_pairs.empty()):
+                    self._top_pairs.put(_window_top_pairs.get())
+                    self._emitted_comparisons += 1
+
+            self._current_window += 1
+            
+        return self._top_pairs
+                                            
+    def _update_counters(self, entity: int, neighbor: int):
+        """Updates the counters of the entity & neighbor pair for current window
+
+        Args:
+            entity (int): Current Entity ID
+            neighbor (int): Current Neighbor ID
+        """
+        
+        if(self._flags[neighbor] != entity):
+            self._counters[neighbor] = 0
+            self._flags[neighbor] = entity
+        
+        self._counters[neighbor] += 1.0    
+        self._neighbors.add(neighbor)
+            
 def get_meta_blocking_approach(acronym: str, w_scheme: str, budget: int = 0) -> any:
     """Return method by acronym
 
@@ -680,6 +903,10 @@ def get_meta_blocking_approach(acronym: str, w_scheme: str, budget: int = 0) -> 
         return ProgressiveCardinalityEdgePruning(w_scheme, budget)
     elif acronym == "PCNP":
         return ProgressiveCardinalityNodePruning(w_scheme, budget)
+    elif acronym == "GPSN":
+        return GlobalProgressiveSortedNeighborhood(w_scheme, budget)
+    elif acronym == "LPSN":
+        return LocalProgressiveSortedNeighborhood(w_scheme, budget)
     else:
         warnings.warn("Wrong meta-blocking approach selected. Returning Comparison Propagation.")
         return ComparisonPropagation()

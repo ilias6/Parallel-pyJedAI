@@ -3,6 +3,8 @@ import numpy as np
 from pyjedai.datamodel import Block
 from pyjedai.datamodel import Data
 from abc import ABC
+from typing import List
+import random
 
 # ----------------------- #
 # Constants
@@ -152,6 +154,20 @@ def batch_pairs(iterable, batch_size: int = 1):
     """
     return (iterable[pos:pos + batch_size] for pos in range(0, len(iterable), batch_size))
 
+def get_sorted_blocks_shuffled_entities(blocks):
+    """Sorts blocks in alphabetical order based on their token, shuffles the entities of each block, concatenates the result in a list
+
+    Args:
+        blocks (Dict[Block]): Dictionary of type token -> Block Instance
+
+    Returns:
+        List[Int]: List of shuffled entities of alphabetically, token sorted blocks
+    """
+    sorted_entities = []
+    for _, block in sorted(blocks.items()):
+        sorted_entities += random.shuffle(list(block.entities_D1 | block.entities_D2 if block.entities_D2 else block.entities_D1))
+    return sorted_entities
+
 
 class SubsetIndexer(ABC):
     """Stores the indices of retained entities of the initial datasets,
@@ -206,5 +222,37 @@ class SubsetIndexer(ABC):
 
                 self.d1_retained_ids = sorted(list(_d1_retained_ids_set))
                 self.d2_retained_ids = sorted(list(_d2_retained_ids_set))
+                
+class PositionIndex(ABC):
+    """For each entity identifier stores a list of index it appears in, within the list of shuffled entities of sorted blocks
+
+    Args:
+        ABC (ABC): ABC Module 
+    """
+    
+    def __init__(self, num_of_entities: int, sorted_entities: List[int]) -> None:
+        self._num_of_entities = num_of_entities
+        self._counters = self._num_of_entities * [0]
+        self._entity_positions = [[] for _ in range(self._num_of_entities)]
+        
+        for entity in sorted_entities:
+            self._counters[entity]+=1
+            
+        for i in range(self._num_of_entities):
+            self._entity_positions[i] = [0] * self._counters[i]
+            self._counters = 0
+            
+        for index, entity in enumerate(sorted_entities):
+            self._entity_positions[entity][self._counters[entity]] = index
+            self._counters[entity] += 1
+            
+    def get_positions(self, entity: int):
+        return self._counters[entity]
+            
+            
+        
+        
+        
+    
 
         

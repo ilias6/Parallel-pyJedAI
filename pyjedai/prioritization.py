@@ -4,7 +4,7 @@ import numpy as np
 from time import time
 import matplotlib.pyplot as plt
 from .matching import EntityMatching
-from .comparison_cleaning import ProgressiveCardinalityEdgePruning, ProgressiveCardinalityNodePruning
+from .comparison_cleaning import ComparisonPropagation, ProgressiveCardinalityEdgePruning, ProgressiveCardinalityNodePruning, GlobalProgressiveSortedNeighborhood, LocalProgressiveSortedNeighborhood
 from .vector_based_blocking import EmbeddingsNNBlockBuilding
 from sklearn.metrics.pairwise import (
     cosine_similarity
@@ -52,6 +52,8 @@ from .datamodel import Data, PYJEDAIFeature
 from .matching import EntityMatching
 from .comparison_cleaning import AbstractMetablocking
 from .vector_based_blocking import PREmbeddingsNNBlockBuilding
+from queue import PriorityQueue
+from random import sample
 
 # Package import from https://anhaidgroup.github.io/py_stringmatching/v0.4.2/index.html
 
@@ -463,3 +465,146 @@ class EmbeddingsNNBPM(ProgressiveMatching):
 
     def _predict_prunned_blocks(self, blocks: dict) -> None:
         return self._predict_raw_blocks(blocks)
+    
+class SimilarityBasedProgressiveMatching(ProgressiveMatching):
+    """Applies similarity based candidate graph prunning, sorts retained comparisons and applies Progressive Matching
+    """
+
+    _method_name: str = "Similarity Based Progressive Matching"
+    _method_info: str = "Applies similarity based candidate graph prunning, sorts retained comparisons and applies Progressive Matching"
+
+    def __init__(
+            self,
+            budget: int = 0,
+            pwScheme: str = 'ACF',
+            metric: str = 'dice',
+            tokenizer: str = 'white_space_tokenizer',
+            similarity_threshold: float = 0.5,
+            qgram: int = 2, # for jaccard
+            tokenizer_return_set = True, # unique values or not
+            attributes: any = None,
+            delim_set: list = None, # DelimiterTokenizer
+            padding: bool = True, # QgramTokenizer
+            prefix_pad: str = '#', # QgramTokenizer (if padding=True)
+            suffix_pad: str = '$' # QgramTokenizer (if padding=True)
+        ) -> None:
+
+        super().__init__(budget, metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        self._pwScheme : str = pwScheme
+        
+        
+
+class GlobalPSNM(SimilarityBasedProgressiveMatching):
+    """Applies Global Progressive Sorted Neighborhood Matching
+    """
+
+    _method_name: str = "Global Progressive Sorted Neighborhood Matching"
+    _method_info: str = "For each entity sorted accordingly to its block's tokens, " + \
+                        "evaluates its neighborhood pairs defined within shifting windows of incremental size" + \
+                        " and retains the globally best candidate pairs"
+
+    def __init__(
+            self,
+            budget: int = 0,
+            pwScheme: str = 'ACF',
+            metric: str = 'dice',
+            tokenizer: str = 'white_space_tokenizer',
+            similarity_threshold: float = 0.5,
+            qgram: int = 2, # for jaccard
+            tokenizer_return_set = True, # unique values or not
+            attributes: any = None,
+            delim_set: list = None, # DelimiterTokenizer
+            padding: bool = True, # QgramTokenizer
+            prefix_pad: str = '#', # QgramTokenizer (if padding=True)
+            suffix_pad: str = '$' # QgramTokenizer (if padding=True)
+        ) -> None:
+
+        super().__init__(budget, pwScheme, metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+
+    def _predict_raw_blocks(self, blocks: dict):
+        gpsn : GlobalProgressiveSortedNeighborhood = GlobalProgressiveSortedNeighborhood(self._pwScheme, self._budget)
+        candidates :  PriorityQueue = gpsn.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None)
+        self.pairs = []
+        while(not candidates.empty()):
+            _, entity_id, candidate_id = candidates.get()
+            self.pairs += (entity_id, candidate_id)
+            
+        return self.pairs
+
+    def _predict_prunned_blocks(self, blocks: dict):
+        raise NotImplementedError("Sorter Neighborhood Algorithms don't support prunned blocks")
+    
+class LocalPSNM(SimilarityBasedProgressiveMatching):
+    """Applies Local Progressive Sorted Neighborhood Matching
+    """
+
+    _method_name: str = "Global Progressive Sorted Neighborhood Matching"
+    _method_info: str = "For each entity sorted accordingly to its block's tokens, " + \
+                        "evaluates its neighborhood pairs defined within shifting windows of incremental size" + \
+                        " and retains the globally best candidate pairs"
+
+    def __init__(
+            self,
+            budget: int = 0,
+            pwScheme: str = 'ACF',
+            metric: str = 'dice',
+            tokenizer: str = 'white_space_tokenizer',
+            similarity_threshold: float = 0.5,
+            qgram: int = 2, # for jaccard
+            tokenizer_return_set = True, # unique values or not
+            attributes: any = None,
+            delim_set: list = None, # DelimiterTokenizer
+            padding: bool = True, # QgramTokenizer
+            prefix_pad: str = '#', # QgramTokenizer (if padding=True)
+            suffix_pad: str = '$' # QgramTokenizer (if padding=True)
+        ) -> None:
+
+        super().__init__(budget, pwScheme, metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+
+    def _predict_raw_blocks(self, blocks: dict):
+        lpsn : LocalProgressiveSortedNeighborhood = LocalProgressiveSortedNeighborhood(self._pwScheme, self._budget)
+        candidates :  PriorityQueue = lpsn.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None)
+        self.pairs = []
+        while(not candidates.empty()):
+            _, entity_id, candidate_id = candidates.get()
+            self.pairs += (entity_id, candidate_id)
+            
+        return self.pairs
+
+    def _predict_prunned_blocks(self, blocks: dict):
+        raise NotImplementedError("Sorter Neighborhood Algorithms don't support prunned blocks")
+    
+    
+
+class RandomPM(ProgressiveMatching):
+    """Picks a number of random comparisons equal to the available budget
+    """
+
+    _method_name: str = "Random Progressive Matching"
+    _method_info: str = "Picks a number of random comparisons equal to the available budget"
+
+    def __init__(
+            self,
+            budget: int = 0,
+            metric: str = 'dice',
+            tokenizer: str = 'white_space_tokenizer',
+            similarity_threshold: float = 0.5,
+            qgram: int = 2, # for jaccard
+            tokenizer_return_set = True, # unique values or not
+            attributes: any = None,
+            delim_set: list = None, # DelimiterTokenizer
+            padding: bool = True, # QgramTokenizer
+            prefix_pad: str = '#', # QgramTokenizer (if padding=True)
+            suffix_pad: str = '$' # QgramTokenizer (if padding=True)
+        ) -> None:
+
+        super().__init__(budget, metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+
+    def _predict_raw_blocks(self, blocks: dict) -> None:
+        cp : ComparisonPropagation = ComparisonPropagation()
+        cleaned_blocks = cp.process(blocks=blocks, data=self.data, tqdm_disable=True)
+        self._predict_prunned_blocks(cleaned_blocks)
+
+    def _predict_prunned_blocks(self, blocks: dict) -> None:
+        random_pairs = sample([(id1, id2) for id1 in blocks for id2 in blocks[id1]], self._budget)
+        self.pairs.add_edge(*random_pairs)
