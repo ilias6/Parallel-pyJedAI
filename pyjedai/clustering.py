@@ -54,6 +54,9 @@ class AbstractClustering(PYJEDAIFeature):
                                 export_to_dict,
                                 with_classification_report,
                                 verbose)
+    
+    def stats(self) -> None:
+        pass
 
 class ConnectedComponentsClustering(AbstractClustering):
     """Creates the connected components of the graph. \
@@ -87,8 +90,11 @@ class ConnectedComponentsClustering(AbstractClustering):
                 if x[2]['weight'] < self.similarity_threshold:
                     graph_copy.remove_edge(x[0], x[1])
         clusters = list(connected_components(graph_copy))
+        # print(clusters)
+        # print("Number of clusters: ", len(clusters))
         resulting_clusters = list(filter(lambda x: len(x) == 2, clusters)) \
                                 if not data.is_dirty_er else clusters
+        # print("Number of clusters after filtering: ", len(resulting_clusters))
         self.execution_time = time() - start_time
         return resulting_clusters
 
@@ -136,7 +142,7 @@ class UniqueMappingClustering(AbstractClustering):
         matched_entities = set()
         self.data = data
         new_graph = Graph()
-        priority_queue = PriorityQueue(maxsize=graph.number_of_edges()*2)
+        priority_queue = PriorityQueue(maxsize = graph.number_of_edges()*2)
         for x in graph.edges(data=True):
             if x[2]['weight'] > self.similarity_threshold:
                 priority_queue.put_nowait((x[2]['weight'], x[0], x[1]))
