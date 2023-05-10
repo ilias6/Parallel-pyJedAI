@@ -3,8 +3,9 @@
 import numpy as np
 from time import time
 import matplotlib.pyplot as plt
-
-from scipy.spatial.distance import cosine
+import statistics
+# from scipy.spatial.distance import cosine
+from sklearn.metrics.pairwise import cosine_similarity
 
 from networkx import Graph
 from py_stringmatching.similarity_measure.affine import Affine
@@ -48,6 +49,11 @@ from .evaluation import Evaluation
 from .datamodel import Data, PYJEDAIFeature
 
 # Package import from https://anhaidgroup.github.io/py_stringmatching/v0.4.2/index.html
+
+def cosine(x, y):
+    """Cosine similarity between two vectors
+    """
+    return cosine_similarity(x.reshape(1, -1), y.reshape(1, -1))[0][0]
 
 available_tokenizers = [
     'white_space_tokenizer', 'qgram_tokenizer', 'delimiter_tokenizer',
@@ -262,7 +268,7 @@ class EntityMatching(PYJEDAIFeature):
 
     def _calculate_vector_similarity(self, entity_id1: int, entity_id2: int) -> float:
         if self.metric in vector_metrics:
-            return 1-metrics_mapping[self._metric](self.vectors[entity_id1],
+            return metrics_mapping[self._metric](self.vectors[entity_id1],
                                                  self.vectors[entity_id2])
         else:
             raise AttributeError("Please select one vector similarity metric from the given: " + ','.join(vector_metrics))
@@ -319,6 +325,48 @@ class EntityMatching(PYJEDAIFeature):
             "Attributes" : self.attributes,
             "Similarity threshold" : self.similarity_threshold
         }
+        
+    def get_weights_avg(self) -> float:
+        return sum([w for _, _, w in self.pairs.edges(data='weight')])/len(self.pairs.edges(data='weight'))
+
+    def get_weights_median(self) -> float:
+        return [w for _, _, w in sorted(self.pairs.edges(data='weight'))][int(len(self.pairs.edges(data='weight'))/2)]    
+    
+    def get_weights_standard_deviation(self) -> float:
+        return statistics.stdev([w for _, _, w in self.pairs.edges(data='weight')])
+    
+    def plot_distribution_of_all_weights(self) -> None:
+        title = "Distribution of scores with " + self.metric + " metric in graph from entity matching"
+        plt.figure(figsize=(10, 6))
+        all_weights = [w for _, _, w in self.pairs.edges(data='weight')]
+        sorted_weights = sorted(all_weights, reverse=True)
+        
+        plt.hist(sorted_weights)
+        plt.xlim(0, 1)
+        # only one line may be specified; full height
+        plt.axvline(x = self.get_weights_avg(), color = 'blue', label = 'Average weight')
+        plt.axvline(x = self.get_weights_median(), color = 'black', label = 'Median weight')
+        plt.axvline(x = self.get_weights_avg()+self.get_weights_standard_deviation(), color = 'green', label = 'Average + SD weight')
+        plt.legend()
+        plt.show()
+
+    
+    def plot_distribution_of_all_weights_2d(self) -> None:
+        title = "Distribution of scores with " + self.metric + " metric in graph from entity matching"
+        plt.figure(figsize=(10, 6))
+        all_weights = [w for _, _, w in self.pairs.edges(data='weight')]
+        sorted_weights = sorted(all_weights, reverse=True)
+        
+        fig, ax = plt.subplots(tight_layout=True)
+        hist = ax.hist2d(sorted_weights, sorted_weights)
+        # plt.hist(sorted_weights)
+        # plt.xlim(0, 1)
+        # only one line may be specified; full height
+        plt.axvline(x = self.get_weights_avg(), color = 'blue', label = 'Average weight')
+        plt.axvline(x = self.get_weights_median(), color = 'black', label = 'Median weight')
+        plt.axvline(x = self.get_weights_avg()+self.get_weights_standard_deviation(), color = 'green', label = 'Average + SD weight')
+        plt.legend()
+        plt.show()
 
     def plot_distribution_of_scores(self) -> None:
         title = "Distribution of scores with " + self.metric + " metric in graph from entity matching"
@@ -344,12 +392,19 @@ class EntityMatching(PYJEDAIFeature):
         r1 = ax.bar(x, distribution, width, align='center', color='red')
         ax.set_xticks(x)
         ax.set_xticklabels(labels)
-
+    
+        
         # Add some text for labels, title and custom x-axis tick labels, etc.
         ax.set_ylabel('Percentage of pairs in each range to all (%)')
         ax.set_title(title)
         ax.set_xlabel('Similarity score range')
         fig.tight_layout()
+        
+        # only one line may be specified; full height
+        plt.axvline(x = self.get_weights_avg()*10, color = 'blue', label = 'Average weight')
+        plt.axvline(x = self.get_weights_median()*10, color = 'black', label = 'Median weight')
+        plt.axvline(x = self.get_weights_avg()*10+self.get_weights_standard_deviation()*10, color = 'green', label = 'Average + SD weight')
+        plt.legend()
         plt.show()
 
     def plot_gt_distribution_of_scores(self) -> None:

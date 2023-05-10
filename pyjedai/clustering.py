@@ -69,11 +69,11 @@ class ConnectedComponentsClustering(AbstractClustering):
     _method_info: str = "Gets equivalence clusters from the " + \
                     "transitive closure of the similarity graph."
 
-    def __init__(self, similarity_threshold: float = None) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.similarity_threshold: float = similarity_threshold
+        self.similarity_threshold: float
 
-    def process(self, graph: Graph, data: Data) -> list:
+    def process(self, graph: Graph, data: Data, similarity_threshold: float = None) -> list:
         """NetworkX Connected Components Algorithm in the produced graph.
 
         Args:
@@ -84,6 +84,7 @@ class ConnectedComponentsClustering(AbstractClustering):
         """
         start_time = time()
         self.data = data
+        self.similarity_threshold: float = similarity_threshold
         graph_copy = graph.copy()
         if self.similarity_threshold is not None:
             for x in graph.edges(data=True):
@@ -115,7 +116,7 @@ class UniqueMappingClustering(AbstractClustering):
                         "the top-weighted pair as long as none of its entities has already" + \
                         "been matched to some other."
 
-    def __init__(self, similarity_threshold: float = 0.1) -> None:
+    def __init__(self) -> None:
         """Unique Mapping Clustering Constructor
 
         Args:
@@ -124,9 +125,9 @@ class UniqueMappingClustering(AbstractClustering):
             data (Data): Dataset module.
         """
         super().__init__()
-        self.similarity_threshold: float = similarity_threshold
+        self.similarity_threshold: float
 
-    def process(self, graph: Graph, data: Data) -> list:
+    def process(self, graph: Graph, data: Data, similarity_threshold: float = 0.1) -> list:
         """NetworkX Connected Components Algorithm in the produced graph.
 
         Args:
@@ -137,7 +138,8 @@ class UniqueMappingClustering(AbstractClustering):
         """
         if data.is_dirty_er:
             raise AttributeError("Unique Mapping Clustering can only be performed in Clean-Clean Entity Resolution.")
-
+        self.similarity_threshold: float = similarity_threshold
+        
         start_time = time()
         matched_entities = set()
         self.data = data
@@ -155,7 +157,7 @@ class UniqueMappingClustering(AbstractClustering):
             matched_entities.add(entity_1)
             matched_entities.add(entity_2)
 
-        clusters = ConnectedComponentsClustering(similarity_threshold=None).process(new_graph, data)
+        clusters = ConnectedComponentsClustering().process(new_graph, data, similarity_threshold=None)
         self.execution_time = time() - start_time
         return clusters
 
