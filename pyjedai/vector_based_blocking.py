@@ -54,7 +54,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         'st5' : 'gtr-t5-large',
         'sdistilroberta' : 'all-distilroberta-v1',
         'sminilm' : 'all-MiniLM-L12-v2',
-        'glove' : 'average_word_embeddings_glove.6B.300d'
+        'sent_glove' : 'average_word_embeddings_glove.6B.300d'
     }
 
     def __init__(
@@ -150,7 +150,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
             vectors_1, vectors_2 = self._create_gensim_embeddings()
         elif self.vectorizer in ['bert', 'distilbert', 'roberta', 'xlnet', 'albert']:
             vectors_1, vectors_2 = self._create_pretrained_word_embeddings()
-        elif self.vectorizer in ['smpnet', 'st5', 'glove', 'sdistilroberta', 'sminilm']:
+        elif self.vectorizer in ['smpnet', 'st5', 'sent_glove', 'sdistilroberta', 'sminilm']:
             vectors_1, vectors_2 = self._create_pretrained_sentence_embeddings()
         else:
             raise AttributeError("Not available vectorizer")
@@ -261,7 +261,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         self.vector_size = len(vectors_1[0])
         self.vectors_1 = np.array(vectors_1).astype('float32')
         vectors_2 = []
-        if not self.data.is_dirty_er:            
+        if not self.data.is_dirty_er:
             for e2 in self._entities_d2:
                 vector = model.encode(e2)
                 vectors_2.append(vector)
@@ -269,36 +269,49 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
             self.vector_size = len(vectors_2[0])
             self.vectors_2 = np.array(vectors_2).astype('float32')
 
-        return vectors_1, vectors_2 
+        return vectors_1, vectors_2
 
     def _similarity_search_with_FAISS(self):
         quantiser = faiss.IndexFlatL2(self.vectors_1.shape[1])
-        
         index = faiss.IndexIVFFlat(quantiser,
                                     self.vectors_1.shape[1],
-                                    self.num_of_clusters,
-                                    self._faiss_metric_type)
+                                    self.num_of_clusters)
         index.train(self.vectors_1)  # train on the vectors of dataset 1
         index.add(self.vectors_1)   # add the vectors and update the index
-        # index.print_stats()
+        # index.print_stats()       # for faiss-gpu only
+        index.nprobe = 10
 
         # Stats
         # Get the number of lists in the index
         self._faiss_num_lists = index.invlists.nlist
+        print(index.is_trained)
+        print(index.ntotal)
 
         self.distances, self.neighbors = index.search(self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
-                                    self.top_k)
+                                                      self.top_k)
         
-        if self.data.is_dirty_er:
-            self.blocks = {
-                self._si.d1_retained_ids[i] : set(x for x in self.neighbors[i] if x not in [-1, i]) \
-                        for i in range(0, self.neighbors.shape[0])
-            }
-        else:
-            self.blocks = {
-                self._si.d2_retained_ids[i] : set(x for x in self.neighbors[i] if x != -1) \
-                        for i in range(0, self.neighbors.shape[0])
-            }
+        self.blocks = dict()
+        
+        for i in range(0, self.neighbors.shape[0]):
+            if self.data.is_dirty_er:
+                entity_id_d2 = i
+            else:
+                entity_id_d2 = i + self.data.dataset_limit
+            
+            if entity_id_d2 not in self.blocks.keys():
+                self.blocks[entity_id_d2] = set()            
+            
+            for entity_id_d1 in self.neighbors[i]:
+
+                if entity_id_d1 == -1:
+                    continue
+                
+                if entity_id_d1 not in self.blocks.keys():
+                    self.blocks[entity_id_d1] = set()
+
+                self.blocks[entity_id_d1].add(entity_id_d2)
+                self.blocks[entity_id_d2].add(entity_id_d1)
+
 
     def _similarity_search_with_FALCONN(self):
         pass
