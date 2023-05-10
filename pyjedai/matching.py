@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 
 from scipy.spatial.distance import cosine
 
-
 from networkx import Graph
 from py_stringmatching.similarity_measure.affine import Affine
 from py_stringmatching.similarity_measure.bag_distance import BagDistance
@@ -164,7 +163,7 @@ class EntityMatching(PYJEDAIFeature):
                     tokenizer, available_tokenizers
                 )
             )
-
+        
     def predict(self,
                 blocks: dict,
                 data: Data,
@@ -188,13 +187,13 @@ class EntityMatching(PYJEDAIFeature):
         self.vectors_d2 = vectors_d2
         
         if self.metric in vector_metrics:
-            if(vectors_d2 and not vectors_d1):
+            if(vectors_d2 is not None and vectors_d1 is None):
                 raise ValueError("Embeddings of the first dataset not given")
 
-            if(vectors_d1):
+            if(vectors_d1 is not None):
                 self.vectors = vectors_d1
                 if(not data.is_dirty_er):
-                    if(not vectors_d2):
+                    if(vectors_d2 is None):
                         raise ValueError("Embeddings of the second dataset not given")
                     self.vectors = np.concatenate((vectors_d1,vectors_d2), axis=0)
 
@@ -322,7 +321,7 @@ class EntityMatching(PYJEDAIFeature):
         }
 
     def plot_distribution_of_scores(self) -> None:
-        title = "Distribution of predicted scores"
+        title = "Distribution of scores with " + self.metric + " metric in graph from entity matching"
         def weight_distribution(G):
             bins = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
             distribution = [0] * (len(bins)-1)
@@ -352,6 +351,43 @@ class EntityMatching(PYJEDAIFeature):
         ax.set_xlabel('Similarity score range')
         fig.tight_layout()
         plt.show()
+
+    def plot_gt_distribution_of_scores(self) -> None:
+        title = "Distribution of scores with " + self.metric + " metric on ground truth pairs"
+        def weight_distribution():
+            bins = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+            distribution = [0] * (len(bins)-1)
+            for _, (id1, id2) in self.data.ground_truth.iterrows():
+                id1 = self.data._ids_mapping_1[id1]
+                id2 = self.data._ids_mapping_1[id2] if self.data.is_dirty_er else self.data._ids_mapping_2[id2]
+                w = self._calculate_vector_similarity(id1, id2)
+
+                for i in range(len(bins) - 1):
+                    if bins[i] <= w < bins[i + 1]:
+                        distribution[i] += 1
+                        break
+            return distribution, len(self.data.ground_truth)
+
+        labels = [f'{(i)/10:.1f} - {(i+1)/10:.1f}' for i in range(0, 10)]
+
+        distribution, num_of_pairs = weight_distribution()
+        width = 0.5
+        x = np.arange(len(labels))  # the label locations
+        distribution = list(map(lambda x: (x/num_of_pairs)*100, distribution))
+        print("Distribution-% of predicted scores: ", distribution)
+
+        fig, ax = plt.subplots(figsize=(10,6))
+        r1 = ax.bar(x, distribution, width, align='center', color='blue')
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels)
+
+        # Add some text for labels, title and custom x-axis tick labels, etc.
+        ax.set_ylabel('Percentage of pairs in each range to all (%)')
+        ax.set_title(title)
+        ax.set_xlabel('Similarity score range')
+        fig.tight_layout()
+        plt.show()
+
 
     def evaluate(self,
                  prediction,
@@ -392,3 +428,6 @@ class EntityMatching(PYJEDAIFeature):
             "Metric" : self.metric,
             "Similarity Threshold" : self.similarity_threshold
         }
+        
+    def stats(self) -> None:
+        pass
