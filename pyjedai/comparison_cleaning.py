@@ -14,7 +14,7 @@ from tqdm.autonotebook import tqdm
 from .evaluation import Evaluation
 
 from .datamodel import Data, PYJEDAIFeature
-from .utils import chi_square, create_entity_index, get_sorted_blocks_shuffled_entities, PositionIndex
+from .utils import chi_square, create_entity_index, get_sorted_blocks_shuffled_entities, PositionIndex, canonical_swap, sorted_enumerate
 
 from abc import ABC, abstractmethod
 from typing import Tuple, List
@@ -39,7 +39,8 @@ class AbstractComparisonCleaning(PYJEDAIFeature):
             self,
             blocks: dict,
             data: Data,
-            tqdm_disable: bool = False
+            tqdm_disable: bool = False,
+            store_weights: bool = False
     ) -> dict:
         """Main method for comparison cleaning
 
@@ -52,7 +53,7 @@ class AbstractComparisonCleaning(PYJEDAIFeature):
             dict: cleaned blocks
         """
         start_time = time()
-        self.tqdm_disable, self.data = tqdm_disable, data
+        self.tqdm_disable, self.data, self.store_weights = tqdm_disable, data, store_weights
         self._limit = self.data.num_of_entities \
                 if self.data.is_dirty_er or self._node_centric else self.data.dataset_limit
         self._progress_bar = tqdm(
@@ -61,6 +62,7 @@ class AbstractComparisonCleaning(PYJEDAIFeature):
             disable=self.tqdm_disable
         )
 
+        self._stored_weights =  defaultdict(float) if self.store_weights else None
         self._entity_index = create_entity_index(blocks, self.data.is_dirty_er)
         self._num_of_blocks = len(blocks)
         self._blocks: dict = blocks
@@ -91,7 +93,24 @@ class AbstractComparisonCleaning(PYJEDAIFeature):
     @abstractmethod
     def _configuration(self) -> dict:
         pass
+    
+    def get_precalculated_weight(self, entity_id: int, neighbor_id: int) -> float:
+        """Returns the precalculated weight for given pair
 
+        Args:
+            entity_id (int): Entity ID
+            neighbor_id (int): Neighbor ID
+
+        Raises:
+            AttributeError: Given pair has no precalculated weigth
+
+        Returns:
+            float: Pair weigth
+        """
+        if(not self.store_weights): raise AttributeError("No precalculated weights.")
+        _weight = self.store_weights.get(canonical_swap(entity_id, neighbor_id), KeyError(f"Pair [{entity_id},{neighbor_id}] has no precalculated weight"))
+        return _weight
+        
     def evaluate(self,
                  prediction,
                  export_to_df: bool = False,
@@ -345,6 +364,8 @@ class WeightedEdgePruning(AbstractMetablocking):
             weight = self._get_weight(entity_id, neighbor_id)
             if self._threshold <= weight:
                 self._retained_neighbors.add(neighbor_id)
+                if self.store_weights:
+                    self._stored_weights[canonical_swap(entity_id, neighbor_id)] = weight
 
         if len(self._retained_neighbors) > 0:
             self.blocks[entity_id] = self._retained_neighbors.copy()
@@ -380,6 +401,8 @@ class CardinalityEdgePruning(WeightedEdgePruning):
         while not self._top_k_edges.empty():
             comparison = self._top_k_edges.get()
             self.blocks[comparison[1]].add(comparison[2])
+            if self.store_weights:
+                self._stored_weights[canonical_swap(comparison[1], comparison[2])] = comparison[0]
 
         return self.blocks
 
@@ -468,6 +491,8 @@ class CardinalityNodePruning(CardinalityEdgePruning):
         while not self._top_k_edges.empty():
             comparison = self._top_k_edges.get()
             self._nearest_entities[entity_id].add(comparison[2])
+            if self.store_weights:
+                    self._stored_weights[canonical_swap(entity_id, comparison[2])] = weight
 
 class ReciprocalCardinalityNodePruning(CardinalityNodePruning):
     """A Meta-blocking method that retains the comparisons \
@@ -515,7 +540,7 @@ class WeightedNodePruning(WeightedEdgePruning):
                                 entity_id < neighbor_id) else 0
 
     def _set_threshold(self):
-        self._average_weight = np.empty([self.data.num_of_entities], dtype=float)
+        self._average_weight = np.zeros(self._limit, dtype=float)
         for i in range(0, self._limit):
             self._process_entity(i)
             self._update_threshold(i)
@@ -533,8 +558,11 @@ class WeightedNodePruning(WeightedEdgePruning):
             return
         self._retained_neighbors.clear()
         for neighbor_id in self._valid_entities:
-            if self._get_valid_weight(entity_id, neighbor_id):
+            _weight = self._get_valid_weight(entity_id, neighbor_id)
+            if _weight:
                 self._retained_neighbors.add(neighbor_id)
+                if self.store_weights:
+                    self._stored_weights[canonical_swap(entity_id, neighbor_id)] = _weight
         if len(self._retained_neighbors) > 0:
             self.blocks[entity_id] = self._retained_neighbors.copy()
 
@@ -594,10 +622,10 @@ class ProgressiveCardinalityEdgePruning(CardinalityEdgePruning):
     def _set_threshold(self) -> None:
         self._threshold = self._budget
 
-    def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, cc: AbstractMetablocking = None) -> dict:
+    def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, store_weights: bool = True, cc: AbstractMetablocking = None) -> dict:
 
         if(cc is None):
-            return super().process(blocks, data, tqdm_disable)
+            return super().process(blocks, data, tqdm_disable, store_weights)
         else:
             self._threshold = self._budget
             self._top_k_edges = PriorityQueue(int(2*self._threshold))
@@ -606,7 +634,7 @@ class ProgressiveCardinalityEdgePruning(CardinalityEdgePruning):
 
             for entity_id, neighbors in blocks.items():
                 for neighbor_id in neighbors:
-                    weight = cc._get_weight(entity_id, neighbor_id)
+                    weight = cc.get_precalculated_weight(entity_id, neighbor_id)
                     if weight >= self._minimum_weight:
                         self._top_k_edges.put(
                         (weight, entity_id, neighbor_id)
@@ -617,6 +645,8 @@ class ProgressiveCardinalityEdgePruning(CardinalityEdgePruning):
             while not self._top_k_edges.empty():
                 comparison = self._top_k_edges.get()
                 self.trimmed_blocks[comparison[1]].add(comparison[2])
+                if(self.store_weights):
+                    self._stored_weights[canonical_swap(comparison[1], comparison[2])] = comparison[0]
 
             return self.trimmed_blocks
 
@@ -628,10 +658,10 @@ class ProgressiveCardinalityNodePruning(CardinalityNodePruning):
     def _set_threshold(self) -> None:
         self._threshold = max(1, 2 * self._budget / self.data.num_of_entities)
 
-    def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, cc: AbstractMetablocking = None) -> dict:
+    def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, store_weights: bool = True, cc: AbstractMetablocking = None) -> dict:
 
         if(cc is None):
-            return super().process(blocks, data, tqdm_disable)
+            return super().process(blocks, data, tqdm_disable, store_weights)
         else:
             self._threshold = max(1, 2 * self._budget / data.num_of_entities)           
             self.trimmed_blocks : dict = defaultdict(set)
@@ -640,7 +670,7 @@ class ProgressiveCardinalityNodePruning(CardinalityNodePruning):
                 self._minimum_weight = sys.float_info.min
                 self._top_k_edges = PriorityQueue(int(2*self._threshold))
                 for neighbor_id in neighbors:
-                    weight = cc._get_weight(entity_id, neighbor_id)
+                    weight = cc.get_precalculated_weight(entity_id, neighbor_id)
                     if weight >= self._minimum_weight:
                         self._top_k_edges.put(
                         (weight, entity_id, neighbor_id)
@@ -651,6 +681,8 @@ class ProgressiveCardinalityNodePruning(CardinalityNodePruning):
                 while not self._top_k_edges.empty():
                     comparison = self._top_k_edges.get()
                     self.trimmed_blocks[entity_id].add(comparison[2])
+                    if self.store_weights:
+                        self._stored_weights[canonical_swap(entity_id, comparison[2])] = comparison[0]
 
         return self.trimmed_blocks 
     
@@ -675,7 +707,7 @@ class ProgressiveSortedNeighborhood(AbstractMetablocking):
             data: Data,
             tqdm_disable: bool = False
     ) -> PriorityQueue:
-        """Main method for comparison cleaning
+        """Calculates top comparisons for Progressive Matching
 
         Args:
             blocks (dict): blocks creted from previous steps of pyjedai
@@ -683,7 +715,7 @@ class ProgressiveSortedNeighborhood(AbstractMetablocking):
             tqdm_disable (bool, optional): Disables tqdm progress bars. Defaults to False.
 
         Returns:
-            dict: cleaned blocks
+            PriorityQueue: Top Comparisons
         """
         start_time = time()
         self.tqdm_disable, self.data = tqdm_disable, data
@@ -698,7 +730,7 @@ class ProgressiveSortedNeighborhood(AbstractMetablocking):
         self._num_of_blocks = len(blocks)
         self._blocks: dict = blocks
         
-        self._sorted_entity_ids = get_sorted_blocks_shuffled_entities(self._blocks)
+        self._sorted_entity_ids = get_sorted_blocks_shuffled_entities(self.data.is_dirty_er, self._blocks)
         self._total_sorted_entities = len(self._sorted_entity_ids)
         self._position_index = PositionIndex(self.data.num_of_entities, self._sorted_entity_ids)
         
@@ -751,6 +783,8 @@ class GlobalProgressiveSortedNeighborhood(ProgressiveSortedNeighborhood):
     def _apply_main_processing(self) -> PriorityQueue:
         self._max_window = 2 if self.data.num_of_entities <= 100 else int(2 ** (math.log(self.data.num_of_entities) + 1) + 1)
         self._top_pairs: PriorityQueue = PriorityQueue(2 * int(self._budget))
+        
+        self._neighbors = {}
         
         for entity in range(self.data.dataset_limit):
             entity_positions = self._position_index.get_positions(entity)
@@ -831,7 +865,7 @@ class LocalProgressiveSortedNeighborhood(ProgressiveSortedNeighborhood):
             _window_top_pairs = PriorityQueue()
             for entity in range(self.data.dataset_limit):
                 entity_positions = self._position_index.get_positions(entity)
-                self._neighbors.clear()
+                self._neighbors = {}
             
                 for entity_position in entity_positions:
                     right_neighbor = entity_position + self._current_window
@@ -874,6 +908,183 @@ class LocalProgressiveSortedNeighborhood(ProgressiveSortedNeighborhood):
         
         self._counters[neighbor] += 1.0    
         self._neighbors.add(neighbor)
+        
+        
+class ProgressiveEntityScheduling(WeightedNodePruning):
+    """Progressive Entity Scheduling"""
+
+    _method_name = "Progressive Entity Scheduling"
+    _method_short_name: str = "PES"
+    _method_info = "Sorts entities in descending order of their average weight, " + \
+                    "emits the top pair per entity. Finally, traverses the sorted " + \
+                    "entities and emits their comparisons in descending weight order " + \
+                    "within specified budget"
+    def __init__(self, weighting_scheme: str = 'CBS', budget: int = 0) -> None:
+        super().__init__(weighting_scheme)
+        self._budget = budget
+
+    def _process_entity(self, entity_id: int) -> None:
+        """Calculates the counters for the neighbors of specified entity,
+           stores the weight for each neighbor and the top comparison for current entity.
+           Finally, creates a prunned block for specified entity
+
+        Args:
+            entity_id (int): Entity ID
+        """
+        if entity_id not in self._entity_index:
+            return
+        self._valid_entities.clear()
+        self._flags[:] = -1
+        associated_blocks = self._entity_index[entity_id]
+        _top_entity_weight = -1
+        _top_entity_neighbor = -1
+        
+        for block_id in associated_blocks:
+            self._normalize_neighbor_entities(block_id, entity_id)
+            for neighbor_id in self._neighbors:
+                if self._flags[neighbor_id] != entity_id:
+                    self._counters[neighbor_id] = 0
+                    self._flags[neighbor_id] = entity_id
+                if self.weighting_scheme == 'ARCS':
+                    self._counters[neighbor_id] += 1 / self._blocks[block_id].get_cardinality(self.data.is_dirty_er)
+                else:
+                    self._counters[neighbor_id] += 1
+                self._valid_entities.add(neighbor_id)
+                
+                _current_neighbor_weight = self._get_weight(entity_id, neighbor_id)
+                self._stored_weights[(entity_id, neighbor_id)] = _current_neighbor_weight
+                if(_current_neighbor_weight >= _top_entity_weight):
+                    _top_entity_weight = _current_neighbor_weight
+                    _top_entity_neighbor = neighbor_id
+                
+        if(_top_entity_weight != -1 and _top_entity_neighbor != -1):
+            self._to_emit_pairs.append((_top_entity_weight, entity_id, _top_entity_neighbor))
+        
+        self.blocks[entity_id] = self._valid_entities.copy()        
+        
+
+    def _prune_edges(self) -> dict:
+        return None
+
+    def process_raw_blocks(self, blocks: dict):
+        self._entity_index = create_entity_index(blocks, self.data.is_dirty_er)
+        self._apply_main_processing()
+        
+    def process_prunned_blocks(self, blocks : dict, cc : AbstractMetablocking):
+        self._average_weight = np.zeros(self._limit, dtype=float)
+        self.blocks = blocks
+        for entity in sorted(blocks.keys()):
+            neighbors = blocks[entity]
+            _neighbors_weigth_sum : float = 0.0
+            _top_neighbor = -1
+            _top_weigth = -1
+            for neighbor in neighbors:
+                _current_neighbor_weigth = cc.get_precalculated_weight(entity, neighbor) 
+                _neighbors_weigth_sum += _current_neighbor_weigth
+                
+                if(_current_neighbor_weigth >= _top_weigth):
+                    _top_weigth = _current_neighbor_weigth
+                    _top_neighbor = neighbor
+                
+            self._average_weight[entity] = _neighbors_weigth_sum / len(neighbors)
+            self._to_emit_pairs.append(_top_weigth, entity, _top_neighbor)
+            
+    
+    def successful_emission(self, pair : tuple) -> bool:
+        """Attempts to emit given pair, returns True / False on Success / Fail 
+
+        Args:
+            pair (tuple): Tuple in the form (score, entity1, entity2)
+
+        Returns:
+            bool: Successful / Failed Emission
+        """
+        _weigth, _entity, _neighbor = pair
+        if(self._emitted_comparisons < self._budget):
+            self.pairs.append((_weigth, _entity, _neighbor))
+            self._emitted_comparisons += 1
+            self._progress_bar.update(1)
+            return True
+        else:
+            self.execution_time = time() - self.start_time
+            self._progress_bar.close()
+            return False
+     
+            
+    def produce_pairs(self) -> List[Tuple[float, int, int]]:
+        """Emits the top pair for each entity in decreasing average weigth order.
+           Traverses the entities in decreasing average weigth order and emits its
+           pairs in decreasing weight order
+
+        Returns:
+            List[Tuple[float, int, int]]: List of emitted pairs
+        """
+        self._emitted_comparisons = 0
+        checked_entity = np.zeros(self._limit, dtype=bool)
+        self.pairs = []
+        
+        
+        for pair in self._to_emit_pairs:
+            if(not self.successful_emission(pair)):
+                return self.pairs
+        
+        
+        for entity in self._avg_weight_sorted_entities:
+            checked_entity[entity] = True    
+            neighbors = self.blocks[entity]
+            entity_pairs : PriorityQueue = PriorityQueue()
+            
+            
+            for neighbor in neighbors:
+                if(not checked_entity[neighbor]):
+                    _current_weight = self.get_precalculated_weight(entity, neighbor)
+                    entity_pairs.put(
+                    (_current_weight, entity, neighbor)
+                    )
+            
+            if(not entity_pairs.empty()): entity_pairs.get()        
+                    
+            while(not entity_pairs.empty()):
+                pair = entity_pairs.get()
+                if(not self.successful_emission(pair)): return self.pairs
+                
+        return self.pairs 
+
+    def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, cc: AbstractMetablocking = None) -> None:
+        """Calculates the weights between entities, stores them in descending order of their average weight,
+           stores the top comparison per entity
+
+        Args:
+            blocks (dict): Blocks to process
+            data (Data): Data Feature
+            tqdm_disable (bool, optional): Progress Bar. Defaults to False.
+            cc (AbstractMetablocking, optional): Comparison Cleaner used in previous step. Defaults to None.
+
+        Returns:
+            None: None
+        """
+        
+        self.start_time = time()
+        self.tqdm_disable, self.data = tqdm_disable, data
+        self._limit = self.data.num_of_entities \
+                if self.data.is_dirty_er or self._node_centric else self.data.dataset_limit
+        self._progress_bar = tqdm(
+            total=self._limit,
+            desc=self._method_name,
+            disable=self.tqdm_disable
+        )
+        
+        self._num_of_blocks = len(blocks)
+        self._blocks: dict = blocks
+        self._stored_weights : dict = defaultdict(float)
+        self._to_emit_pairs = []
+        
+        if(cc is None):
+            self.process_raw_blocks(blocks)
+        else:
+            self.process_prunned_blocks(blocks, cc)
+            
+        self._avg_weight_sorted_entities = sorted_enumerate(self._average_weight)
             
 def get_meta_blocking_approach(acronym: str, w_scheme: str, budget: int = 0) -> any:
     """Return method by acronym

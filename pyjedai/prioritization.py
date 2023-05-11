@@ -4,7 +4,13 @@ import numpy as np
 from time import time
 import matplotlib.pyplot as plt
 from .matching import EntityMatching
-from .comparison_cleaning import ComparisonPropagation, ProgressiveCardinalityEdgePruning, ProgressiveCardinalityNodePruning, GlobalProgressiveSortedNeighborhood, LocalProgressiveSortedNeighborhood
+from .comparison_cleaning import (
+    ComparisonPropagation,
+    ProgressiveCardinalityEdgePruning,
+    ProgressiveCardinalityNodePruning,
+    GlobalProgressiveSortedNeighborhood,
+    LocalProgressiveSortedNeighborhood,
+    ProgressiveEntityScheduling)
 from .vector_based_blocking import EmbeddingsNNBlockBuilding
 from sklearn.metrics.pairwise import (
     cosine_similarity
@@ -54,6 +60,7 @@ from .comparison_cleaning import AbstractMetablocking
 from .vector_based_blocking import PREmbeddingsNNBlockBuilding
 from queue import PriorityQueue
 from random import sample
+from .utils import sorted_enumerate
 
 # Package import from https://anhaidgroup.github.io/py_stringmatching/v0.4.2/index.html
 
@@ -259,11 +266,11 @@ class HashBasedProgressiveMatching(ProgressiveMatching):
         self._w_scheme : str = w_scheme
 
 class GlobalTopPM(HashBasedProgressiveMatching):
-    """Applies Progressive WEP, sorts retained comparisons and applies Progressive Matching
+    """Applies Progressive CEP, sorts retained comparisons and applies Progressive Matching
     """
 
     _method_name: str = "Global Top Progressive Matching"
-    _method_info: str = "Applies Progressive WEP, sorts retained comparisons and applies Progressive Matching"
+    _method_info: str = "Applies Progressive CEP, sorts retained comparisons and applies Progressive Matching"
 
     def __init__(
             self,
@@ -290,7 +297,7 @@ class GlobalTopPM(HashBasedProgressiveMatching):
         for entity_id, candidate_ids in candidates.items():
             for candidate_id in candidate_ids:
                 self._insert_to_graph(entity_id, candidate_id, pcep._get_weight(entity_id, candidate_id))
-
+                
         return sorted(self.pairs.edges(data=True), key=lambda x: x[2]['weight'], reverse=True)
 
 
@@ -305,11 +312,11 @@ class GlobalTopPM(HashBasedProgressiveMatching):
         return sorted(self.pairs.edges(data=True), key=lambda x: x[2]['weight'], reverse=True)
 
 class LocalTopPM(HashBasedProgressiveMatching):
-    """Applies Progressive WEP, sorts retained comparisons and applies Progressive Matching
+    """Applies Progressive CNP, sorts retained comparisons and applies Progressive Matching
     """
 
     _method_name: str = "Global Top Progressive Matching"
-    _method_info: str = "Applies Progressive WEP, sorts retained comparisons and applies Progressive Matching"
+    _method_info: str = "Applies Progressive CNP, sorts retained comparisons and applies Progressive Matching"
 
     def __init__(
             self,
@@ -409,12 +416,12 @@ class EmbeddingsNNBPM(ProgressiveMatching):
         self.pairs = []
 
         average_neighborhood_distances = np.mean(self.scores, axis=1)
-        sorted_neighborhoods = np.argsort(average_neighborhood_distances)
+        sorted_neighborhoods = sorted_enumerate(average_neighborhood_distances)
 
         for sorted_neighborhood in sorted_neighborhoods:
 
             neighbor_indices = self.scores[sorted_neighborhood]
-            sorted_neighbor_indices = np.argsort(neighbor_indices)
+            sorted_neighbor_indices = sorted_enumerate(neighbor_indices)
             entity_id = self.ennbb._si.d1_retained_ids[sorted_neighborhood] \
             if self.data.is_dirty_er \
             else self.ennbb._si.d2_retained_ids[sorted_neighborhood]
@@ -572,7 +579,8 @@ class LocalPSNM(SimilarityBasedProgressiveMatching):
         return self.pairs
 
     def _predict_prunned_blocks(self, blocks: dict):
-        raise NotImplementedError("Sorter Neighborhood Algorithms don't support prunned blocks")
+        raise NotImplementedError("Sorter Neighborhood Algorithms don't support prunned blocks " + \
+                                "(pre comparison-cleaning entities per block distribution required")
     
     
 
@@ -608,3 +616,43 @@ class RandomPM(ProgressiveMatching):
     def _predict_prunned_blocks(self, blocks: dict) -> None:
         random_pairs = sample([(id1, id2) for id1 in blocks for id2 in blocks[id1]], self._budget)
         self.pairs.add_edge(*random_pairs)
+        
+
+class PESM(HashBasedProgressiveMatching):
+    """Applies Progressive Entity Scheduling Matching
+    """
+
+    _method_name: str = "Progressive Entity Scheduling Matching"
+    _method_info: str = "Applies Progressive Entity Scheduling - Sorts entities in descending order of their average weight, " + \
+                        "emits the top pair per entity. Finally, traverses the sorted " + \
+                        "entities and emits their comparisons in descending weight order " + \
+                        "within specified budget."
+    def __init__(
+            self,
+            budget: int = 0,
+            w_scheme: str = 'X2',
+            metric: str = 'dice',
+            tokenizer: str = 'white_space_tokenizer',
+            similarity_threshold: float = 0.5,
+            qgram: int = 2, # for jaccard
+            tokenizer_return_set = True, # unique values or not
+            attributes: any = None,
+            delim_set: list = None, # DelimiterTokenizer
+            padding: bool = True, # QgramTokenizer
+            prefix_pad: str = '#', # QgramTokenizer (if padding=True)
+            suffix_pad: str = '$' # QgramTokenizer (if padding=True)
+        ) -> None:
+        
+        super().__init__(budget, w_scheme, metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+
+
+    def _predict_raw_blocks(self, blocks: dict) -> None:
+        
+        pes : ProgressiveEntityScheduling = ProgressiveEntityScheduling(self._w_scheme, self._budget)
+        pes.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None)
+        self.pairs = pes.produce_pairs()
+
+    def _predict_prunned_blocks(self, blocks: dict):
+        return self._predict_raw_blocks(blocks)
+        # raise NotImplementedError("Sorter Neighborhood Algorithms doesn't support prunned blocks (lack of precalculated weights)")
+        

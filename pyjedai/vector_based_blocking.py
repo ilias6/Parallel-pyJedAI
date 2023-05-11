@@ -557,13 +557,15 @@ class PREmbeddingsNNBlockBuilding(EmbeddingsNNBlockBuilding):
 
         return self.blocks
 
-    def create_vectors(self):      
+    def create_vectors(self):
+        vectors_1 = None
+        vectors_2 = None      
 
         if(self.precomputed_vectors(data = self.data)):
-            self.vectors_1 = self.vectors_1[self._d1_valid_indices]
+            vectors_1 = self.vectors_1[self._d1_valid_indices]
 
             if(not self.data.is_dirty_er):
-                self.vectors_2 = self.vectors_2[self._d2_valid_indices]
+                vectors_2 = self.vectors_2[self._d2_valid_indices]
         else:
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             print("Device selected: ", self.device)

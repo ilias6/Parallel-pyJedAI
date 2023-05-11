@@ -188,13 +188,12 @@ class EntityMatching(PYJEDAIFeature):
         self.vectors_d2 = vectors_d2
         
         if self.metric in vector_metrics:
-            if(vectors_d2 and not vectors_d1):
+            if(vectors_d1 is None):
                 raise ValueError("Embeddings of the first dataset not given")
-
-            if(vectors_d1):
+            else:
                 self.vectors = vectors_d1
                 if(not data.is_dirty_er):
-                    if(not vectors_d2):
+                    if(vectors_d2 is None):
                         raise ValueError("Embeddings of the second dataset not given")
                     self.vectors = np.concatenate((vectors_d1,vectors_d2), axis=0)
 

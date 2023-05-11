@@ -3,7 +3,7 @@ import numpy as np
 from pyjedai.datamodel import Block
 from pyjedai.datamodel import Data
 from abc import ABC
-from typing import List
+from typing import List, Tuple
 import random
 
 # ----------------------- #
@@ -154,7 +154,7 @@ def batch_pairs(iterable, batch_size: int = 1):
     """
     return (iterable[pos:pos + batch_size] for pos in range(0, len(iterable), batch_size))
 
-def get_sorted_blocks_shuffled_entities(blocks):
+def get_sorted_blocks_shuffled_entities(dirty_er: bool, blocks: dict) -> List[int]:
     """Sorts blocks in alphabetical order based on their token, shuffles the entities of each block, concatenates the result in a list
 
     Args:
@@ -165,7 +165,7 @@ def get_sorted_blocks_shuffled_entities(blocks):
     """
     sorted_entities = []
     for _, block in sorted(blocks.items()):
-        sorted_entities += random.shuffle(list(block.entities_D1 | block.entities_D2 if block.entities_D2 else block.entities_D1))
+        sorted_entities += random.shuffle(list(block.entities_D1 | block.entities_D2 if not dirty_er else block.entities_D1))
     return sorted_entities
 
 
@@ -195,10 +195,10 @@ class SubsetIndexer(ABC):
         """
 
         if(blocks is None):
-            self.d1_retained_ids = list(range(self.num_of_entities_1))
+            self.d1_retained_ids = list(range(data.num_of_entities_1))
 
             if(not data.is_dirty_er):
-                self.d2_retained_ids = list(range(self.num_of_entities_1, self.num_of_entities_1 + self.num_of_entities_2))
+                self.d2_retained_ids = list(range(data.num_of_entities_1, data.num_of_entities_1 + data.num_of_entities_2))
         else:
             _d1_retained_ids_set: set[int] = set()
             _d2_retained_ids_set: set[int] = set()
@@ -248,6 +248,22 @@ class PositionIndex(ABC):
             
     def get_positions(self, entity: int):
         return self._counters[entity]
+    
+def canonical_swap(id1: int, id2: int) -> Tuple[int, int]:
+    """Returns the identifiers in canonical order
+
+    Args:
+        id1 (int): ID1
+        id2 (int): ID2
+
+    Returns:
+        Tuple[int, int]: IDs tuple in canonical order (ID1 < ID2)
+    """
+    
+    return id1, id2 if id2 > id1 else id2, id1
+
+def sorted_enumerate(seq):
+    return [i for (v, i) in sorted((v, i) for (i, v) in enumerate(seq))]
             
             
         
