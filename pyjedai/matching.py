@@ -131,6 +131,7 @@ class EntityMatching(PYJEDAIFeature):
         self.vectors_d1 = None
         self.vectors_d2 = None
         self.tokenizer = tokenizer
+        self.execution_time = 0
         #
         # Selecting tokenizer
         #

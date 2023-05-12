@@ -7,7 +7,8 @@ import warnings
 from time import time
 from typing import List, Tuple
 import re
-
+import pickle
+import networkx as nx
 import faiss
 import gensim.downloader as api
 import numpy as np
@@ -81,7 +82,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         Returns:
             str: entity string
         """
-        return ' '.join(list(set(filter(None, re.split('[\\W_]', entity.lower())))))
+        return ' '.join(list(filter(None, re.split('[\\W_]', entity.lower()))))
 
     def build_blocks(self,
                      data: Data,
@@ -92,7 +93,10 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                      attributes_1: list = None,
                      attributes_2: list = None,
                      return_vectors: bool = False,
-                     tqdm_disable: bool = False
+                     tqdm_disable: bool = False,
+                     save_embeddings: bool = True,
+                     load_embeddings_if_exist: bool = False,
+                     with_entity_matching: bool = False
     ) -> any:
         """Main method of the vector based approach. Contains two steps. First an embedding method. \
             And afterwards a similarity search upon the vectors created in the previous step.
@@ -123,6 +127,8 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         """
         _start_time = time()
         self.blocks = dict()
+        self.with_entity_matching = with_entity_matching
+        self.save_embeddings, self.load_embeddings_if_exist = save_embeddings, load_embeddings_if_exist
         self.max_word_embeddings_size = max_word_embeddings_size
         self.data, self.attributes_1, self.attributes_2, self.vector_size, self.num_of_clusters, self.top_k \
             = data, attributes_1, attributes_2, vector_size, num_of_clusters, top_k
@@ -146,14 +152,31 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print("Device selected: ", self.device)
 
-        if self.vectorizer in ['word2vec', 'fasttext', 'doc2vec', 'glove']:
-            vectors_1, vectors_2 = self._create_gensim_embeddings()
-        elif self.vectorizer in ['bert', 'distilbert', 'roberta', 'xlnet', 'albert']:
-            vectors_1, vectors_2 = self._create_pretrained_word_embeddings()
-        elif self.vectorizer in ['smpnet', 'st5', 'sent_glove', 'sdistilroberta', 'sminilm']:
-            vectors_1, vectors_2 = self._create_pretrained_sentence_embeddings()
+        if self.with_entity_matching:
+            self.graph = nx.Graph()
+        
+        if load_embeddings_if_exist:
+            try:
+                print("Loading embeddings from file...")
+                self.vectors_1 = vectors_1 = np.load(self.vectorizer+'_embeddings_1.npy')
+                self.vectors_2 = vectors_2 = np.load(self.vectorizer+'_embeddings_2.npy')
+            except:
+                print("Embeddings not found. Creating new ones.")
+                raise ValueError("Embeddings not found.")
         else:
-            raise AttributeError("Not available vectorizer")
+            if self.vectorizer in ['word2vec', 'fasttext', 'doc2vec', 'glove']:
+                vectors_1, vectors_2 = self._create_gensim_embeddings()
+            elif self.vectorizer in ['bert', 'distilbert', 'roberta', 'xlnet', 'albert']:
+                vectors_1, vectors_2 = self._create_pretrained_word_embeddings()
+            elif self.vectorizer in ['smpnet', 'st5', 'sent_glove', 'sdistilroberta', 'sminilm']:
+                vectors_1, vectors_2 = self._create_pretrained_sentence_embeddings()
+            else:
+                raise AttributeError("Not available vectorizer")
+
+        if save_embeddings:
+            print("Saving embeddings...")
+            np.save(self.vectorizer+'_embeddings_1.npy', vectors_1)
+            np.save(self.vectorizer+'_embeddings_2.npy', vectors_2)
 
         if return_vectors:
             return (vectors_1, _) if data.is_dirty_er else (vectors_1, vectors_2)
@@ -167,9 +190,12 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
             self._similarity_search_with_SCANN()
         else:
             raise AttributeError("Not available method")
-        self._progress_bar.close()
+        self._progress_bar.close()        
         self.execution_time = time() - _start_time
 
+        if self.with_entity_matching:
+            return self.blocks, self.graph
+        
         return self.blocks
 
     def _create_gensim_embeddings(self) -> Tuple[np.array, np.array]:
@@ -272,20 +298,10 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         return vectors_1, vectors_2
 
     def _similarity_search_with_FAISS(self):
-        quantiser = faiss.IndexFlatL2(self.vectors_1.shape[1])
-        index = faiss.IndexIVFFlat(quantiser,
-                                    self.vectors_1.shape[1],
-                                    self.num_of_clusters)
+        index = faiss.IndexFlatL2(self.vectors_1.shape[1])
+        index.metric_type = faiss.METRIC_INNER_PRODUCT
         index.train(self.vectors_1)  # train on the vectors of dataset 1
         index.add(self.vectors_1)   # add the vectors and update the index
-        # index.print_stats()       # for faiss-gpu only
-        index.nprobe = 10
-
-        # Stats
-        # Get the number of lists in the index
-        self._faiss_num_lists = index.invlists.nlist
-        print(index.is_trained)
-        print(index.ntotal)
 
         self.distances, self.neighbors = index.search(self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
                                                       self.top_k)
@@ -301,6 +317,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
             if entity_id_d2 not in self.blocks.keys():
                 self.blocks[entity_id_d2] = set()            
             
+            j = 0
             for entity_id_d1 in self.neighbors[i]:
 
                 if entity_id_d1 == -1:
@@ -311,6 +328,11 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
 
                 self.blocks[entity_id_d1].add(entity_id_d2)
                 self.blocks[entity_id_d2].add(entity_id_d1)
+                
+                if self.with_entity_matching:
+                    self.graph.add_edge(entity_id_d2, entity_id_d1, weight=self.distances[i][j])
+
+                j += 1
 
 
     def _similarity_search_with_FALCONN(self):
@@ -406,7 +428,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         print("Statistics:")
         if self.similarity_search == 'faiss':
             print(" FAISS:" +
-                "\n\tNumber of entries in each list:  " + str(self._faiss_num_lists) + 
+                # "\n\tNumber of entries in each list:  " + str(self._faiss_num_lists) + 
                 "\n\tIndices shape returned after search: " + str(self.neighbors.shape)
             )
         elif self.similarity_search == 'falconn':           
