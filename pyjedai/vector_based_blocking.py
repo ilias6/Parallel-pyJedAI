@@ -2,15 +2,17 @@
 Contains all methods for creating embeddings from text 
 and then performing NNs methods for cluster formation.
 '''
+import os
+import pickle
+import re
 import sys
 import warnings
 from time import time
 from typing import List, Tuple
-import re
-import pickle
-import networkx as nx
+
 import faiss
 import gensim.downloader as api
+import networkx as nx
 import numpy as np
 import torch
 import transformers
@@ -27,7 +29,12 @@ from .datamodel import Data, PYJEDAIFeature
 from .evaluation import Evaluation
 from .utils import SubsetIndexer
 
-
+EMBEDDINGS_DIR = '.embeddings'
+if not os.path.exists(EMBEDDINGS_DIR):
+    os.makedirs(EMBEDDINGS_DIR)
+    EMBEDDINGS_DIR = os.path.abspath(EMBEDDINGS_DIR)
+    print('Created embeddings directory at: ' + EMBEDDINGS_DIR)
+    
 LINUX_ENV=False
 # try:
 #     if 'linux' in sys.platform:
@@ -158,8 +165,13 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         if load_embeddings_if_exist:
             try:
                 print("Loading embeddings from file...")
-                self.vectors_1 = vectors_1 = np.load(self.vectorizer+'_embeddings_1.npy')
-                self.vectors_2 = vectors_2 = np.load(self.vectorizer+'_embeddings_2.npy')
+                print("Loading file: " + EMBEDDINGS_DIR+'/'+self.vectorizer+'_embeddings_1.npy')
+                self.vectors_1 = vectors_1 = np.load(EMBEDDINGS_DIR+'/'+self.vectorizer+'_embeddings_1.npy')
+                self._progress_bar.update(data.num_of_entities_1)
+                print("Loading file: " + EMBEDDINGS_DIR+'/'+self.vectorizer+'_embeddings_2.npy')
+                self.vectors_2 = vectors_2 = np.load(EMBEDDINGS_DIR+'/'+self.vectorizer+'_embeddings_2.npy')
+                self._progress_bar.update(data.num_of_entities_2)
+                print("Loading embeddings from file finished")
             except:
                 print("Embeddings not found. Creating new ones.")
                 raise ValueError("Embeddings not found.")
@@ -175,8 +187,10 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
 
         if save_embeddings:
             print("Saving embeddings...")
-            np.save(self.vectorizer+'_embeddings_1.npy', vectors_1)
-            np.save(self.vectorizer+'_embeddings_2.npy', vectors_2)
+            print("Saving file: " + EMBEDDINGS_DIR+'/'+self.vectorizer+'_embeddings_1.npy')
+            np.save(EMBEDDINGS_DIR+'/'+self.vectorizer+'_embeddings_1.npy', vectors_1)
+            print("Saving file: " + EMBEDDINGS_DIR+'/'+self.vectorizer+'_embeddings_2.npy')
+            np.save(EMBEDDINGS_DIR+'/'+self.vectorizer+'_embeddings_2.npy', vectors_2)
 
         if return_vectors:
             return (vectors_1, _) if data.is_dirty_er else (vectors_1, vectors_2)
