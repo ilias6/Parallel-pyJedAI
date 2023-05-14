@@ -165,12 +165,17 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         if load_embeddings_if_exist:
             try:
                 print("Loading embeddings from file...")
-                print("Loading file: " + EMBEDDINGS_DIR+'/'+self.vectorizer+'_embeddings_1.npy')
-                self.vectors_1 = vectors_1 = np.load(EMBEDDINGS_DIR+'/'+self.vectorizer+'_embeddings_1.npy')
+                
+                p1 = os.path.join(EMBEDDINGS_DIR, self.vectorizer+'_embeddings_1.npy')
+                print("Loading file: ", p1)
+                self.vectors_1 = vectors_1 = np.load(p1)
                 self._progress_bar.update(data.num_of_entities_1)
-                print("Loading file: " + EMBEDDINGS_DIR+'/'+self.vectorizer+'_embeddings_2.npy')
-                self.vectors_2 = vectors_2 = np.load(EMBEDDINGS_DIR+'/'+self.vectorizer+'_embeddings_2.npy')
+
+                p2 = os.path.join(EMBEDDINGS_DIR, self.vectorizer+'_embeddings_2.npy')
+                print("Loading file: ", p2)
+                self.vectors_2 = vectors_2 = np.load(p2)
                 self._progress_bar.update(data.num_of_entities_2)
+                
                 print("Loading embeddings from file finished")
             except:
                 print("Embeddings not found. Creating new ones.")
@@ -187,10 +192,14 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
 
         if save_embeddings:
             print("Saving embeddings...")
-            print("Saving file: " + EMBEDDINGS_DIR+'/'+self.vectorizer+'_embeddings_1.npy')
-            np.save(EMBEDDINGS_DIR+'/'+self.vectorizer+'_embeddings_1.npy', vectors_1)
-            print("Saving file: " + EMBEDDINGS_DIR+'/'+self.vectorizer+'_embeddings_2.npy')
-            np.save(EMBEDDINGS_DIR+'/'+self.vectorizer+'_embeddings_2.npy', vectors_2)
+            
+            p1 = os.path.join(EMBEDDINGS_DIR, self.vectorizer+'_embeddings_1.npy')            
+            print("Saving file: ", p1)
+            np.save(p1, self.vectors_1)
+            
+            p2 = os.path.join(EMBEDDINGS_DIR, self.vectorizer+'_embeddings_2.npy')
+            print("Saving file: ", p2)
+            np.save(p2, self.vectors_2)
 
         if return_vectors:
             return (vectors_1, _) if data.is_dirty_er else (vectors_1, vectors_2)
