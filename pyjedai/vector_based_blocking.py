@@ -166,12 +166,14 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
             try:
                 print("Loading embeddings from file...")
                 
-                p1 = os.path.join(EMBEDDINGS_DIR, self.vectorizer+'_embeddings_1.npy')
+                p1 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + self.data.dataset_name_1 \
+                                                    if self.data.dataset_name_1 is not None else "d1" +'_1.npy')
                 print("Loading file: ", p1)
                 self.vectors_1 = vectors_1 = np.load(p1)
                 self._progress_bar.update(data.num_of_entities_1)
 
-                p2 = os.path.join(EMBEDDINGS_DIR, self.vectorizer+'_embeddings_2.npy')
+                p2 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + self.data.dataset_name_2 \
+                                                    if self.data.dataset_name_2 is not None else "d2" +'_2.npy')
                 print("Loading file: ", p2)
                 self.vectors_2 = vectors_2 = np.load(p2)
                 self._progress_bar.update(data.num_of_entities_2)
@@ -193,11 +195,13 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         if save_embeddings:
             print("Saving embeddings...")
             
-            p1 = os.path.join(EMBEDDINGS_DIR, self.vectorizer+'_embeddings_1.npy')            
+            p1 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + self.data.dataset_name_1 \
+                                                    if self.data.dataset_name_1 is not None else "d1" +'_1.npy')
             print("Saving file: ", p1)
             np.save(p1, self.vectors_1)
             
-            p2 = os.path.join(EMBEDDINGS_DIR, self.vectorizer+'_embeddings_2.npy')
+            p2 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + self.data.dataset_name_2 \
+                                                    if self.data.dataset_name_2 is not None else "d2" +'_2.npy')
             print("Saving file: ", p2)
             np.save(p2, self.vectors_2)
 
