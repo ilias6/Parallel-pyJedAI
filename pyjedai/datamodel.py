@@ -65,11 +65,13 @@ class Data:
     def __init__(
                 self,
                 dataset_1: DataFrame,
-                id_column_name_1: str,
+                id_column_name_1: str,                
                 attributes_1: list = None,
+                dataset_name_1: str = None,
                 dataset_2: DataFrame = None,
                 attributes_2: list = None,
                 id_column_name_2: str = None,
+                dataset_name_2: str = None,
                 ground_truth: DataFrame = None
     ) -> None:
         # Original Datasets as pd.DataFrame
@@ -104,6 +106,14 @@ class Data:
         self.id_column_name_1 = id_column_name_1
         self.id_column_name_2 = id_column_name_2
 
+        self.dataset_name_1 = dataset_name_1
+        self.dataset_name_2 = dataset_name_2
+        
+        # Fill NaN values with empty string
+        self.dataset_1.fillna("", inplace=True)
+        if not self.is_dirty_er:
+            self.dataset_2.fillna("", inplace=True)
+            
         # Attributes
         if attributes_1 is None:
             if dataset_1.columns.values.tolist():
@@ -134,7 +144,7 @@ class Data:
             self._gt_to_ids_reversed_2: dict
 
         self.entities = self.dataset_1 = self.dataset_1.astype(str)
-
+        
         # Concatenated columns into new dataframe
         self.entities_d1 = self.dataset_1[self.attributes_1]
 
@@ -196,10 +206,12 @@ class Data:
         print("Type of Entity Resolution: ", "Dirty" if self.is_dirty_er else "Clean-Clean" )
         print("Dataset-1:")
         print("\tNumber of entities: ", self.num_of_entities_1)
+        print("\tNumber of NaN values: ", self.dataset_1.isnull().sum().sum())
         print("\tAttributes: \n\t\t", self.attributes_1)
         if not self.is_dirty_er:
             print("Dataset-2:")
             print("\tNumber of entities: ", self.num_of_entities_2)
+            print("\tNumber of NaN values: ", self.dataset_2.isnull().sum().sum())
             print("\tAttributes: \n\t\t", self.attributes_2)
         print("\nTotal number of entities: ", self.num_of_entities)
         if self.ground_truth is not None:
