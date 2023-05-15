@@ -89,6 +89,9 @@ class AbstractComparisonCleaning(PYJEDAIFeature):
     @abstractmethod
     def _configuration(self) -> dict:
         pass
+    
+    def stats(self) -> None:
+        pass
 
     def evaluate(self,
                  prediction,
