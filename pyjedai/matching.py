@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import statistics
 # from scipy.spatial.distance import cosine
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 from networkx import Graph
 from py_stringmatching.similarity_measure.affine import Affine
@@ -93,7 +94,7 @@ set_metrics = [
 ]
 
 bag_metrics = [
-    'tfidf'
+    'tf-idf'
 ]
 
 vector_metrics = [
@@ -212,6 +213,10 @@ class EntityMatching(PYJEDAIFeature):
         self._progress_bar = tqdm(total=len(blocks),
                                   desc=self._method_name+" ("+self.metric+")",
                                   disable=self.tqdm_disable)
+        
+        if self.metric == 'tf-idf':
+            self._calculate_tfidf()
+        
         if 'Block' in str(type(all_blocks[0])):
             self._predict_raw_blocks(blocks)
         elif isinstance(all_blocks[0], set):
@@ -244,9 +249,7 @@ class EntityMatching(PYJEDAIFeature):
             for _, block in blocks.items():
                 for entity_id1 in block.entities_D1:
                     for entity_id2 in block.entities_D2:
-                        similarity = self._similarity(
-                            entity_id1, entity_id2
-                        )
+                        similarity = self._similarity(entity_id1, entity_id2)
                         self._insert_to_graph(entity_id1, entity_id2, similarity)
                 self._progress_bar.update(1)
 
@@ -274,36 +277,69 @@ class EntityMatching(PYJEDAIFeature):
         else:
             raise AttributeError("Please select one vector similarity metric from the given: " + ','.join(vector_metrics))
 
+    def _calculate_tfidf(self) -> None:
+        
+        vectorizer = TfidfVectorizer()
+        
+        d1 = self.data.dataset_1[self.attributes] if self.attributes else self.data.dataset_1
+        self._entities_d1 = d1 \
+                    .apply(" ".join, axis=1) \
+                    .apply(lambda x: x.lower()) \
+                    .apply(self._tokenizer.tokenize) \
+                    .apply(" ".join) \
+                    .values.tolist()
+        
+        d2 = self.data.dataset_2[self.attributes] if self.attributes and not self.data.is_dirty_er else self.data.dataset_2
+        self._entities_d2 = d2 \
+                    .apply(" ".join, axis=1) \
+                    .apply(lambda x: x.lower()) \
+                    .apply(self._tokenizer.tokenize) \
+                    .apply(" ".join) \
+                    .values.tolist() if not self.data.is_dirty_er else None
+                    
+        if self.data.is_dirty_er:
+            pass
+        else:
+            self.corpus = self._entities_d1 + self._entities_d2
+            vectorizer.fit(self.corpus)
+            self.tfidf_matrix = vectorizer.transform(self.corpus)
+            self.tfidf_similarity_matrix = cosine_similarity(self.tfidf_matrix)
+
+    def _calculate_tfidf_similarity(self, entity_id1: int, entity_id2: int) -> float:
+        return self.tfidf_similarity_matrix[entity_id1][entity_id2]
+
     def _similarity(self, entity_id1: int, entity_id2: int) -> float:
 
         similarity: float = 0.0
         if self.vectors_d1 is not None and self.metric in vector_metrics:
             return self._calculate_vector_similarity(entity_id1, entity_id2)
+        elif self.metric == 'tf-idf':
+            return self._calculate_tfidf_similarity(entity_id1, entity_id2)
 
         if isinstance(self.attributes, dict):
             for attribute, weight in self.attributes.items():
-                e1 = self.data.entities.iloc[entity_id1][attribute]
-                e2 = self.data.entities.iloc[entity_id2][attribute]
+                e1 = self.data.entities.iloc[entity_id1][attribute].lower()
+                e2 = self.data.entities.iloc[entity_id2][attribute].lower()
 
                 similarity += weight*metrics_mapping[self._metric].get_sim_score(
-                    self._tokenizer.tokenize(e1) if self._metric in (set_metrics + bag_metrics) else e1,
-                    self._tokenizer.tokenize(e2) if self._metric in (set_metrics + bag_metrics) else e2
+                    self._tokenizer.tokenize(e1) if self._metric in set_metrics else e1,
+                    self._tokenizer.tokenize(e2) if self._metric in set_metrics else e2
                 )
         if isinstance(self.attributes, list):
             for attribute in self.attributes:
-                e1 = self.data.entities.iloc[entity_id1][attribute]
-                e2 = self.data.entities.iloc[entity_id2][attribute]
+                e1 = self.data.entities.iloc[entity_id1][attribute].lower()
+                e2 = self.data.entities.iloc[entity_id2][attribute].lower()
                 similarity += metrics_mapping[self._metric].get_sim_score(
-                    self._tokenizer.tokenize(e1) if self._metric in (set_metrics + bag_metrics) else e1,
-                    self._tokenizer.tokenize(e2) if self._metric in (set_metrics + bag_metrics) else e2
+                    self._tokenizer.tokenize(e1) if self._metric in set_metrics else e1,
+                    self._tokenizer.tokenize(e2) if self._metric in set_metrics else e2
                 )
                 similarity /= len(self.attributes)
         else:
             # concatenated row string
-            e1 = self.data.entities.iloc[entity_id1].str.cat(sep=' ')
-            e2 = self.data.entities.iloc[entity_id2].str.cat(sep=' ')
-            te1 = self._tokenizer.tokenize(e1) if self._metric in (set_metrics + bag_metrics) else e1
-            te2 = self._tokenizer.tokenize(e2) if self._metric in (set_metrics + bag_metrics) else e2
+            e1 = self.data.entities.iloc[entity_id1].str.cat(sep=' ').lower()
+            e2 = self.data.entities.iloc[entity_id2].str.cat(sep=' ').lower()
+            te1 = self._tokenizer.tokenize(e1) if self._metric in set_metrics else e1
+            te2 = self._tokenizer.tokenize(e2) if self._metric in set_metrics else e2
             similarity = metrics_mapping[self._metric].get_sim_score(te1, te2)
 
         return similarity
@@ -326,7 +362,7 @@ class EntityMatching(PYJEDAIFeature):
             "Attributes" : self.attributes,
             "Similarity threshold" : self.similarity_threshold
         }
-        
+
     def get_weights_avg(self) -> float:
         return sum([w for _, _, w in self.pairs.edges(data='weight')])/len(self.pairs.edges(data='weight'))
 
