@@ -89,7 +89,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         Returns:
             str: entity string
         """
-        return ' '.join(list(filter(None, re.split('[\\W_]', entity.lower()))))
+        return entity.strip().lower()#' '.join(list(filter(None, re.split('[\\W_]', entity.lower()))))
 
     def build_blocks(self,
                      data: Data,
