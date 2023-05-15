@@ -235,7 +235,7 @@ class Evaluation:
             normalized_aucs.append(normalized_auc)
             if proportional: sizes = [cr * 100 for cr in cumulative_recall]
             else: sizes = [10] * len(cumulative_recall)
-            ax.scatter(x_values, cumulative_recall, marker='o', s=sizes, color=color, label=method_name)
+            ax.scatter(x_values, cumulative_recall, marker='o', s=0.05, color=color, label=method_name)
             ax.plot(x_values, cumulative_recall, color=color)
 
         ax.set_xlabel('ec*', fontweight='bold', labelpad=10)
@@ -316,11 +316,12 @@ class Evaluation:
         for batch in batches:
             _current_batch_size : int = 0
             for entity, candidate in batch:
-                tdf = data.ground_truth
-                entity = data._gt_to_ids_reversed_1[entity] if entity < data.dataset_limit else data._gt_to_ids_reversed_2[entity]
-                candidate = data._gt_to_ids_reversed_1[candidate] if candidate < data.dataset_limit else data._gt_to_ids_reversed_2[candidate]
-                if not tdf[((tdf.iloc[:, 0] == entity) & (tdf.iloc[:, 1] == candidate)) | ((tdf.iloc[:, 0] == candidate) & (tdf.iloc[:, 1] == entity))].empty:
-                        _true_positives += 1
+                entity_id = data._gt_to_ids_reversed_1[entity] if entity < data.dataset_limit else data._gt_to_ids_reversed_2[entity]
+                candidate_id = data._gt_to_ids_reversed_1[candidate] if candidate < data.dataset_limit else data._gt_to_ids_reversed_2[candidate]
+                _d1_entity, _d2_entity = (entity_id, candidate_id) if entity < data.dataset_limit else (candidate_id, entity_id)
+                
+                if _d2_entity in self.data.pairs_of[_d1_entity]:
+                    _true_positives += 1
                 _current_batch_size += 1
 
             _new_recall = _true_positives / self.num_of_true_duplicates

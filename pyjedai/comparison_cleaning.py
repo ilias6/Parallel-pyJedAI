@@ -108,7 +108,7 @@ class AbstractComparisonCleaning(PYJEDAIFeature):
             float: Pair weigth
         """
         if(not self.store_weights): raise AttributeError("No precalculated weights.")
-        _weight = self.store_weights.get(canonical_swap(entity_id, neighbor_id), KeyError(f"Pair [{entity_id},{neighbor_id}] has no precalculated weight"))
+        _weight = self._stored_weights.get(canonical_swap(entity_id, neighbor_id), KeyError(f"Pair [{entity_id},{neighbor_id}] has no precalculated weight"))
         return _weight
         
     def evaluate(self,
@@ -492,7 +492,7 @@ class CardinalityNodePruning(CardinalityEdgePruning):
             comparison = self._top_k_edges.get()
             self._nearest_entities[entity_id].add(comparison[2])
             if self.store_weights:
-                    self._stored_weights[canonical_swap(entity_id, comparison[2])] = weight
+                    self._stored_weights[canonical_swap(entity_id, comparison[2])] = comparison[0]
 
 class ReciprocalCardinalityNodePruning(CardinalityNodePruning):
     """A Meta-blocking method that retains the comparisons \
@@ -662,6 +662,7 @@ class ProgressiveCardinalityNodePruning(CardinalityNodePruning):
 
         if(cc is None):
             return super().process(blocks, data, tqdm_disable, store_weights)
+            
         else:
             self._threshold = max(1, 2 * self._budget / data.num_of_entities)           
             self.trimmed_blocks : dict = defaultdict(set)
@@ -699,6 +700,7 @@ class ProgressiveSortedNeighborhood(AbstractMetablocking):
         self.weighting_scheme: str = weighting_scheme
         self._budget : int = budget
         super().__init__()
+        self._node_centric = False
         
     
     def process(
@@ -766,8 +768,16 @@ class ProgressiveSortedNeighborhood(AbstractMetablocking):
             bool: Valid / Not Valid candidate for pair
         """
         neighbor = self._sorted_entity_ids[neighbor_index]
-        return self.data.dataset_limit <= neighbor if self.data.is_dirty_er else neighbor < entity
-
+        return self.data.dataset_limit <= neighbor if not self.data.is_dirty_er else neighbor < entity
+    
+    def _set_threshold(self):
+        pass
+    
+    def _prune_edges(self) -> dict:
+        pass
+    
+    def _configuration(self) -> dict:
+        pass        
         
 class GlobalProgressiveSortedNeighborhood(ProgressiveSortedNeighborhood):
     """Global Progressive Sorted Neighborhood"""
@@ -781,10 +791,9 @@ class GlobalProgressiveSortedNeighborhood(ProgressiveSortedNeighborhood):
         super().__init__(weighting_scheme, budget)
         
     def _apply_main_processing(self) -> PriorityQueue:
-        self._max_window = 2 if self.data.num_of_entities <= 100 else int(2 ** (math.log(self.data.num_of_entities) + 1) + 1)
-        self._top_pairs: PriorityQueue = PriorityQueue(2 * int(self._budget))
-        
-        self._neighbors = {}
+        self._max_window = 2 if self.data.num_of_entities <= 100 else int(2 ** (math.log10(self.data.num_of_entities) + 1) + 1)
+        self._top_pairs : PriorityQueue = PriorityQueue(2 * int(self._budget))
+        _top_unsorted_pairs: PriorityQueue = PriorityQueue(2 * int(self._budget))
         
         for entity in range(self.data.dataset_limit):
             entity_positions = self._position_index.get_positions(entity)
@@ -807,11 +816,15 @@ class GlobalProgressiveSortedNeighborhood(ProgressiveSortedNeighborhood):
                 pair_weight = self._get_weight(entity, neighbor)
                 
                 if(pair_weight >= current_minimum_weight):
-                    self._top_pairs.put(
+                    _top_unsorted_pairs.put(
                     (pair_weight, entity, neighbor)
                     )
-                    if self._budget < self._top_pairs.qsize():
-                        self._minimum_weight = self._top_pairs.get()[0]
+                    if self._budget < _top_unsorted_pairs.qsize():
+                        current_minimum_weight = _top_unsorted_pairs.get()[0]
+                        
+        while(not _top_unsorted_pairs.empty()):
+            _score, _entity, _neighbor = _top_unsorted_pairs.get()
+            self._top_pairs.put((-_score, _entity, _neighbor))
                         
         return self._top_pairs
                                             
@@ -828,14 +841,13 @@ class GlobalProgressiveSortedNeighborhood(ProgressiveSortedNeighborhood):
             self._counters[neighbor] = 0
             self._flags[neighbor] = entity
         
-        pwScheme = self._weighting_scheme
+        pwScheme = self.weighting_scheme
         if pwScheme == 'ID':
             self._counters[neighbor] += 1.0 / window
         else:
             self._counters[neighbor] += 1.0
             
         self._neighbors.add(neighbor)
-        
 
 class LocalProgressiveSortedNeighborhood(ProgressiveSortedNeighborhood):
     """Local Progressive Sorted Neighborhood"""
@@ -856,16 +868,16 @@ class LocalProgressiveSortedNeighborhood(ProgressiveSortedNeighborhood):
         """
         return self._emitted_comparisons < self._budget and self._current_window < self._total_sorted_entities
         
-    def _apply_main_processing(self) -> PriorityQueue:
+    def _apply_main_processing(self) -> List[Tuple[int, int]]:
         self._emitted_comparisons = 0
         self._current_window = 1 
-        self._top_pairs: PriorityQueue(self._budget)
+        self._top_pairs: List[Tuple[int, int]] = []
         
         while(self._has_next()):
             _window_top_pairs = PriorityQueue()
             for entity in range(self.data.dataset_limit):
                 entity_positions = self._position_index.get_positions(entity)
-                self._neighbors = {}
+                self._neighbors.clear()
             
                 for entity_position in entity_positions:
                     right_neighbor = entity_position + self._current_window
@@ -883,15 +895,16 @@ class LocalProgressiveSortedNeighborhood(ProgressiveSortedNeighborhood):
                     pair_weight = self._get_weight(entity, neighbor)
                     
                     _window_top_pairs.put(
-                    (pair_weight, entity, neighbor)
+                    (-pair_weight, entity, neighbor)
                     )
                     
-                while(self._top_pairs.qsize() < self._budget and not _window_top_pairs.empty()):
-                    self._top_pairs.put(_window_top_pairs.get())
+                while(len(self._top_pairs) < self._budget and not _window_top_pairs.empty()):
+                    _, _entity, _neighbor = _window_top_pairs.get()
+                    self._top_pairs.append((_entity, _neighbor))
                     self._emitted_comparisons += 1
 
             self._current_window += 1
-            
+           
         return self._top_pairs
                                             
     def _update_counters(self, entity: int, neighbor: int):
@@ -952,7 +965,8 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
                 self._valid_entities.add(neighbor_id)
                 
                 _current_neighbor_weight = self._get_weight(entity_id, neighbor_id)
-                self._stored_weights[(entity_id, neighbor_id)] = _current_neighbor_weight
+                if(self.store_weights):
+                    self._stored_weights[canonical_swap(entity_id, neighbor_id)] = _current_neighbor_weight
                 if(_current_neighbor_weight >= _top_entity_weight):
                     _top_entity_weight = _current_neighbor_weight
                     _top_entity_neighbor = neighbor_id
@@ -1039,7 +1053,7 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
                 if(not checked_entity[neighbor]):
                     _current_weight = self.get_precalculated_weight(entity, neighbor)
                     entity_pairs.put(
-                    (_current_weight, entity, neighbor)
+                    (-_current_weight, entity, neighbor)
                     )
             
             if(not entity_pairs.empty()): entity_pairs.get()        
@@ -1050,7 +1064,7 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
                 
         return self.pairs 
 
-    def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, cc: AbstractMetablocking = None) -> None:
+    def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, store_weigths : bool = True, cc: AbstractMetablocking = None) -> None:
         """Calculates the weights between entities, stores them in descending order of their average weight,
            stores the top comparison per entity
 
@@ -1065,7 +1079,7 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
         """
         
         self.start_time = time()
-        self.tqdm_disable, self.data = tqdm_disable, data
+        self.tqdm_disable, self.data, self.store_weights = tqdm_disable, data, store_weigths
         self._limit = self.data.num_of_entities \
                 if self.data.is_dirty_er or self._node_centric else self.data.dataset_limit
         self._progress_bar = tqdm(

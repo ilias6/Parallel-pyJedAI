@@ -296,9 +296,10 @@ class GlobalTopPM(HashBasedProgressiveMatching):
 
         for entity_id, candidate_ids in candidates.items():
             for candidate_id in candidate_ids:
-                self._insert_to_graph(entity_id, candidate_id, pcep._get_weight(entity_id, candidate_id))
-                
-        return sorted(self.pairs.edges(data=True), key=lambda x: x[2]['weight'], reverse=True)
+                self._insert_to_graph(entity_id, candidate_id, pcep.get_precalculated_weight(entity_id, candidate_id))
+         
+        self.pairs.edges = sorted(self.pairs.edges(data=True), key=lambda x: x[2]['weight'], reverse=True) 
+        return self.pairs.edges
 
 
     def _predict_prunned_blocks(self, blocks: dict) -> None:
@@ -307,9 +308,10 @@ class GlobalTopPM(HashBasedProgressiveMatching):
 
         for entity_id, candidate_ids in candidates.items():
             for candidate_id in candidate_ids:
-                self._insert_to_graph(entity_id, candidate_id, self._comparison_cleaner._get_weight(entity_id, candidate_id))
+                self._insert_to_graph(entity_id, candidate_id, self._comparison_cleaner.get_precalculated_weight(entity_id, candidate_id))
 
-        return sorted(self.pairs.edges(data=True), key=lambda x: x[2]['weight'], reverse=True)
+        self.pairs.edges = sorted(self.pairs.edges(data=True), key=lambda x: x[2]['weight'], reverse=True)
+        return self.pairs.edges
 
 class LocalTopPM(HashBasedProgressiveMatching):
     """Applies Progressive CNP, sorts retained comparisons and applies Progressive Matching
@@ -340,12 +342,13 @@ class LocalTopPM(HashBasedProgressiveMatching):
     def _predict_raw_blocks(self, blocks: dict) -> None:
         pcnp : ProgressiveCardinalityNodePruning = ProgressiveCardinalityNodePruning(self._w_scheme, self._budget)
         candidates : dict = pcnp.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None)
-
+        
         for entity_id, candidate_ids in candidates.items():
             for candidate_id in candidate_ids:
-                self._insert_to_graph(entity_id, candidate_id, pcnp._get_weight(entity_id, candidate_id))
+                self._insert_to_graph(entity_id, candidate_id, pcnp.get_precalculated_weight(entity_id, candidate_id))
 
-        return sorted(self.pairs.edges(data=True), key=lambda x: x[2]['weight'], reverse=True)
+        self.pairs.edges = sorted(self.pairs.edges(data=True), key=lambda x: x[2]['weight'], reverse=True) 
+        return self.pairs.edges
 
     def _predict_prunned_blocks(self, blocks: dict) -> None:
 
@@ -354,9 +357,10 @@ class LocalTopPM(HashBasedProgressiveMatching):
 
         for entity_id, candidate_ids in candidates.items():
             for candidate_id in candidate_ids:
-                self._insert_to_graph(entity_id, candidate_id, self._comparison_cleaner._get_weight(entity_id, candidate_id))
+                self._insert_to_graph(entity_id, candidate_id, self._comparison_cleaner.get_precalculated_weight(entity_id, candidate_id))
 
-        return sorted(self.pairs.edges(data=True), key=lambda x: x[2]['weight'], reverse=True)
+        self.pairs.edges = sorted(self.pairs.edges(data=True), key=lambda x: x[2]['weight'], reverse=True) 
+        return self.pairs.edges
 
 
 class EmbeddingsNNBPM(ProgressiveMatching):
@@ -530,12 +534,12 @@ class GlobalPSNM(SimilarityBasedProgressiveMatching):
 
     def _predict_raw_blocks(self, blocks: dict):
         gpsn : GlobalProgressiveSortedNeighborhood = GlobalProgressiveSortedNeighborhood(self._pwScheme, self._budget)
-        candidates :  PriorityQueue = gpsn.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None)
+        candidates :  PriorityQueue = gpsn.process(blocks=blocks, data=self.data, tqdm_disable=True)
         self.pairs = []
         while(not candidates.empty()):
             _, entity_id, candidate_id = candidates.get()
-            self.pairs += (entity_id, candidate_id)
-            
+            self.pairs.append((entity_id, candidate_id))
+          
         return self.pairs
 
     def _predict_prunned_blocks(self, blocks: dict):
@@ -570,12 +574,8 @@ class LocalPSNM(SimilarityBasedProgressiveMatching):
 
     def _predict_raw_blocks(self, blocks: dict):
         lpsn : LocalProgressiveSortedNeighborhood = LocalProgressiveSortedNeighborhood(self._pwScheme, self._budget)
-        candidates :  PriorityQueue = lpsn.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None)
-        self.pairs = []
-        while(not candidates.empty()):
-            _, entity_id, candidate_id = candidates.get()
-            self.pairs += (entity_id, candidate_id)
-            
+        candidates :  PriorityQueue = lpsn.process(blocks=blocks, data=self.data, tqdm_disable=True)
+        self.pairs = candidates 
         return self.pairs
 
     def _predict_prunned_blocks(self, blocks: dict):
@@ -615,7 +615,7 @@ class RandomPM(ProgressiveMatching):
 
     def _predict_prunned_blocks(self, blocks: dict) -> None:
         random_pairs = sample([(id1, id2) for id1 in blocks for id2 in blocks[id1]], self._budget)
-        self.pairs.add_edge(*random_pairs)
+        self.pairs.add_edges_from(random_pairs)
         
 
 class PESM(HashBasedProgressiveMatching):

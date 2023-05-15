@@ -142,9 +142,23 @@ class Data:
 
         if ground_truth is not None:
             self._create_gt_mapping()
+            self._store_pairs()
         else:
             self.ground_truth = None
 
+    def _store_pairs(self) -> None:
+        """Creates a mapping:
+            - pairs_of : ids of first dataset to ids of true matches from second dataset"""
+        
+        self.pairs_of = {}
+        
+        for _, row in self.ground_truth.iterrows():
+            id1 = row[0]
+            id2 = row[1]
+            
+            if id1 in self.pairs_of: self.pairs_of[id1].append(id2)
+            else: self.pairs_of[id1] = [id2]  
+    
     def _create_gt_mapping(self) -> None:
         """Creates two mappings:
             - _ids_mapping_X: ids from initial dataset to index

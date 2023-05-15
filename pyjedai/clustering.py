@@ -139,10 +139,11 @@ class UniqueMappingClustering(AbstractClustering):
         priority_queue = PriorityQueue(maxsize=graph.number_of_edges()*2)
         for x in graph.edges(data=True):
             if x[2]['weight'] > self.similarity_threshold:
-                priority_queue.put_nowait((x[2]['weight'], x[0], x[1]))
+                priority_queue.put_nowait((-x[2]['weight'], x[0], x[1]))
 
         while not priority_queue.empty():
             sim, entity_1, entity_2 = priority_queue.get()
+            sim = -sim
             if entity_1 in matched_entities or entity_2 in matched_entities:
                 continue
             new_graph.add_edge(entity_1, entity_2, weight=sim)

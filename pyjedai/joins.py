@@ -329,7 +329,7 @@ class TopKJoin(AbstractJoin):
                 self._counters[candidate_id], self._source_frequency[candidate_id], tokens_size
             )
             if minimum_weight < sim:
-                pq.put(sim)
+                pq.put(-sim)
                 if self.K < pq.qsize():
                     minimum_weight = pq.get()
 

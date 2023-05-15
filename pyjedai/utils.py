@@ -165,7 +165,10 @@ def get_sorted_blocks_shuffled_entities(dirty_er: bool, blocks: dict) -> List[in
     """
     sorted_entities = []
     for _, block in sorted(blocks.items()):
-        sorted_entities += random.shuffle(list(block.entities_D1 | block.entities_D2 if not dirty_er else block.entities_D1))
+        _shuffled_neighbors = list(block.entities_D1 | block.entities_D2 if not dirty_er else block.entities_D1)
+        random.shuffle(_shuffled_neighbors)
+        sorted_entities += _shuffled_neighbors
+
     return sorted_entities
 
 
@@ -240,14 +243,14 @@ class PositionIndex(ABC):
             
         for i in range(self._num_of_entities):
             self._entity_positions[i] = [0] * self._counters[i]
-            self._counters = 0
+            self._counters[i] = 0
             
         for index, entity in enumerate(sorted_entities):
             self._entity_positions[entity][self._counters[entity]] = index
             self._counters[entity] += 1
             
     def get_positions(self, entity: int):
-        return self._counters[entity]
+        return self._entity_positions[entity]
     
 def canonical_swap(id1: int, id2: int) -> Tuple[int, int]:
     """Returns the identifiers in canonical order
