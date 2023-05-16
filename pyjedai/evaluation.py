@@ -252,7 +252,7 @@ class Evaluation:
         # add AUC score legend
         handles, _ = ax.get_legend_handles_labels()
         auc_legend_labels = ['AUC: {:.2f}'.format(nauc) for nauc in normalized_aucs]
-        auc_legend = ax.legend(handles, auc_legend_labels, loc='lower left', bbox_to_anchor=(0.5, -0.4), ncol=2, frameon=True, title='Normalized AUC', title_fontsize=12)
+        auc_legend = ax.legend(handles, auc_legend_labels, loc='lower left', bbox_to_anchor=(0.5, -0.4), ncol=2, frameon=True, title='AUC', title_fontsize=12)
         auc_legend.get_title().set_fontweight('bold')
         for i, text in enumerate(auc_legend.get_texts()):
             plt.setp(text, color=colors[i])
@@ -325,11 +325,14 @@ class Evaluation:
                 _current_batch_size += 1
 
             _new_recall = _true_positives / self.num_of_true_duplicates
-            _normalized_auc += ((_new_recall + _current_recall) / 2) * (_current_batch_size / self.num_of_true_duplicates)
+            # _normalized_auc += ((_new_recall + _current_recall) / 2) * (_current_batch_size / self.num_of_true_duplicates)
             _current_recall = _new_recall
             _recall_progress.append(_current_recall)
 
-        _normalized_auc = 0 if(ideal_auc == 0) else _normalized_auc / ideal_auc
+        # _normalized_auc = 0 if(ideal_auc == 0) else _normalized_auc / ideal_auc
+        print(_current_recall)
+        print(len(pairs))
+        _normalized_auc = sum(_recall_progress) / (len(pairs) + 1.0)
         return _recall_progress, _normalized_auc
 
 def write(

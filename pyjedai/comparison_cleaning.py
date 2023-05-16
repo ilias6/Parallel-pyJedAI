@@ -1015,7 +1015,7 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
         """
         _weigth, _entity, _neighbor = pair
         if(self._emitted_comparisons < self._budget):
-            self.pairs.append((_weigth, _entity, _neighbor))
+            self.pairs.append((_entity, _neighbor))
             self._emitted_comparisons += 1
             self._progress_bar.update(1)
             return True
