@@ -282,22 +282,19 @@ class EntityMatching(PYJEDAIFeature):
 
     def _calculate_tfidf(self) -> None:
         
-        vectorizer = TfidfVectorizer() if self.qgram is None else TfidfVectorizer(ngram_range=(self.qgram, self.qgram))
+        analyzer = 'char' if self.tokenizer == 'char_qgram_tokenizer' else 'word'
+        vectorizer = TfidfVectorizer(analyzer='') if self.qgram is None else TfidfVectorizer(analyzer=analyzer, ngram_range=(self.qgram, self.qgram))
         
         d1 = self.data.dataset_1[self.attributes] if self.attributes else self.data.dataset_1
         self._entities_d1 = d1 \
                     .apply(" ".join, axis=1) \
                     .apply(lambda x: x.lower()) \
-                    .apply(self._tokenizer.tokenize) \
-                    .apply(" ".join) \
                     .values.tolist()
         
         d2 = self.data.dataset_2[self.attributes] if self.attributes and not self.data.is_dirty_er else self.data.dataset_2
         self._entities_d2 = d2 \
                     .apply(" ".join, axis=1) \
                     .apply(lambda x: x.lower()) \
-                    .apply(self._tokenizer.tokenize) \
-                    .apply(" ".join) \
                     .values.tolist() if not self.data.is_dirty_er else None
                     
         if self.data.is_dirty_er:
