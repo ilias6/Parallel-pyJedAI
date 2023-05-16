@@ -1,8 +1,11 @@
+from abc import ABC, abstractmethod
 from collections import defaultdict
+
 import numpy as np
-from pyjedai.datamodel import Block
-from pyjedai.datamodel import Data
-from abc import ABC
+from nltk import ngrams
+from nltk.tokenize import word_tokenize
+
+from pyjedai.datamodel import Block, Data
 
 # ----------------------- #
 # Constants
@@ -152,6 +155,24 @@ def batch_pairs(iterable, batch_size: int = 1):
     """
     return (iterable[pos:pos + batch_size] for pos in range(0, len(iterable), batch_size))
 
+
+class Tokenizer(ABC):
+    
+    def __init__(self) -> None:
+        super().__init__()
+        
+    @abstractmethod
+    def tokenize(self, text: str) -> list:
+        pass
+
+class WordQgrammsTokenizer(Tokenizer):
+    
+    def __init__(self, q: int = 3) -> None:
+        super().__init__()
+        self.q = q
+    
+    def tokenize(self, text: str) -> list:
+        return [' '.join(gram) for gram in list(ngrams(word_tokenize(text), self.q))]
 
 class SubsetIndexer(ABC):
     """Stores the indices of retained entities of the initial datasets,

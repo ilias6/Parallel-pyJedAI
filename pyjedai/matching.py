@@ -1,13 +1,10 @@
 """Entity Matching Module
 """
-import numpy as np
-from time import time
-import matplotlib.pyplot as plt
 import statistics
-# from scipy.spatial.distance import cosine
-from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.feature_extraction.text import TfidfVectorizer
+from time import time
 
+import matplotlib.pyplot as plt
+import numpy as np
 from networkx import Graph
 from py_stringmatching.similarity_measure.affine import Affine
 from py_stringmatching.similarity_measure.bag_distance import BagDistance
@@ -28,13 +25,13 @@ from py_stringmatching.similarity_measure.needleman_wunsch import \
 from py_stringmatching.similarity_measure.overlap_coefficient import \
     OverlapCoefficient
 from py_stringmatching.similarity_measure.partial_ratio import PartialRatio
-from py_stringmatching.similarity_measure.token_sort import TokenSort
 from py_stringmatching.similarity_measure.partial_token_sort import \
     PartialTokenSort
 from py_stringmatching.similarity_measure.ratio import Ratio
 from py_stringmatching.similarity_measure.smith_waterman import SmithWaterman
 from py_stringmatching.similarity_measure.soundex import Soundex
 from py_stringmatching.similarity_measure.tfidf import TfIdf
+from py_stringmatching.similarity_measure.token_sort import TokenSort
 from py_stringmatching.similarity_measure.tversky_index import TverskyIndex
 from py_stringmatching.tokenizer.alphabetic_tokenizer import \
     AlphabeticTokenizer
@@ -44,10 +41,14 @@ from py_stringmatching.tokenizer.delimiter_tokenizer import DelimiterTokenizer
 from py_stringmatching.tokenizer.qgram_tokenizer import QgramTokenizer
 from py_stringmatching.tokenizer.whitespace_tokenizer import \
     WhitespaceTokenizer
+from sklearn.feature_extraction.text import TfidfVectorizer
+# from scipy.spatial.distance import cosine
+from sklearn.metrics.pairwise import cosine_similarity
 from tqdm.autonotebook import tqdm
 
-from .evaluation import Evaluation
 from .datamodel import Data, PYJEDAIFeature
+from .evaluation import Evaluation
+from .utils import WordQgrammsTokenizer
 
 # Package import from https://anhaidgroup.github.io/py_stringmatching/v0.4.2/index.html
 
@@ -152,12 +153,14 @@ class EntityMatching(PYJEDAIFeature):
 
         if tokenizer == 'white_space_tokenizer':
             self._tokenizer = WhitespaceTokenizer(return_set=self.tokenizer_return_set)
-        elif tokenizer == 'qgram_tokenizer':
+        elif tokenizer == 'char_qgram_tokenizer':
             self._tokenizer = QgramTokenizer(qval=self.qgram,
                                              return_set=self.tokenizer_return_set,
                                              padding=padding,
                                              suffix_pad=suffix_pad,
                                              prefix_pad=prefix_pad)
+        elif tokenizer == 'word_qgram_tokenizer':
+            self._tokenizer = WhitespaceTokenizer(return_set=self.tokenizer_return_set)
         elif tokenizer == 'delimiter_tokenizer':
             self._tokenizer = DelimiterTokenizer(return_set=self.tokenizer_return_set,
                                                  delim_set=delim_set)
@@ -279,7 +282,7 @@ class EntityMatching(PYJEDAIFeature):
 
     def _calculate_tfidf(self) -> None:
         
-        vectorizer = TfidfVectorizer()
+        vectorizer = TfidfVectorizer() if self.qgram is None else TfidfVectorizer(ngram_range=(self.qgram, self.qgram))
         
         d1 = self.data.dataset_1[self.attributes] if self.attributes else self.data.dataset_1
         self._entities_d1 = d1 \
@@ -301,9 +304,12 @@ class EntityMatching(PYJEDAIFeature):
             pass
         else:
             self.corpus = self._entities_d1 + self._entities_d2
-            vectorizer.fit(self.corpus)
+            self.tfidf_vectorizer = vectorizer.fit(self.corpus)
             self.tfidf_matrix = vectorizer.transform(self.corpus)
             self.tfidf_similarity_matrix = cosine_similarity(self.tfidf_matrix)
+            # feature_names = self.tfidf_vectorizer.get_feature_names()
+            # tfidf_df = pd.DataFrame(self.tfidf_matrix.toarray(), columns=feature_names)
+            # self.tfidf_df = tfidf_df
 
     def _calculate_tfidf_similarity(self, entity_id1: int, entity_id2: int) -> float:
         return self.tfidf_similarity_matrix[entity_id1][entity_id2]
@@ -342,7 +348,7 @@ class EntityMatching(PYJEDAIFeature):
             te2 = self._tokenizer.tokenize(e2) if self._metric in set_metrics else e2
             similarity = metrics_mapping[self._metric].get_sim_score(te1, te2)
 
-        return similarity
+        return similarity        
 
     def report(self) -> None:
         """Prints Block Building method configuration
