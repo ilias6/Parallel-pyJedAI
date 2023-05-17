@@ -165,3 +165,6 @@ data/magellan/existingDatasets/dirty_dblp_acm/tableB.csv
 data/magellan/existingDatasets/dirty_dblp_acm/tableA.csv
 .embeddings/st5_embeddings_1.npy
 .embeddings/st5_embeddings_2.npy
+*.npy
+.hypothesis/unicode_data/11.0.0/charmap.json.gz
+tests/.hypothesis/
