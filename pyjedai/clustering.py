@@ -184,7 +184,7 @@ class ExactClustering(AbstractClustering):
     def process(self, graph: Graph, data: Data) -> list:
         """
         """
-        pass
+        raise NotImplementedError("Exact Clustering is not implemented yet.")
 
     def _configuration(self) -> dict:
         return {}
