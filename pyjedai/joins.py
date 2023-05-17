@@ -265,6 +265,9 @@ class AbstractJoin(PYJEDAIFeature):
                         with_classification_report,
                         verbose)
 
+    def stats(self) -> None:
+        pass
+
     def _configuration(self) -> dict:
         return {
             "similarity_threshold" : self.similarity_threshold,
