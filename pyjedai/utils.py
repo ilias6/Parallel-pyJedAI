@@ -195,15 +195,10 @@ class SubsetIndexer(ABC):
     """Stores the indices of retained entities of the initial datasets,
        calculates and stores the mapping of element indices from new to old dataset (id in subset -> id in original)
     """
-
-    def __init__(self):
+    def __init__(self, blocks: dict, data: Data, subset : bool):
         self.d1_retained_ids: list[int] = None
         self.d2_retained_ids : list[int] = None
-
-    def __init__(self, blocks: dict, data: Data):
-        self.d1_retained_ids: list[int] = None
-        self.d2_retained_ids : list[int] = None
-        self.subset : bool = blocks is not None
+        self.subset : bool = subset
         self.store_retained_ids(blocks, data)
 
     def from_source_dataset(self, entity_id : int, data: Data) -> bool:
@@ -217,7 +212,7 @@ class SubsetIndexer(ABC):
             data (Data): Dataset Module
         """
 
-        if(blocks is None):
+        if(not self.subset):
             self.d1_retained_ids = list(range(data.num_of_entities_1))
 
             if(not data.is_dirty_er):

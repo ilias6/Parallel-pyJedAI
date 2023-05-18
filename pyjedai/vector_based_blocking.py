@@ -145,7 +145,15 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                                   desc=(self._method_name + ' [' + self.vectorizer + ', ' + self.similarity_search + ']'),
                                   disable=tqdm_disable)
 
-        self._si = SubsetIndexer(self.input_cleaned_blocks, self.data)
+        _all_blocks = list(input_cleaned_blocks.values())
+        if 'Block' in str(type(_all_blocks[0])):
+            self._applied_to_subset = False
+        elif isinstance(_all_blocks[0], set):
+            self._applied_to_subset = True
+        else:
+            raise AttributeError("Wrong type of blocks given")
+
+        self._si = SubsetIndexer(self.input_cleaned_blocks, self.data, self._applied_to_subset)
         self._d1_valid_indices: list[int] = self._si.d1_retained_ids
         self._d2_valid_indices: list[int] = [x - self.data.dataset_limit for x in self._si.d2_retained_ids]   
         
@@ -161,63 +169,69 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                     .values.tolist() if not data.is_dirty_er else None
         self._entities_d2 = [self._entities_d2[x] for x in self._d2_valid_indices] if not data.is_dirty_er else None
 
-        vectors_1 = []
+        self.vectors_1 = None
+        self.vectors_2 = None
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print("Device selected: ", self.device)
         
         if self.with_entity_matching:
             self.graph = nx.Graph()
         
+        self._d1_loaded : bool = False
+        self._d2_loaded : bool = False
         if load_embeddings_if_exist:
-            try:
                 print("Loading embeddings from file...")
                 
                 p1 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + self.data.dataset_name_1 \
                                                     if self.data.dataset_name_1 is not None else "d1" +'_1.npy')
                 print("Loading file: ", p1)
-                self.vectors_1 = vectors_1 = np.load(p1)
-                self.vectors_1 = vectors_1 = [vectors_1[x] for x in self._d1_valid_indices]
-                self._progress_bar.update(data.num_of_entities_1)
-
-                p2 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + self.data.dataset_name_2 \
-                                                    if self.data.dataset_name_2 is not None else "d2" +'_2.npy')
-                print("Loading file: ", p2)
-                self.vectors_2 = vectors_2 = np.load(p2)
-                self.vectors_2 = vectors_2 = [vectors_2[x] for x in self._d2_valid_indices]
-                self._progress_bar.update(data.num_of_entities_2)
+                if os.path.exists(p1):
+                    self.vectors_1 = vectors_1 = np.load(p1)
+                    self.vectors_1 = vectors_1 = [vectors_1[x] for x in self._d1_valid_indices]
+                    self._progress_bar.update(data.num_of_entities_1)
+                    self._d1_loaded = True
+                else:
+                    print("Embeddings not found. Creating new ones.")
                 
+                p2 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + self.data.dataset_name_2 \
+                                                    if self.data.dataset_name_2 is not None else "d2" +'_2.npy')    
+                print("Loading file: ", p2)
+                if os.path.exists(p2):
+                    self.vectors_2 = vectors_2 = np.load(p2)
+                    self.vectors_2 = vectors_2 = [vectors_2[x] for x in self._d2_valid_indices]
+                    self._progress_bar.update(data.num_of_entities_2)
+                    self._d2_loaded = True
+                else:
+                    print("Embeddings not found. Creating new ones.")
                 print("Loading embeddings from file finished")
-            except:
-                print("Embeddings not found. Creating new ones.")
-                raise ValueError("Embeddings not found.")
         else:
             if self.vectorizer in ['word2vec', 'fasttext', 'doc2vec', 'glove']:
-                vectors_1, vectors_2 = self._create_gensim_embeddings()
+                self.vectors_1, self.vectors_2 = self._create_gensim_embeddings()
             elif self.vectorizer in ['bert', 'distilbert', 'roberta', 'xlnet', 'albert']:
-                vectors_1, vectors_2 = self._create_pretrained_word_embeddings()
+                self.vectors_1, self.vectors_2 = self._create_pretrained_word_embeddings()
             elif self.vectorizer in ['smpnet', 'st5', 'sent_glove', 'sdistilroberta', 'sminilm']:
-                vectors_1, vectors_2 = self._create_pretrained_sentence_embeddings()
+                self.vectors_1, self.vectors_2 = self._create_pretrained_sentence_embeddings()
             else:
                 raise AttributeError("Not available vectorizer")
             
         if save_embeddings:
             print("Saving embeddings...")
             
-            if self._si.subset:
+            if self._applied_to_subset:
                 print("Cannot save embeddings, subset embeddings storing not supported.")
-            
-            p1 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + self.data.dataset_name_1 \
-                                                    if self.data.dataset_name_1 is not None else "d1" +'_1.npy')
-            print("Saving file: ", p1)
-            np.save(p1, self.vectors_1)
-            
-            p2 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + self.data.dataset_name_2 \
-                                                    if self.data.dataset_name_2 is not None else "d2" +'_2.npy')
-            print("Saving file: ", p2)
-            np.save(p2, self.vectors_2)
+            else:
+                p1 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + self.data.dataset_name_1 \
+                                                        if self.data.dataset_name_1 is not None else "d1" +'_1.npy')
+                print("Saving file: ", p1)
+                np.save(p1, self.vectors_1)
+                
+                p2 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + self.data.dataset_name_2 \
+                                                        if self.data.dataset_name_2 is not None else "d2" +'_2.npy')
+                print("Saving file: ", p2)
+                np.save(p2, self.vectors_2)
 
         if return_vectors:
-            return (vectors_1, _) if data.is_dirty_er else (vectors_1, vectors_2)
+            return (self.vectors_1, _) if data.is_dirty_er else (self.vectors_1, self.vectors_2)
 
         if self.similarity_search == 'faiss':
             self._faiss_metric_type = faiss.METRIC_L2
@@ -248,13 +262,15 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         """
         vectors_1 = []
         vocabulary = api.load(self._gensim_mapping_download[self.vectorizer])
-        for e1 in self._entities_d1:
-            vectors_1.append(self._create_vector(e1, vocabulary))
-            self._progress_bar.update(1)
-        self.vectors_1 = np.array(vectors_1).astype('float32')
+        
+        if not self._d1_loaded:
+            for e1 in self._entities_d1:
+                vectors_1.append(self._create_vector(e1, vocabulary))
+                self._progress_bar.update(1)
+            self.vectors_1 = np.array(vectors_1).astype('float32')
 
         vectors_2 = []
-        if not self.data.is_dirty_er:
+        if not self.data.is_dirty_er and not self._d2_loaded:
             for e2 in self._entities_d2:
                 vectors_2.append(self._create_vector(e2, vocabulary))
                 self._progress_bar.update(1)
@@ -282,12 +298,12 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         model = model.to(self.device)
         self.vectors_1 = self._transform_entities_to_word_embeddings(self._entities_d1,
                                                                      model,
-                                                                     tokenizer)
+                                                                     tokenizer) if not self._d1_loaded else self.vectors_1
         self.vector_size = self.vectors_1[0].shape[0]
         print("Vector size: ", self.vectors_1.shape)
         self.vectors_2 = self._transform_entities_to_word_embeddings(self._entities_d2,
                                                                      model,
-                                                                     tokenizer) if not self.data.is_dirty_er else None
+                                                                     tokenizer) if not self.data.is_dirty_er and not self._d2_loaded else self.vectors_2
         return self.vectors_1, self.vectors_2
 
 
@@ -318,14 +334,15 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         model = SentenceTransformer(self._sentence_transformer_mapping[self.vectorizer],
                                     device=self.device)
         vectors_1 = []
-        for e1 in self._entities_d1:
-            vector = model.encode(e1)
-            vectors_1.append(vector)
-            self._progress_bar.update(1)
-        self.vector_size = len(vectors_1[0])
-        self.vectors_1 = np.array(vectors_1).astype('float32')
+        if not self._d1_loaded:
+            for e1 in self._entities_d1:
+                vector = model.encode(e1)
+                vectors_1.append(vector)
+                self._progress_bar.update(1)
+            self.vector_size = len(vectors_1[0])
+            self.vectors_1 = np.array(vectors_1).astype('float32')
         vectors_2 = []
-        if not self.data.is_dirty_er:            
+        if not self.data.is_dirty_er and not self._d2_loaded:            
             for e2 in self._entities_d2:
                 vector = model.encode(e2)
                 vectors_2.append(vector)
