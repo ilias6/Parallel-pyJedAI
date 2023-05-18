@@ -162,7 +162,6 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                             .apply(self._tokenize_entity) \
                             .values.tolist()
         self._entities_d1 = [self._entities_d1[x] for x in self._d1_valid_indices]
-        
         self._entities_d2 = data.dataset_2[attributes_2 if attributes_2 else data.attributes_2] \
                     .apply(" ".join, axis=1) \
                     .apply(self._tokenize_entity) \
@@ -187,7 +186,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                 print("Loading file: ", p1)
                 if os.path.exists(p1):
                     self.vectors_1 = vectors_1 = np.load(p1)
-                    self.vectors_1 = vectors_1 = [vectors_1[x] for x in self._d1_valid_indices]
+                    self.vectors_1 = vectors_1 = vectors_1[self._d1_valid_indices]
                     self._progress_bar.update(data.num_of_entities_1)
                     self._d1_loaded = True
                 else:
@@ -198,13 +197,13 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                 print("Loading file: ", p2)
                 if os.path.exists(p2):
                     self.vectors_2 = vectors_2 = np.load(p2)
-                    self.vectors_2 = vectors_2 = [vectors_2[x] for x in self._d2_valid_indices]
+                    self.vectors_2 = vectors_2 = vectors_2[self._d2_valid_indices]
                     self._progress_bar.update(data.num_of_entities_2)
                     self._d2_loaded = True
                 else:
                     print("Embeddings not found. Creating new ones.")
                 print("Loading embeddings from file finished")
-        else:
+        if not self._d1_loaded or not self._d2_loaded:
             if self.vectorizer in ['word2vec', 'fasttext', 'doc2vec', 'glove']:
                 self.vectors_1, self.vectors_2 = self._create_gensim_embeddings()
             elif self.vectorizer in ['bert', 'distilbert', 'roberta', 'xlnet', 'albert']:
@@ -220,15 +219,17 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
             if self._applied_to_subset:
                 print("Cannot save embeddings, subset embeddings storing not supported.")
             else:
-                p1 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + self.data.dataset_name_1 \
-                                                        if self.data.dataset_name_1 is not None else "d1" +'_1.npy')
-                print("Saving file: ", p1)
-                np.save(p1, self.vectors_1)
+                if not self._d1_loaded:
+                    p1 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + self.data.dataset_name_1 \
+                                                            if self.data.dataset_name_1 is not None else "d1" +'_1.npy')
+                    print("Saving file: ", p1)
+                    np.save(p1, self.vectors_1)
                 
-                p2 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + self.data.dataset_name_2 \
-                                                        if self.data.dataset_name_2 is not None else "d2" +'_2.npy')
-                print("Saving file: ", p2)
-                np.save(p2, self.vectors_2)
+                if not self._d2_loaded:
+                    p2 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + self.data.dataset_name_2 \
+                                                            if self.data.dataset_name_2 is not None else "d2" +'_2.npy')
+                    print("Saving file: ", p2)
+                    np.save(p2, self.vectors_2)
 
         if return_vectors:
             return (self.vectors_1, _) if data.is_dirty_er else (self.vectors_1, self.vectors_2)
