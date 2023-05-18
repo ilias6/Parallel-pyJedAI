@@ -949,6 +949,7 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
             entity_id (int): Entity ID
         """
         if entity_id not in self._entity_index:
+            self.blocks[entity_id] = set()
             return
         self._valid_entities.clear()
         self._flags[:] = -1
@@ -1046,12 +1047,10 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
             if(not self.successful_emission(pair)):
                 return self.pairs
         
-        
         for entity in self._avg_weight_sorted_entities:
-            checked_entity[entity] = True    
+            checked_entity[entity] = True
             neighbors = self.blocks[entity]
             entity_pairs : PriorityQueue = PriorityQueue()
-            
             
             for neighbor in neighbors:
                 if(not checked_entity[neighbor]):

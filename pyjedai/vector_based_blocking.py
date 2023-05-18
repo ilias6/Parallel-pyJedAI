@@ -104,7 +104,8 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                      tqdm_disable: bool = False,
                      save_embeddings: bool = True,
                      load_embeddings_if_exist: bool = False,
-                     with_entity_matching: bool = False
+                     with_entity_matching: bool = False,
+                     input_cleaned_blocks: dict = None
     ) -> any:
         """Main method of the vector based approach. Contains two steps. First an embedding method. \
             And afterwards a similarity search upon the vectors created in the previous step.
@@ -138,13 +139,13 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         self.with_entity_matching = with_entity_matching
         self.save_embeddings, self.load_embeddings_if_exist = save_embeddings, load_embeddings_if_exist
         self.max_word_embeddings_size = max_word_embeddings_size
-        self.data, self.attributes_1, self.attributes_2, self.vector_size, self.num_of_clusters, self.top_k \
-            = data, attributes_1, attributes_2, vector_size, num_of_clusters, top_k
+        self.data, self.attributes_1, self.attributes_2, self.vector_size, self.num_of_clusters, self.top_k, self.input_cleaned_blocks \
+            = data, attributes_1, attributes_2, vector_size, num_of_clusters, top_k, input_cleaned_blocks
         self._progress_bar = tqdm(total=data.num_of_entities,
                                   desc=(self._method_name + ' [' + self.vectorizer + ', ' + self.similarity_search + ']'),
                                   disable=tqdm_disable)
 
-        self._si = SubsetIndexer(None, self.data)
+        self._si = SubsetIndexer(self.input_cleaned_blocks, self.data)
         self._d1_valid_indices: list[int] = self._si.d1_retained_ids
         self._d2_valid_indices: list[int] = [x - self.data.dataset_limit for x in self._si.d2_retained_ids]   
         

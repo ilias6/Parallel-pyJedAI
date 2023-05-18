@@ -4,6 +4,7 @@ import pandas as pd
 from pandas import DataFrame, concat
 
 from abc import ABC, abstractmethod
+from collections import defaultdict
 
 class PYJEDAIFeature(ABC):
 
@@ -163,7 +164,7 @@ class Data:
         """Creates a mapping:
             - pairs_of : ids of first dataset to ids of true matches from second dataset"""
         
-        self.pairs_of = {}
+        self.pairs_of = defaultdict(set)
         
         for _, row in self.ground_truth.iterrows():
             id1 = row[0]

@@ -312,7 +312,11 @@ class Evaluation:
 
         batches = batch_pairs(pairs, batch_size)
         ideal_auc = self.calculate_ideal_auc(len(pairs), self.num_of_true_duplicates)
-
+        print(self.data._ids_mapping_1)
+        print(self.data._ids_mapping_2)
+        print(self.data._gt_to_ids_reversed_1)
+        print(self.data._gt_to_ids_reversed_2)
+        
         for batch in batches:
             _current_batch_size : int = 0
             for entity, candidate in batch:

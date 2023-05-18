@@ -285,8 +285,8 @@ def canonical_swap(id1: int, id2: int) -> Tuple[int, int]:
     
     return id1, id2 if id2 > id1 else id2, id1
 
-def sorted_enumerate(seq):
-    return [i for (v, i) in sorted((v, i) for (i, v) in enumerate(seq))]
+def sorted_enumerate(seq, reverse=True):
+    return [i for (v, i) in sorted(((v, i) for (i, v) in enumerate(seq)), reverse=reverse)]
             
             
         

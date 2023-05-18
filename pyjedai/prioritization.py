@@ -57,7 +57,6 @@ from .evaluation import Evaluation
 from .datamodel import Data, PYJEDAIFeature
 from .matching import EntityMatching
 from .comparison_cleaning import AbstractMetablocking
-from .vector_based_blocking import PREmbeddingsNNBlockBuilding
 from queue import PriorityQueue
 from random import sample
 from .utils import sorted_enumerate
@@ -140,9 +139,7 @@ class ProgressiveMatching(EntityMatching):
             blocks: dict,
             data: Data,
             comparison_cleaner: AbstractMetablocking = None,
-            tqdm_disable: bool = False,
-            vectors_d1: np.array = None,
-            vectors_d2: np.array = None) -> Graph:
+            tqdm_disable: bool = False) -> Graph:
         """Main method of  progressive entity matching. Inputs a set of blocks and outputs a graph \
             that contains of the entity ids (nodes) and the similarity scores between them (edges).
             Args:
@@ -154,10 +151,6 @@ class ProgressiveMatching(EntityMatching):
         """
         start_time = time()
         self.tqdm_disable = tqdm_disable
-        self.vectors_d1: np.array = vectors_d1
-        self.vectors_d2: np.array = vectors_d2
-        if(self.vectors_d1 and self.vectors_d2):
-            self.vectors: np.array = self.vectors_d1 if data.is_dirty_er else np.concatenate((vectors_d1,vectors_d2), axis=0)
         self._comparison_cleaner: AbstractMetablocking = comparison_cleaner
 
         if not blocks:
@@ -448,24 +441,17 @@ class EmbeddingsNNBPM(ProgressiveMatching):
         else:
             raise AttributeError(self._emission + ' emission technique is undefined!')
 
-
     def _predict_raw_blocks(self, blocks: dict) -> None:
-
-        self.ennbb : PREmbeddingsNNBlockBuilding = PREmbeddingsNNBlockBuilding(self._vectorizer, self._similarity_search, self._budget)
-
-        self.final_blocks = self.ennbb.build_blocks(
-            data=self.data,
-            cc_blocks=blocks,
-            vectors_1=self.vectors_d1,
-            vectors_2=self.vectors_d2,
-            vector_size=self._vector_size,
-            num_of_clusters=self._num_of_clusters,
-            top_k=int(max(1, int(self._budget / self.data.num_of_entities) + (self._budget % self.data.num_of_entities > 0))),
-            attributes_1=None,
-            attributes_2=None,
-            return_vectors=False,
-            tqdm_disable=True          
-        )
+        self.ennbb : EmbeddingsNNBlockBuilding = EmbeddingsNNBlockBuilding(self._vectorizer, self._similarity_search)
+        self.final_blocks = self.ennbb.build_blocks(data = self.data,
+                     num_of_clusters = self._num_of_clusters,
+                     top_k = int(max(1, int(self._budget / self.data.num_of_entities) + (self._budget % self.data.num_of_entities > 0))),
+                     return_vectors = False,
+                     tqdm_disable = False,
+                     save_embeddings = True,
+                     load_embeddings_if_exist = True,
+                     with_entity_matching = False,
+                     input_cleaned_blocks = blocks)
 
         self.scores = self.ennbb.distances
         self.neighbors = self.ennbb.neighbors
@@ -614,7 +600,9 @@ class RandomPM(ProgressiveMatching):
         self._predict_prunned_blocks(cleaned_blocks)
 
     def _predict_prunned_blocks(self, blocks: dict) -> None:
-        random_pairs = sample([(id1, id2) for id1 in blocks for id2 in blocks[id1]], self._budget)
+        _all_pairs = [(id1, id2) for id1 in blocks for id2 in blocks[id1]]
+        _total_pairs = len(_all_pairs)
+        random_pairs = sample(_all_pairs, self._budget) if self._budget <= _total_pairs else _all_pairs
         self.pairs.add_edges_from(random_pairs)
         
 
