@@ -94,6 +94,10 @@ class AbstractComparisonCleaning(PYJEDAIFeature):
     def _configuration(self) -> dict:
         pass
     
+    def stats(self) -> None:
+        pass
+
+    
     def get_precalculated_weight(self, entity_id: int, neighbor_id: int) -> float:
         """Returns the precalculated weight for given pair
 

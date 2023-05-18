@@ -1,8 +1,9 @@
+from abc import ABC, abstractmethod
 from collections import defaultdict
 import numpy as np
-from pyjedai.datamodel import Block
-from pyjedai.datamodel import Data
-from abc import ABC
+from nltk import ngrams
+from nltk.tokenize import word_tokenize
+from pyjedai.datamodel import Block, Data
 from typing import List, Tuple
 import random
 
@@ -171,6 +172,24 @@ def get_sorted_blocks_shuffled_entities(dirty_er: bool, blocks: dict) -> List[in
 
     return sorted_entities
 
+class Tokenizer(ABC):
+    
+    def __init__(self) -> None:
+        super().__init__()
+        
+    @abstractmethod
+    def tokenize(self, text: str) -> list:
+        pass
+
+class WordQgrammsTokenizer(Tokenizer):
+    
+    def __init__(self, q: int = 3) -> None:
+        super().__init__()
+        self.q = q
+    
+    def tokenize(self, text: str) -> list:
+        return [' '.join(gram) for gram in list(ngrams(word_tokenize(text), self.q))]
+
 
 class SubsetIndexer(ABC):
     """Stores the indices of retained entities of the initial datasets,
@@ -184,6 +203,7 @@ class SubsetIndexer(ABC):
     def __init__(self, blocks: dict, data: Data):
         self.d1_retained_ids: list[int] = None
         self.d2_retained_ids : list[int] = None
+        self.subset : bool = blocks is not None
         self.store_retained_ids(blocks, data)
 
     def from_source_dataset(self, entity_id : int, data: Data) -> bool:

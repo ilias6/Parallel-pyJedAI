@@ -331,9 +331,9 @@ class TopKJoin(AbstractJoin):
             if minimum_weight < sim:
                 pq.put(-sim)
                 if self.K < pq.qsize():
-                    minimum_weight = pq.get()
+                    minimum_weight = -pq.get()
 
-        minimum_weight = pq.get()
+        minimum_weight = -pq.get()
         for candidate_id in candidates:
             self.similarity_threshold = minimum_weight
             self._insert_to_graph(

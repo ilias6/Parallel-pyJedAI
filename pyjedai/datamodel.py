@@ -51,7 +51,10 @@ class PYJEDAIFeature(ABC):
             "\nParameters: " + parameters +
             "\nRuntime: {:2.4f} seconds".format(self.execution_time)
         )
-
+        
+    @abstractmethod
+    def stats(self) -> None:
+        pass
 class Data:
     """The corpus of the dataset that will be processed with pyjedai. \
         Contains all the information of the dataset and will be passed to each step \
@@ -63,9 +66,11 @@ class Data:
                 dataset_1: DataFrame,
                 id_column_name_1: str,
                 attributes_1: list = None,
+                dataset_name_1: str = None,
                 dataset_2: DataFrame = None,
                 attributes_2: list = None,
                 id_column_name_2: str = None,
+                dataset_name_2: str = None,
                 ground_truth: DataFrame = None
     ) -> None:
         # Original Datasets as pd.DataFrame
@@ -99,6 +104,14 @@ class Data:
 
         self.id_column_name_1 = id_column_name_1
         self.id_column_name_2 = id_column_name_2
+        
+        self.dataset_name_1 = dataset_name_1
+        self.dataset_name_2 = dataset_name_2
+        
+        # Fill NaN values with empty string
+        self.dataset_1.fillna("", inplace=True)
+        if not self.is_dirty_er:
+            self.dataset_2.fillna("", inplace=True)
 
         # Attributes
         if attributes_1 is None:
@@ -202,15 +215,21 @@ class Data:
     def print_specs(self) -> None:
         """Dataset report.
         """
+        print(25*"-", "Data", 25*"-")
         print("Type of Entity Resolution: ", "Dirty" if self.is_dirty_er else "Clean-Clean" )
-        print("Number of entities in D1: ", self.num_of_entities_1)
-        print("Attributes provided for D1: ", self.attributes_1)
+        print("Dataset-1:")
+        print("\tNumber of entities: ", self.num_of_entities_1)
+        print("\tNumber of NaN values: ", self.dataset_1.isnull().sum().sum())
+        print("\tAttributes: \n\t\t", self.attributes_1)
         if not self.is_dirty_er:
-            print("\nNumber of entities in D2: ", self.num_of_entities_2)
-            print("Attributes provided for D2: ", self.attributes_2)
+            print("Dataset-2:")
+            print("\tNumber of entities: ", self.num_of_entities_2)
+            print("\tNumber of NaN values: ", self.dataset_2.isnull().sum().sum())
+            print("\tAttributes: \n\t\t", self.attributes_2)
         print("\nTotal number of entities: ", self.num_of_entities)
         if self.ground_truth is not None:
             print("Number of matching pairs in ground-truth: ", len(self.ground_truth))
+        print(56*"-", "\n")
 
 class Block:
     """The main module used for storing entities in the blocking steps of pyjedai module. \

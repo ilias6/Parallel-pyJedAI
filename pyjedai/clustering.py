@@ -54,6 +54,9 @@ class AbstractClustering(PYJEDAIFeature):
                                 export_to_dict,
                                 with_classification_report,
                                 verbose)
+    
+    def stats(self) -> None:
+        pass
 
 class ConnectedComponentsClustering(AbstractClustering):
     """Creates the connected components of the graph. \
@@ -66,11 +69,11 @@ class ConnectedComponentsClustering(AbstractClustering):
     _method_info: str = "Gets equivalence clusters from the " + \
                     "transitive closure of the similarity graph."
 
-    def __init__(self, similarity_threshold: float = None) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.similarity_threshold: float = similarity_threshold
+        self.similarity_threshold: float
 
-    def process(self, graph: Graph, data: Data) -> list:
+    def process(self, graph: Graph, data: Data, similarity_threshold: float = None) -> list:
         """NetworkX Connected Components Algorithm in the produced graph.
 
         Args:
@@ -81,14 +84,18 @@ class ConnectedComponentsClustering(AbstractClustering):
         """
         start_time = time()
         self.data = data
+        self.similarity_threshold: float = similarity_threshold
         graph_copy = graph.copy()
         if self.similarity_threshold is not None:
             for x in graph.edges(data=True):
                 if x[2]['weight'] < self.similarity_threshold:
                     graph_copy.remove_edge(x[0], x[1])
         clusters = list(connected_components(graph_copy))
+        # print(clusters)
+        # print("Number of clusters: ", len(clusters))
         resulting_clusters = list(filter(lambda x: len(x) == 2, clusters)) \
                                 if not data.is_dirty_er else clusters
+        # print("Number of clusters after filtering: ", len(resulting_clusters))
         self.execution_time = time() - start_time
         return resulting_clusters
 
@@ -109,7 +116,7 @@ class UniqueMappingClustering(AbstractClustering):
                         "the top-weighted pair as long as none of its entities has already" + \
                         "been matched to some other."
 
-    def __init__(self, similarity_threshold: float = 0.1) -> None:
+    def __init__(self) -> None:
         """Unique Mapping Clustering Constructor
 
         Args:
@@ -118,9 +125,9 @@ class UniqueMappingClustering(AbstractClustering):
             data (Data): Dataset module.
         """
         super().__init__()
-        self.similarity_threshold: float = similarity_threshold
+        self.similarity_threshold: float
 
-    def process(self, graph: Graph, data: Data) -> list:
+    def process(self, graph: Graph, data: Data, similarity_threshold: float = 0.1) -> list:
         """NetworkX Connected Components Algorithm in the produced graph.
 
         Args:
@@ -131,26 +138,26 @@ class UniqueMappingClustering(AbstractClustering):
         """
         if data.is_dirty_er:
             raise AttributeError("Unique Mapping Clustering can only be performed in Clean-Clean Entity Resolution.")
-
+        self.similarity_threshold: float = similarity_threshold
+        
         start_time = time()
         matched_entities = set()
         self.data = data
         new_graph = Graph()
-        priority_queue = PriorityQueue(maxsize=graph.number_of_edges()*2)
+        priority_queue = PriorityQueue(maxsize = graph.number_of_edges()*2)
         for x in graph.edges(data=True):
             if x[2]['weight'] > self.similarity_threshold:
-                priority_queue.put_nowait((-x[2]['weight'], x[0], x[1]))
+                priority_queue.put_nowait((1- x[2]['weight'], x[0], x[1]))
 
         while not priority_queue.empty():
             sim, entity_1, entity_2 = priority_queue.get()
-            sim = -sim
             if entity_1 in matched_entities or entity_2 in matched_entities:
                 continue
             new_graph.add_edge(entity_1, entity_2, weight=sim)
             matched_entities.add(entity_1)
             matched_entities.add(entity_2)
 
-        clusters = ConnectedComponentsClustering(similarity_threshold=None).process(new_graph, data)
+        clusters = ConnectedComponentsClustering().process(new_graph, data, similarity_threshold=None)
         self.execution_time = time() - start_time
         return clusters
 
@@ -177,7 +184,7 @@ class ExactClustering(AbstractClustering):
     def process(self, graph: Graph, data: Data) -> list:
         """
         """
-        pass
+        raise NotImplementedError("Exact Clustering is not implemented yet.")
 
     def _configuration(self) -> dict:
         return {}
