@@ -366,7 +366,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         
         for _entity in range(0, self.neighbors.shape[0]):
             
-            _entity_id = self._si.d1_retained_ids[_entity] if self.data.is_dirty_er else self._si.d2_retained_ids[_entity] 
+            _entity_id = self._si.d1_retained_ids[_entity] if self.data.is_dirty_er else self._si.d2_retained_ids[_entity]
             
             if _entity_id not in self.blocks:
                 self.blocks[_entity_id] = set()            

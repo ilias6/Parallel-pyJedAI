@@ -400,8 +400,9 @@ class EmbeddingsNNBPM(ProgressiveMatching):
         for i in range(n):
             entity_id = self.ennbb._si.d1_retained_ids[i] if self.data.is_dirty_er else self.ennbb._si.d2_retained_ids[i]
             for j in range(k):
-                candidate_id = self.ennbb._si.d1_retained_ids[self.neighbors[i][j]]
-                self.pairs.append((entity_id, candidate_id, self.scores[i][j]))
+                if self.neighbors[i][j] != -1:
+                    candidate_id = self.ennbb._si.d1_retained_ids[self.neighbors[i][j]]
+                    self.pairs.append((entity_id, candidate_id, self.scores[i][j]))
 
         self.pairs = sorted(self.pairs, key=lambda x: x[2], reverse=True)
         self.pairs = [(x[0], x[1]) for x in self.pairs]
@@ -416,16 +417,16 @@ class EmbeddingsNNBPM(ProgressiveMatching):
         sorted_neighborhoods = sorted_enumerate(average_neighborhood_distances)
 
         for sorted_neighborhood in sorted_neighborhoods:
-
-            neighbor_indices = self.scores[sorted_neighborhood]
-            sorted_neighbor_indices = sorted_enumerate(neighbor_indices)
+            neighbor_scores = self.scores[sorted_neighborhood]
+            neighbors = self.neighbors[sorted_neighborhood]
             entity_id = self.ennbb._si.d1_retained_ids[sorted_neighborhood] \
             if self.data.is_dirty_er \
             else self.ennbb._si.d2_retained_ids[sorted_neighborhood]
-
-            for neighbor_index in sorted_neighbor_indices:
-                candidate_id = self.ennbb._si.d1_retained_ids[self.neighbors[sorted_neighborhood][neighbor_index]]
-                self.pairs.append((candidate_id, entity_id, self.scores[sorted_neighborhood][neighbor_index]))
+            
+            for neighbor_index, neighbor in enumerate(neighbors):
+                if(neighbor != -1):
+                    neighbor_id = self.ennbb._si.d1_retained_ids[neighbor]
+                    self.pairs.append((entity_id, neighbor_id, neighbor_scores[neighbor_index]))
 
         self.pairs = self.pairs = [(x[0], x[1]) for x in self.pairs]
 

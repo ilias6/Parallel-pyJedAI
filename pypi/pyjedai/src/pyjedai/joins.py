@@ -94,7 +94,7 @@ class AbstractJoin:
             num_of_entities = self.data.num_of_entities_1
         self._progress_bar = tqdm(
             total=self.data.num_of_entities if not self.data.is_dirty_er else num_of_entities*2,
-            desc=self._method_name+" ("+self.metric+")", disable=self.tqdm_disable
+            desc=self._method_name+" ("+self.+")", disable=self.tqdm_disable
         )
         self._flags = np.empty([num_of_entities])
         self._flags[:] = -1

@@ -3,7 +3,7 @@ import warnings
 from itertools import chain
 from collections import defaultdict
 from logging import warning
-from math import log10
+from math import log10, sqrt
 from queue import PriorityQueue
 from time import time
 
@@ -182,6 +182,19 @@ class AbstractMetablocking(AbstractComparisonCleaning, ABC):
         ws = self.weighting_scheme
         if ws == 'ARCS' or ws == 'CBS':
             return self._counters[neighbor_id]
+        # CARDINALITY_NORM_COSINE, SIZE_NORM_COSINE
+        elif ws == 'CNC' or ws == 'SNC':
+            return self._counters[neighbor_id] / float(sqrt(len(self._comparisons_per_entity[entity_id]) * self._comparisons_per_entity[neighbor_id]))
+        # SIZE_NORM_DICE, CARDINALITY_NORM_DICE
+        elif ws == 'SND' or ws == 'CND':
+            return 2 * self._counters[neighbor_id] / float(self._comparisons_per_entity[entity_id] + self._comparisons_per_entity[neighbor_id])
+        # CARDINALITY_NORM_JS, SIZE_NORM_JS
+        elif ws == 'CNJ' or ws == 'SNJ':
+            return  self._counters[neighbor_id] / float(self._comparisons_per_entity[entity_id] + self._comparisons_per_entity[neighbor_id] - self._counters[neighbor_id])
+        elif ws == 'COSINE':
+            return self._counters[neighbor_id] / float(sqrt(len(self._entity_index[entity_id]) * len(self._entity_index[neighbor_id])))
+        elif ws == 'DICE':
+            return 2 * self._counters[neighbor_id] / float(len(self._entity_index[entity_id]) + len(self._entity_index[neighbor_id]))
         elif ws == 'ECBS':
             return float(
                 self._counters[neighbor_id] *
