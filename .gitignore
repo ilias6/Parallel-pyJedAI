@@ -50,7 +50,7 @@ data/rdf/restaurants/restaurant1_restaurant2_goldstandard.rdf
 data/rdf/restaurants/restaurant1_restaurant2_goldstandard.rdf.csv
 data/rdf/restaurants/restaurant2.nt
 data/rdf/restaurants/restaurant2.nt.csv
-# data/datasets/
+data/datasets/
 data/datasets-backup/
 dev-only/vectorization.py
 dev-only/vectorization.py
