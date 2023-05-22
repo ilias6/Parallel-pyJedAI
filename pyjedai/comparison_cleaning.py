@@ -365,7 +365,6 @@ class WeightedEdgePruning(AbstractMetablocking):
     def _set_threshold(self):
         self._num_of_edges = 0.0
         self._threshold = 0.0
-
         for i in range(0, self._limit):
             self._process_entity(i)
             self._update_threshold(i)
@@ -967,8 +966,6 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
         self._valid_entities.clear()
         self._flags[:] = -1
         associated_blocks = self._entity_index[entity_id]
-        _top_entity_weight = -1
-        _top_entity_neighbor = -1
         
         for block_id in associated_blocks:
             self._normalize_neighbor_entities(block_id, entity_id)
@@ -981,19 +978,18 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
                 else:
                     self._counters[neighbor_id] += 1
                 self._valid_entities.add(neighbor_id)
-                
-                _current_neighbor_weight = self._get_weight(entity_id, neighbor_id)
+                        
+        for valid_entity_id in self._valid_entities:  
+                _current_neighbor_weight = self._get_weight(entity_id, valid_entity_id)
+                self._sorted_neighbors[entity_id].put((-_current_neighbor_weight, valid_entity_id))
                 if(self.store_weights):
-                    self._stored_weights[canonical_swap(entity_id, neighbor_id)] = _current_neighbor_weight
-                if(_current_neighbor_weight >= _top_entity_weight):
-                    _top_entity_weight = _current_neighbor_weight
-                    _top_entity_neighbor = neighbor_id
+                    self._stored_weights[canonical_swap(entity_id, valid_entity_id)] = _current_neighbor_weight
                 
-        if(_top_entity_weight != -1 and _top_entity_neighbor != -1):
-            self._to_emit_pairs.append((_top_entity_weight, entity_id, _top_entity_neighbor))
+        if(self.method == 'HB' and not self._sorted_neighbors[entity_id].empty()):
+            _top_entity_weight, _top_entity_neighbor = self._sorted_neighbors[entity_id].get()
+            self._to_emit_pairs.append((-_top_entity_weight, entity_id, _top_entity_neighbor))
         
         self.blocks[entity_id] = self._valid_entities.copy()        
-        
 
     def _prune_edges(self) -> dict:
         return None
@@ -1008,19 +1004,15 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
         for entity in sorted(blocks.keys()):
             neighbors = blocks[entity]
             _neighbors_weigth_sum : float = 0.0
-            _top_neighbor = -1
-            _top_weigth = -1
             for neighbor in neighbors:
                 _current_neighbor_weigth = cc.get_precalculated_weight(entity, neighbor) 
                 _neighbors_weigth_sum += _current_neighbor_weigth
-                
-                if(_current_neighbor_weigth >= _top_weigth):
-                    _top_weigth = _current_neighbor_weigth
-                    _top_neighbor = neighbor
-                
-            self._average_weight[entity] = _neighbors_weigth_sum / len(neighbors)
-            self._to_emit_pairs.append(_top_weigth, entity, _top_neighbor)
-            
+                self._sorted_neighbors[entity].put((-_current_neighbor_weigth, neighbor))
+        
+            self._average_weight[entity] = _neighbors_weigth_sum / len(neighbors) if len(neighbors) else 0.0
+            if(self.method == 'HB' and not self._sorted_neighbors[entity].empty()):
+                _top_entity_weight, _top_entity_neighbor = self._sorted_neighbors[entity].get()
+                self._to_emit_pairs.append((-_top_entity_weight, entity, _top_entity_neighbor))
     
     def successful_emission(self, pair : tuple) -> bool:
         """Attempts to emit given pair, returns True / False on Success / Fail 
@@ -1054,33 +1046,34 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
         self._emitted_comparisons = 0
         checked_entity = np.zeros(self._limit, dtype=bool)
         self.pairs = []
-        
-        
+
         for pair in self._to_emit_pairs:
             if(not self.successful_emission(pair)):
                 return self.pairs
         
-        for entity in self._avg_weight_sorted_entities:
-            checked_entity[entity] = True
-            neighbors = self.blocks[entity]
-            entity_pairs : PriorityQueue = PriorityQueue()
-            
-            for neighbor in neighbors:
-                if(not checked_entity[neighbor]):
-                    _current_weight = self.get_precalculated_weight(entity, neighbor)
-                    entity_pairs.put(
-                    (-_current_weight, entity, neighbor)
-                    )
-            
-            if(not entity_pairs.empty()): entity_pairs.get()        
-                    
-            while(not entity_pairs.empty()):
-                pair = entity_pairs.get()
-                if(not self.successful_emission(pair)): return self.pairs
-                
-        return self.pairs 
+        if(self.method == 'HB' or self.method == 'DFS'):
+            for entity in self._avg_weight_sorted_entities:
+                checked_entity[entity] = True
+                while(not self._sorted_neighbors[entity].empty()):
+                    weight, neighbor = self._sorted_neighbors[entity].get()
+                    pair = -weight, entity, neighbor
+                    if(not checked_entity[neighbor]):
+                        if(not self.successful_emission(pair)): 
+                            return self.pairs
+        else:
+            _available_emissions = True
+            while(_available_emissions):
+                for entity in self._avg_weight_sorted_entities:
+                    if(not self._sorted_neighbors[entity].empty()):
+                        weight, neighbor = self._sorted_neighbors[entity].get()
+                        pair = -weight, entity, neighbor
+                        if canonical_swap(entity, neighbor) not in self._checked_pairs:
+                            if(not self.successful_emission(pair)): return self.pairs
+                            self._checked_pairs.add(canonical_swap(entity, neighbor))   
+                      
+        return self.pairs     
 
-    def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, store_weigths : bool = True, cc: AbstractMetablocking = None) -> None:
+    def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, store_weigths : bool = True, cc: AbstractMetablocking = None, method : str = 'HB') -> None:
         """Calculates the weights between entities, stores them in descending order of their average weight,
            stores the top comparison per entity
 
@@ -1095,7 +1088,7 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
         """
         
         self.start_time = time()
-        self.tqdm_disable, self.data, self.store_weights = tqdm_disable, data, store_weigths
+        self.tqdm_disable, self.data, self.store_weights, self.method = tqdm_disable, data, store_weigths, method
         self._limit = self.data.num_of_entities \
                 if self.data.is_dirty_er or self._node_centric else self.data.dataset_limit
         self._progress_bar = tqdm(
@@ -1108,6 +1101,8 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
         self._blocks: dict = blocks
         self._stored_weights : dict = defaultdict(float)
         self._to_emit_pairs = []
+        self._sorted_neighbors = [PriorityQueue() for _ in range(self._limit)]
+        if(self.method == 'BFS'): self._checked_pairs = set()
         
         if(cc is None):
             self.process_raw_blocks(blocks)

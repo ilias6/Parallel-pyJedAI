@@ -145,13 +145,17 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                                   desc=(self._method_name + ' [' + self.vectorizer + ', ' + self.similarity_search + ']'),
                                   disable=tqdm_disable)
 
-        _all_blocks = list(input_cleaned_blocks.values())
-        if 'Block' in str(type(_all_blocks[0])):
+            
+        if(input_cleaned_blocks == None):
             self._applied_to_subset = False
-        elif isinstance(_all_blocks[0], set):
-            self._applied_to_subset = True
         else:
-            raise AttributeError("Wrong type of blocks given")
+            _all_blocks = list(input_cleaned_blocks.values())
+            if 'Block' in str(type(_all_blocks[0])):
+                self._applied_to_subset = False
+            elif isinstance(_all_blocks[0], set):
+                self._applied_to_subset = True
+            else:
+                raise AttributeError("Wrong type of blocks given")
 
         self._si = SubsetIndexer(self.input_cleaned_blocks, self.data, self._applied_to_subset)
         self._d1_valid_indices: list[int] = self._si.d1_retained_ids
@@ -181,8 +185,8 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         if load_embeddings_if_exist:
                 print("Loading embeddings from file...")
                 
-                p1 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + self.data.dataset_name_1 \
-                                                    if self.data.dataset_name_1 is not None else "d1" +'_1.npy')
+                p1 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + (self.data.dataset_name_1 \
+                                                    if self.data.dataset_name_1 is not None else "d1") +'_1.npy')
                 print("Loading file: ", p1)
                 if os.path.exists(p1):
                     self.vectors_1 = vectors_1 = np.load(p1)
@@ -192,8 +196,8 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                 else:
                     print("Embeddings not found. Creating new ones.")
                 
-                p2 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + self.data.dataset_name_2 \
-                                                    if self.data.dataset_name_2 is not None else "d2" +'_2.npy')    
+                p2 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + (self.data.dataset_name_2 \
+                                                    if self.data.dataset_name_2 is not None else "d2") +'_2.npy')    
                 print("Loading file: ", p2)
                 if os.path.exists(p2):
                     self.vectors_2 = vectors_2 = np.load(p2)
@@ -268,14 +272,14 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
             for e1 in self._entities_d1:
                 vectors_1.append(self._create_vector(e1, vocabulary))
                 self._progress_bar.update(1)
-            self.vectors_1 = np.array(vectors_1).astype('float32')
+            vectors_1 = np.vstack(vectors_1).astype('float32')
 
         vectors_2 = []
         if not self.data.is_dirty_er and not self._d2_loaded:
             for e2 in self._entities_d2:
                 vectors_2.append(self._create_vector(e2, vocabulary))
                 self._progress_bar.update(1)
-            self.vectors_2 = np.array(vectors_2).astype('float32')
+            vectors_2 = np.vstack(vectors_2).astype('float32')
 
         return vectors_1, vectors_2
 
@@ -341,7 +345,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                 vectors_1.append(vector)
                 self._progress_bar.update(1)
             self.vector_size = len(vectors_1[0])
-            self.vectors_1 = np.array(vectors_1).astype('float32')
+            vectors_1 = np.vstack(vectors_1).astype('float32')
         vectors_2 = []
         if not self.data.is_dirty_er and not self._d2_loaded:            
             for e2 in self._entities_d2:
@@ -349,8 +353,8 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                 vectors_2.append(vector)
                 self._progress_bar.update(1)
             self.vector_size = len(vectors_2[0])
-            self.vectors_2 = np.array(vectors_2).astype('float32')
-
+            vectors_2 = np.vstack(vectors_2).astype('float32')
+            
         return vectors_1, vectors_2 
 
     def _similarity_search_with_FAISS(self):

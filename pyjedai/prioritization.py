@@ -139,7 +139,8 @@ class ProgressiveMatching(EntityMatching):
             blocks: dict,
             data: Data,
             comparison_cleaner: AbstractMetablocking = None,
-            tqdm_disable: bool = False) -> Graph:
+            tqdm_disable: bool = False,
+            method : str = 'HB') -> Graph:
         """Main method of  progressive entity matching. Inputs a set of blocks and outputs a graph \
             that contains of the entity ids (nodes) and the similarity scores between them (edges).
             Args:
@@ -152,6 +153,7 @@ class ProgressiveMatching(EntityMatching):
         start_time = time()
         self.tqdm_disable = tqdm_disable
         self._comparison_cleaner: AbstractMetablocking = comparison_cleaner
+        self.method = method
 
         if not blocks:
             raise ValueError("Empty blocks structure")
@@ -638,7 +640,7 @@ class PESM(HashBasedProgressiveMatching):
     def _predict_raw_blocks(self, blocks: dict) -> None:
         
         pes : ProgressiveEntityScheduling = ProgressiveEntityScheduling(self._w_scheme, self._budget)
-        pes.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None)
+        pes.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, method=self.method)
         self.pairs = pes.produce_pairs()
 
     def _predict_prunned_blocks(self, blocks: dict):
