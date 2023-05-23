@@ -15,6 +15,8 @@ import numpy as np
 from .datamodel import Data
 from .utils import are_matching
 from .utils import batch_pairs
+from .utils import canonical_swap
+from math import inf
 
 import random
 import matplotlib.pyplot as plt
@@ -284,7 +286,35 @@ class Evaluation:
 
         return ideal_auc
 
-    def calculate_roc_auc_data(self, data: Data, pairs, batch_size : int  = 1) -> List[Tuple[int, int]]:
+    def _till_full_tps_emission(self) -> bool:
+        """Checks if emission should be stopped once all TPs have been found (TPs dict supplied)
+        Returns:
+            bool: Stop emission on all TPs found / Emit all pairs
+        """
+        return self._true_positive_checked is not None
+    
+    def _all_tps_emitted(self) -> bool:
+        """Checks if all TPs have been emitted (Defaults to False in the case of all pairs emission approach)
+        Returns:
+            bool: All TPs emitted / not emitted
+        """
+        if(self._till_full_tps_emission()): return self._tps_found >= len(self._true_positive_checked)
+        else: False
+        
+    def _update_true_positive_entry(self, entity : int, candidate : int) -> None:
+        """Updates the checked status of the given true positive
+
+        Args:
+            entity (int): Entity ID
+            candidate (int): Candidate ID
+        """
+        if(self._till_full_tps_emission()):
+            if(not self._true_positive_checked[canonical_swap(entity, candidate)]):
+                self._true_positive_checked[canonical_swap(entity, candidate)] = True
+                self._tps_found += 1
+    
+
+    def calculate_roc_auc_data(self, data: Data, pairs, batch_size : int  = 1, true_positive_checked : dict = None) -> List[Tuple[int, int]]:
         """Progressively calculates total recall, AUC for each batch of candidate pairs
         Args:
             data (Data): Data Module
@@ -302,32 +332,37 @@ class Evaluation:
 
         if(len(data.ground_truth) == 0):
             raise AttributeError("Cannot calculate AUC score, number of true duplicates is equal to 0.")
-
+        
         _true_positives: int = 0
         _normalized_auc: int = 0
         _current_recall: int = 0
         _new_recall: int = 0
+        self._tps_found : int = 0
+        self._true_positive_checked : dict = true_positive_checked
         self.num_of_true_duplicates = len(data.ground_truth)
         _recall_progress = [0]
 
         batches = batch_pairs(pairs, batch_size)
-        ideal_auc = self.calculate_ideal_auc(len(pairs), self.num_of_true_duplicates)
-        
+        # ideal_auc = self.calculate_ideal_auc(len(pairs), self.num_of_true_duplicates)
         for batch in batches:
             _current_batch_size : int = 0
             for entity, candidate in batch:
+                if(self._all_tps_emitted()): break
                 entity_id = data._gt_to_ids_reversed_1[entity] if entity < data.dataset_limit else data._gt_to_ids_reversed_2[entity]
                 candidate_id = data._gt_to_ids_reversed_1[candidate] if candidate < data.dataset_limit else data._gt_to_ids_reversed_2[candidate]
                 _d1_entity, _d2_entity = (entity_id, candidate_id) if entity < data.dataset_limit else (candidate_id, entity_id)
                 
                 if _d2_entity in self.data.pairs_of[_d1_entity]:
-                    _true_positives += 1
+                    self._update_true_positive_entry(entity_id, candidate_id)
+                    _true_positives += 1  
                 _current_batch_size += 1
 
             _new_recall = _true_positives / self.num_of_true_duplicates
             # _normalized_auc += ((_new_recall + _current_recall) / 2) * (_current_batch_size / self.num_of_true_duplicates)
             _current_recall = _new_recall
             _recall_progress.append(_current_recall)
+            if(self._all_tps_emitted()): break
+            
 
         # _normalized_auc = 0 if(ideal_auc == 0) else _normalized_auc / ideal_auc
         _normalized_auc = sum(_recall_progress) / (len(pairs) + 1.0)

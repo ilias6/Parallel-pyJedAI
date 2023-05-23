@@ -59,7 +59,9 @@ from .matching import EntityMatching
 from .comparison_cleaning import AbstractMetablocking
 from queue import PriorityQueue
 from random import sample
-from .utils import sorted_enumerate
+from .utils import sorted_enumerate, canonical_swap
+from abc import abstractmethod
+from typing import Tuple, List
 
 # Package import from https://anhaidgroup.github.io/py_stringmatching/v0.4.2/index.html
 
@@ -140,20 +142,25 @@ class ProgressiveMatching(EntityMatching):
             data: Data,
             comparison_cleaner: AbstractMetablocking = None,
             tqdm_disable: bool = False,
-            method : str = 'HB') -> Graph:
+            method : str = 'HB',
+            full_emission : bool = False) -> Graph:
         """Main method of  progressive entity matching. Inputs a set of blocks and outputs a graph \
             that contains of the entity ids (nodes) and the similarity scores between them (edges).
             Args:
                 blocks (dict): blocks of entities
                 data (Data): dataset module
                 tqdm_disable (bool, optional): Disables progress bar. Defaults to False.
+                method (str) : DFS/BFS/Hybrid approach for specified algorithm
+                full_emission (bool) : Emit all possible candidates for produced subset
             Returns:
                 networkx.Graph: entity ids (nodes) and similarity scores between them (edges)
         """
         start_time = time()
         self.tqdm_disable = tqdm_disable
         self._comparison_cleaner: AbstractMetablocking = comparison_cleaner
-        self.method = method
+        self._method = method
+        self._full_emission = full_emission
+        self.true_pair_checked = None 
 
         if not blocks:
             raise ValueError("Empty blocks structure")
@@ -176,10 +183,10 @@ class ProgressiveMatching(EntityMatching):
 
         return self.pairs
 
-    def evaluate_auc_roc(self, methods_prediction_data : list, batch_size : int = 1, proportional : bool = True) -> None:
+    def evaluate_auc_roc(self, methods_prediction_data : List[Tuple[str, List]], batch_size : int = 1, proportional : bool = True, true_positives_checked : List[dict] = None) -> None:
         """For each method, takes its predictions, calculates cumulative recall and auc, plots the corresponding ROC curve
         Args:
-            methods_prediction_data (list): List with each entry containing the method name and its predicted pairs
+            methods_prediction_data (list): List with each entry containing the method name, its predicted pairs
             batch_size (int, optional): Emitted pairs step at which cumulative recall is recalculated. Defaults to 1.
         Raises:
             AttributeError: No Data object
@@ -195,8 +202,10 @@ class ProgressiveMatching(EntityMatching):
         eval_obj = Evaluation(self.data)
         methods_auc_roc_data = []
 
-        for method_name, predictions in methods_prediction_data:
-            cumulative_recall, normalized_auc = eval_obj.calculate_roc_auc_data(eval_obj.data, predictions, batch_size)
+        for index, packed_data in enumerate(methods_prediction_data):
+            method_name, predictions = packed_data
+            method_tps_checked = None if true_positives_checked is None else true_positives_checked[index]
+            cumulative_recall, normalized_auc = eval_obj.calculate_roc_auc_data(eval_obj.data, predictions, batch_size, method_tps_checked)
             methods_auc_roc_data.append((method_name, normalized_auc, cumulative_recall))
 
         eval_obj.visualize_roc(methods_data = methods_auc_roc_data, proportional = proportional)
@@ -233,6 +242,22 @@ class ProgressiveMatching(EntityMatching):
                                 export_to_dict,
                                 with_classification_report,
                                 verbose)
+        
+    def get_true_pair_checked(self):
+        if(self.true_pair_checked is None):
+            raise AttributeError("True positive pairs not defined in specified workflow.")
+        else: return self.true_pair_checked   
+        
+        
+    @abstractmethod
+    def extract_tps_checked(self, **kwargs) -> dict:
+        """Constructs a dictionary of the form [true positive pair] -> emitted status,
+           containing all the true positive pairs that are emittable from the current subset of the dataset
+
+        Returns:
+            dict: Dictionary that shows whether a TP pair (key) has been emitted (value)
+        """
+        pass
 
 class HashBasedProgressiveMatching(ProgressiveMatching):
     """Applies hash based candidate graph prunning, sorts retained comparisons and applies Progressive Matching
@@ -259,6 +284,19 @@ class HashBasedProgressiveMatching(ProgressiveMatching):
 
         super().__init__(budget, metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
         self._w_scheme : str = w_scheme
+        
+    def extract_tps_checked(self, **kwargs) -> dict:
+        _tps_checked = dict()
+        for entity, neighbors in self.blocks.items():
+            for neighbor in neighbors:
+                entity_id = self.data._gt_to_ids_reversed_1[entity] if entity < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[entity]
+                neighbor_id = self.data._gt_to_ids_reversed_1[neighbor] if neighbor < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[neighbor]
+                _d1_entity, _d2_entity = (entity_id, neighbor_id) if entity < self.data.dataset_limit else (neighbor_id, entity_id)
+            
+                if _d2_entity in self.data.pairs_of[_d1_entity]:
+                    _tps_checked[canonical_swap(_d1_entity, _d2_entity)] = False
+        return _tps_checked
+        
 
 class GlobalTopPM(HashBasedProgressiveMatching):
     """Applies Progressive CEP, sorts retained comparisons and applies Progressive Matching
@@ -287,7 +325,9 @@ class GlobalTopPM(HashBasedProgressiveMatching):
 
     def _predict_raw_blocks(self, blocks: dict) -> None:
         pcep : ProgressiveCardinalityEdgePruning = ProgressiveCardinalityEdgePruning(self._w_scheme, self._budget)
-        candidates : dict = pcep.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None)
+        candidates : dict = pcep.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, full_emission=self._full_emission)
+        self.blocks = candidates
+        if(self._full_emission): self.true_pair_checked = self.extract_tps_checked()
 
         for entity_id, candidate_ids in candidates.items():
             for candidate_id in candidate_ids:
@@ -299,7 +339,9 @@ class GlobalTopPM(HashBasedProgressiveMatching):
 
     def _predict_prunned_blocks(self, blocks: dict) -> None:
         pcep : ProgressiveCardinalityEdgePruning = ProgressiveCardinalityEdgePruning(self._w_scheme, self._budget)
-        candidates : dict = pcep.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=self._comparison_cleaner)
+        candidates : dict = pcep.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=self._comparison_cleaner, full_emission=self._full_emission)
+        self.blocks = candidates
+        if(self._full_emission): self.true_pair_checked = self.extract_tps_checked()
 
         for entity_id, candidate_ids in candidates.items():
             for candidate_id in candidate_ids:
@@ -336,7 +378,9 @@ class LocalTopPM(HashBasedProgressiveMatching):
 
     def _predict_raw_blocks(self, blocks: dict) -> None:
         pcnp : ProgressiveCardinalityNodePruning = ProgressiveCardinalityNodePruning(self._w_scheme, self._budget)
-        candidates : dict = pcnp.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None)
+        candidates : dict = pcnp.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, full_emission=self._full_emission)
+        self.blocks = candidates
+        if(self._full_emission): self.true_pair_checked = self.extract_tps_checked()
         
         for entity_id, candidate_ids in candidates.items():
             for candidate_id in candidate_ids:
@@ -348,7 +392,9 @@ class LocalTopPM(HashBasedProgressiveMatching):
     def _predict_prunned_blocks(self, blocks: dict) -> None:
 
         pcnp : ProgressiveCardinalityNodePruning = ProgressiveCardinalityNodePruning(self._w_scheme, self._budget)
-        candidates : dict = pcnp.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=self._comparison_cleaner)
+        candidates : dict = pcnp.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=self._comparison_cleaner, full_emission=self._full_emission)
+        self.blocks = candidates
+        if(self._full_emission): self.true_pair_checked = self.extract_tps_checked()
 
         for entity_id, candidate_ids in candidates.items():
             for candidate_id in candidate_ids:
@@ -370,7 +416,6 @@ class EmbeddingsNNBPM(ProgressiveMatching):
             budget: int = 0,
             vectorizer: str = 'bert',
             similarity_search: str = 'faiss',
-            emission: str = 'avg',
             vector_size: int = 200,
             num_of_clusters: int = 5,
             metric: str = 'dice',
@@ -390,7 +435,6 @@ class EmbeddingsNNBPM(ProgressiveMatching):
         self._similarity_search = similarity_search
         self._vector_size = vector_size
         self._num_of_clusters = num_of_clusters
-        self._emission = emission
 
     def _top_pair_emission(self) -> None:
         """Applies global sorting to all entity pairs produced by NN,
@@ -409,7 +453,7 @@ class EmbeddingsNNBPM(ProgressiveMatching):
         self.pairs = sorted(self.pairs, key=lambda x: x[2], reverse=True)
         self.pairs = [(x[0], x[1]) for x in self.pairs]
 
-    def _avg_pair_emission(self) -> None:
+    def _dfs_pair_emission(self) -> None:
         """Sorts NN neighborhoods in ascending average distance from their query entity,
            iterate over each neighborhoods' entities in ascending distance to query entity 
         """
@@ -430,25 +474,78 @@ class EmbeddingsNNBPM(ProgressiveMatching):
                     neighbor_id = self.ennbb._si.d1_retained_ids[neighbor]
                     self.pairs.append((entity_id, neighbor_id, neighbor_scores[neighbor_index]))
 
-        self.pairs = self.pairs = [(x[0], x[1]) for x in self.pairs]
+        self.pairs = [(x[0], x[1]) for x in self.pairs]
+        
+    def _hb_pair_emission(self) -> None:
+        """Sorts NN neighborhoods in ascending average distance from their query entity,
+           emits the top entity for each neighborhood, then iterates over the sorte neighborhoods,
+           and emits the pairs in descending weight order
+        """
+        self.pairs = []
+        _first_emissions = []
+        _remaining_emissions = []
+
+        average_neighborhood_distances = np.mean(self.scores, axis=1)
+        sorted_neighborhoods = sorted_enumerate(average_neighborhood_distances)
+
+        for sorted_neighborhood in sorted_neighborhoods:
+            neighbor_scores = self.scores[sorted_neighborhood]
+            neighbors = self.neighbors[sorted_neighborhood]
+            entity_id = self.ennbb._si.d1_retained_ids[sorted_neighborhood] \
+            if self.data.is_dirty_er \
+            else self.ennbb._si.d2_retained_ids[sorted_neighborhood]
+            
+            for neighbor_index, neighbor in enumerate(neighbors):
+                if(neighbor != -1):
+                    neighbor_id = self.ennbb._si.d1_retained_ids[neighbor]                    
+                    _current_emissions = _remaining_emissions if neighbor_index else _first_emissions
+                    _current_emissions.append((entity_id, neighbor_id, neighbor_scores[neighbor_index]))
+
+        self.pairs = [(x[0], x[1]) for x in _first_emissions] + [(x[0], x[1]) for x in _remaining_emissions]
+        
+    def _bfs_pair_emission(self) -> None:
+        """Sorts NN neighborhoods in ascending average distance from their query entity,
+           and iteratively emits the current top pair per neighborhood 
+        """
+        self.pairs = []
+        average_neighborhood_distances = np.mean(self.scores, axis=1)
+        sorted_neighborhoods = sorted_enumerate(average_neighborhood_distances)
+
+        _emissions_per_pair = self.neighbors.shape[1]
+        for current_emission_per_pair in range(_emissions_per_pair):
+            for sorted_neighborhood in sorted_neighborhoods:
+                neighbor = self.neighbors[sorted_neighborhood][current_emission_per_pair]
+                if(neighbor != -1):
+                    neighbor_id = self.ennbb._si.d1_retained_ids[neighbor]
+                    entity_id = self.ennbb._si.d1_retained_ids[sorted_neighborhood] \
+                    if self.data.is_dirty_er \
+                    else self.ennbb._si.d2_retained_ids[sorted_neighborhood]
+                    self.pairs.append((entity_id, neighbor_id, self.scores[sorted_neighborhood][current_emission_per_pair]))
+                    
+        self.pairs = [(x[0], x[1]) for x in self.pairs]
 
     def _produce_pairs(self):
         """Calls pairs emission based on the requested approach
         Raises:
             AttributeError: Given emission technique hasn't been defined
         """
-        if(self._emission == 'avg'):
-            self._avg_pair_emission()
-        elif(self._emission == 'top'):
+        if(self._method == 'DFS'):
+            self._dfs_pair_emission()
+        elif(self._method == 'HB'):
+            self._hb_pair_emission()
+        elif(self._method == 'BFS'):
+            self._bfs_pair_emission()
+        elif(self._method == 'TOP'):
             self._top_pair_emission()
         else:
-            raise AttributeError(self._emission + ' emission technique is undefined!')
+            raise AttributeError(self._method + ' emission technique is undefined!')
 
     def _predict_raw_blocks(self, blocks: dict) -> None:
         self.ennbb : EmbeddingsNNBlockBuilding = EmbeddingsNNBlockBuilding(self._vectorizer, self._similarity_search)
         self.final_blocks = self.ennbb.build_blocks(data = self.data,
                      num_of_clusters = self._num_of_clusters,
-                     top_k = int(max(1, int(self._budget / self.data.num_of_entities) + (self._budget % self.data.num_of_entities > 0))),
+                     top_k = int(max(1, int(self._budget / self.data.num_of_entities) + (self._budget % self.data.num_of_entities > 0)))
+                     if not self._full_emission else self._budget,
                      return_vectors = False,
                      tqdm_disable = False,
                      save_embeddings = True,
@@ -461,10 +558,32 @@ class EmbeddingsNNBPM(ProgressiveMatching):
         self.final_vectors = (self.ennbb.vectors_1, self.ennbb.vectors_2)
 
         self._produce_pairs()
+        if(self._full_emission):
+            self.true_pair_checked = self.extract_tps_checked()
         return self.pairs
 
     def _predict_prunned_blocks(self, blocks: dict) -> None:
         return self._predict_raw_blocks(blocks)
+    
+    def extract_tps_checked(self, **kwargs) -> dict:
+        _tps_checked = dict()
+        _neighbors = self.neighbors
+        
+        for row in range(_neighbors.shape[0]):
+            entity = self.ennbb._si.d1_retained_ids[row] \
+                    if self.data.is_dirty_er \
+                    else self.ennbb._si.d2_retained_ids[row]
+            entity_id = self.data._gt_to_ids_reversed_1[entity] if entity < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[entity]
+            for column in range(_neighbors.shape[1]):
+                if(_neighbors[row][column] != -1):
+                    neighbor = self.ennbb._si.d1_retained_ids[_neighbors[row][column]]
+                    neighbor_id = self.data._gt_to_ids_reversed_1[neighbor] if neighbor < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[neighbor]
+                    _d1_entity, _d2_entity = (entity_id, neighbor_id) if entity < self.data.dataset_limit else (neighbor_id, entity_id)
+            
+                if _d2_entity in self.data.pairs_of[_d1_entity]:
+                    _tps_checked[canonical_swap(_d1_entity, _d2_entity)] = False
+        
+        return _tps_checked
     
 class SimilarityBasedProgressiveMatching(ProgressiveMatching):
     """Applies similarity based candidate graph prunning, sorts retained comparisons and applies Progressive Matching
@@ -492,8 +611,9 @@ class SimilarityBasedProgressiveMatching(ProgressiveMatching):
         super().__init__(budget, metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
         self._pwScheme : str = pwScheme
         
+    def extract_tps_checked(self, **kwargs) -> dict:
+        pass
         
-
 class GlobalPSNM(SimilarityBasedProgressiveMatching):
     """Applies Global Progressive Sorted Neighborhood Matching
     """
@@ -523,16 +643,30 @@ class GlobalPSNM(SimilarityBasedProgressiveMatching):
 
     def _predict_raw_blocks(self, blocks: dict):
         gpsn : GlobalProgressiveSortedNeighborhood = GlobalProgressiveSortedNeighborhood(self._pwScheme, self._budget)
-        candidates :  PriorityQueue = gpsn.process(blocks=blocks, data=self.data, tqdm_disable=True)
+        candidates :  PriorityQueue = gpsn.process(blocks=blocks, data=self.data, tqdm_disable=True, full_emission=self._full_emission)
         self.pairs = []
         while(not candidates.empty()):
             _, entity_id, candidate_id = candidates.get()
             self.pairs.append((entity_id, candidate_id))
+            if(self._full_emission): self.true_pair_checked = self.extract_tps_checked(entity=entity_id, neighbor=candidate_id)
           
         return self.pairs
 
     def _predict_prunned_blocks(self, blocks: dict):
         raise NotImplementedError("Sorter Neighborhood Algorithms don't support prunned blocks")
+    
+    def extract_tps_checked(self, **kwargs) -> dict:
+        self.true_pair_checked = dict() if self.true_pair_checked is None else self.true_pair_checked
+        entity = kwargs['entity']
+        neighbor = kwargs['neighbor']
+        
+        entity_id = self.data._gt_to_ids_reversed_1[entity] if entity < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[entity]
+        neighbor_id = self.data._gt_to_ids_reversed_1[neighbor] if neighbor < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[neighbor]
+        _d1_entity, _d2_entity = (entity_id, neighbor_id) if entity < self.data.dataset_limit else (neighbor_id, entity_id)
+        if _d2_entity in self.data.pairs_of[_d1_entity]:
+            self.true_pair_checked[canonical_swap(_d1_entity, _d2_entity)] = False
+            
+        return self.true_pair_checked
     
 class LocalPSNM(SimilarityBasedProgressiveMatching):
     """Applies Local Progressive Sorted Neighborhood Matching
@@ -563,16 +697,26 @@ class LocalPSNM(SimilarityBasedProgressiveMatching):
 
     def _predict_raw_blocks(self, blocks: dict):
         lpsn : LocalProgressiveSortedNeighborhood = LocalProgressiveSortedNeighborhood(self._pwScheme, self._budget)
-        candidates :  PriorityQueue = lpsn.process(blocks=blocks, data=self.data, tqdm_disable=True)
-        self.pairs = candidates 
+        candidates : list = lpsn.process(blocks=blocks, data=self.data, tqdm_disable=True, full_emission=self._full_emission)
+        self.pairs = candidates
+        if(self._full_emission): self.true_pair_checked = self.extract_tps_checked(candidates=candidates) 
         return self.pairs
 
     def _predict_prunned_blocks(self, blocks: dict):
         raise NotImplementedError("Sorter Neighborhood Algorithms don't support prunned blocks " + \
                                 "(pre comparison-cleaning entities per block distribution required")
-    
-    
-
+        
+    def extract_tps_checked(self, **kwargs) -> dict:
+        _tps_checked = dict()
+        _candidates = kwargs['candidates']
+        
+        for entity, neighbor in _candidates:
+            entity_id = self.data._gt_to_ids_reversed_1[entity] if entity < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[entity]
+            neighbor_id = self.data._gt_to_ids_reversed_1[neighbor] if neighbor < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[neighbor]
+            _d1_entity, _d2_entity = (entity_id, neighbor_id) if entity < self.data.dataset_limit else (neighbor_id, entity_id)
+            if _d2_entity in self.data.pairs_of[_d1_entity]:
+                _tps_checked[canonical_swap(_d1_entity, _d2_entity)] = False  
+        return _tps_checked
 class RandomPM(ProgressiveMatching):
     """Picks a number of random comparisons equal to the available budget
     """
@@ -605,10 +749,22 @@ class RandomPM(ProgressiveMatching):
     def _predict_prunned_blocks(self, blocks: dict) -> None:
         _all_pairs = [(id1, id2) for id1 in blocks for id2 in blocks[id1]]
         _total_pairs = len(_all_pairs)
-        random_pairs = sample(_all_pairs, self._budget) if self._budget <= _total_pairs else _all_pairs
+        random_pairs = sample(_all_pairs, self._budget) if self._budget <= _total_pairs and not self._full_emission else _all_pairs
+        if(self._full_emission): self.true_pair_checked = self.extract_tps_checked(candidates=random_pairs)
         self.pairs.add_edges_from(random_pairs)
         
-
+    def extract_tps_checked(self, **kwargs) -> dict:
+        _tps_checked = dict()
+        _candidates = kwargs['candidates']
+        
+        for entity, neighbor in _candidates:
+            entity_id = self.data._gt_to_ids_reversed_1[entity] if entity < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[entity]
+            neighbor_id = self.data._gt_to_ids_reversed_1[neighbor] if neighbor < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[neighbor]
+            _d1_entity, _d2_entity = (entity_id, neighbor_id) if entity < self.data.dataset_limit else (neighbor_id, entity_id)
+            if _d2_entity in self.data.pairs_of[_d1_entity]:
+                _tps_checked[canonical_swap(_d1_entity, _d2_entity)] = False  
+        return _tps_checked
+        
 class PESM(HashBasedProgressiveMatching):
     """Applies Progressive Entity Scheduling Matching
     """
@@ -640,10 +796,23 @@ class PESM(HashBasedProgressiveMatching):
     def _predict_raw_blocks(self, blocks: dict) -> None:
         
         pes : ProgressiveEntityScheduling = ProgressiveEntityScheduling(self._w_scheme, self._budget)
-        pes.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, method=self.method)
+        pes.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, method=self._method, full_emission=self._full_emission)
         self.pairs = pes.produce_pairs()
+        if(self._full_emission): self.true_pair_checked = self.extract_tps_checked(candidates=self.pairs)
 
     def _predict_prunned_blocks(self, blocks: dict):
         return self._predict_raw_blocks(blocks)
         # raise NotImplementedError("Sorter Neighborhood Algorithms doesn't support prunned blocks (lack of precalculated weights)")
+        
+    def extract_tps_checked(self, **kwargs) -> dict:
+        _tps_checked = dict()
+        _candidates = kwargs['candidates']
+        
+        for entity, neighbor in _candidates:
+            entity_id = self.data._gt_to_ids_reversed_1[entity] if entity < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[entity]
+            neighbor_id = self.data._gt_to_ids_reversed_1[neighbor] if neighbor < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[neighbor]
+            _d1_entity, _d2_entity = (entity_id, neighbor_id) if entity < self.data.dataset_limit else (neighbor_id, entity_id)
+            if _d2_entity in self.data.pairs_of[_d1_entity]:
+                _tps_checked[canonical_swap(_d1_entity, _d2_entity)] = False  
+        return _tps_checked
         

@@ -638,8 +638,9 @@ class ProgressiveCardinalityEdgePruning(CardinalityEdgePruning):
     def _set_threshold(self) -> None:
         self._threshold = self._budget
 
-    def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, store_weights: bool = True, cc: AbstractMetablocking = None) -> dict:
-
+    def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, store_weights: bool = True, cc: AbstractMetablocking = None, full_emission : bool = False) -> dict:
+        
+        self._full_emission : bool = full_emission
         if(cc is None):
             return super().process(blocks, data, tqdm_disable, store_weights)
         else:
@@ -672,15 +673,20 @@ class ProgressiveCardinalityNodePruning(CardinalityNodePruning):
         self._budget = budget
 
     def _set_threshold(self) -> None:
-        self._threshold = max(1, 2 * self._budget / self.data.num_of_entities)
+        self._threshold = max(1, 2 * self._budget / self.data.num_of_entities) if not self._full_emission else 2 * self._budget
 
-    def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, store_weights: bool = True, cc: AbstractMetablocking = None) -> dict:
-
+    def process(self, blocks: dict,
+                data: Data,
+                tqdm_disable: bool = False,
+                store_weights: bool = True,
+                cc: AbstractMetablocking = None,
+                full_emission : bool = False) -> dict:
+        self._full_emission : bool = full_emission
         if(cc is None):
             return super().process(blocks, data, tqdm_disable, store_weights)
             
         else:
-            self._threshold = max(1, 2 * self._budget / data.num_of_entities)           
+            self._threshold = max(1, 2 * self._budget / data.num_of_entities) if not self._full_emission else 2 * self._budget         
             self.trimmed_blocks : dict = defaultdict(set)
 
             for entity_id, neighbors in blocks.items():
@@ -723,7 +729,8 @@ class ProgressiveSortedNeighborhood(AbstractMetablocking):
             self,
             blocks: dict,
             data: Data,
-            tqdm_disable: bool = False
+            tqdm_disable: bool = False,
+            full_emission : bool = False
     ) -> PriorityQueue:
         """Calculates top comparisons for Progressive Matching
 
@@ -744,7 +751,7 @@ class ProgressiveSortedNeighborhood(AbstractMetablocking):
             desc=self._method_name,
             disable=self.tqdm_disable
         )
-
+        self._full_emission : bool = full_emission
         self._num_of_blocks = len(blocks)
         self._blocks: dict = blocks
         
@@ -808,6 +815,8 @@ class GlobalProgressiveSortedNeighborhood(ProgressiveSortedNeighborhood):
         
     def _apply_main_processing(self) -> PriorityQueue:
         self._max_window = 2 if self.data.num_of_entities <= 100 else int(2 ** (math.log10(self.data.num_of_entities) + 1) + 1)
+        # TO DO: budget taken as argument in prediction, not algorithm constructor
+        self._budget = float('inf') if self._full_emission else self._budget
         self._top_pairs : PriorityQueue = PriorityQueue(2 * int(self._budget))
         _top_unsorted_pairs: PriorityQueue = PriorityQueue(2 * int(self._budget))
         
@@ -888,6 +897,8 @@ class LocalProgressiveSortedNeighborhood(ProgressiveSortedNeighborhood):
         self._emitted_comparisons = 0
         self._current_window = 1 
         self._top_pairs: List[Tuple[int, int]] = []
+        # TO DO: budget taken as argument in prediction, not algorithm constructor
+        self._budget = float('inf') if self._full_emission else self._budget
         
         while(self._has_next()):
             _window_top_pairs = PriorityQueue()
@@ -1016,6 +1027,7 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
     
     def successful_emission(self, pair : tuple) -> bool:
         """Attempts to emit given pair, returns True / False on Success / Fail 
+           In the case of full emission, it always emits given pair
 
         Args:
             pair (tuple): Tuple in the form (score, entity1, entity2)
@@ -1024,7 +1036,10 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
             bool: Successful / Failed Emission
         """
         _weigth, _entity, _neighbor = pair
-        if(self._emitted_comparisons < self._budget):
+        
+        _budget = float('inf') if self._full_emission else self._budget
+        
+        if(self._emitted_comparisons < _budget):
             self.pairs.append((_entity, _neighbor))
             self._emitted_comparisons += 1
             self._progress_bar.update(1)
@@ -1035,7 +1050,7 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
             return False
      
             
-    def produce_pairs(self) -> List[Tuple[float, int, int]]:
+    def produce_pairs(self) -> List[Tuple[int, int]]:
         """Emits the top pair for each entity in decreasing average weigth order.
            Traverses the entities in decreasing average weigth order and emits its
            pairs in decreasing weight order
@@ -1063,17 +1078,19 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
         else:
             _available_emissions = True
             while(_available_emissions):
+                _available_emissions = False
                 for entity in self._avg_weight_sorted_entities:
                     if(not self._sorted_neighbors[entity].empty()):
                         weight, neighbor = self._sorted_neighbors[entity].get()
                         pair = -weight, entity, neighbor
                         if canonical_swap(entity, neighbor) not in self._checked_pairs:
                             if(not self.successful_emission(pair)): return self.pairs
-                            self._checked_pairs.add(canonical_swap(entity, neighbor))   
+                            self._checked_pairs.add(canonical_swap(entity, neighbor))
+                            _available_emissions = True   
                       
         return self.pairs     
 
-    def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, store_weigths : bool = True, cc: AbstractMetablocking = None, method : str = 'HB') -> None:
+    def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, store_weigths : bool = True, cc: AbstractMetablocking = None, method : str = 'HB', full_emission : bool = False) -> None:
         """Calculates the weights between entities, stores them in descending order of their average weight,
            stores the top comparison per entity
 
@@ -1097,6 +1114,7 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
             disable=self.tqdm_disable
         )
         
+        self._full_emission : bool = full_emission
         self._num_of_blocks = len(blocks)
         self._blocks: dict = blocks
         self._stored_weights : dict = defaultdict(float)
@@ -1143,6 +1161,8 @@ def get_meta_blocking_approach(acronym: str, w_scheme: str, budget: int = 0) -> 
         return GlobalProgressiveSortedNeighborhood(w_scheme, budget)
     elif acronym == "LPSN":
         return LocalProgressiveSortedNeighborhood(w_scheme, budget)
+    elif acronym == "PES":
+        return ProgressiveEntityScheduling(w_scheme, budget)
     else:
         warnings.warn("Wrong meta-blocking approach selected. Returning Comparison Propagation.")
         return ComparisonPropagation()
