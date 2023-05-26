@@ -308,10 +308,15 @@ class Evaluation:
             entity (int): Entity ID
             candidate (int): Candidate ID
         """
+        print(f"TP[{entity}][{candidate}]")
         if(self._till_full_tps_emission()):
             if(not self._true_positive_checked[canonical_swap(entity, candidate)]):
                 self._true_positive_checked[canonical_swap(entity, candidate)] = True
                 self._tps_found += 1
+                print(f"Not Checked")
+                print(f"Total TPs Found: {self._tps_found}")
+                return 
+        print(f"Checked Already")
     
 
     def calculate_roc_auc_data(self, data: Data, pairs, batch_size : int  = 1, true_positive_checked : dict = None) -> List[Tuple[int, int]]:
@@ -325,6 +330,9 @@ class Evaluation:
             List[Tuple[int, int]]: List of ROC graph points information (recall up to e, normalized auc up to e)
         """
 
+        if(true_positive_checked is not None): 
+            for pair in true_positive_checked.keys():
+                true_positive_checked[pair] = False 
 
         if(data.ground_truth is None):
             raise AttributeError("Can calculate ROC AUC without a ground-truth file. \
@@ -344,6 +352,7 @@ class Evaluation:
 
         batches = batch_pairs(pairs, batch_size)
         # ideal_auc = self.calculate_ideal_auc(len(pairs), self.num_of_true_duplicates)
+        self._total_emissions : int = 0
         for batch in batches:
             _current_batch_size : int = 0
             for entity, candidate in batch:
@@ -356,7 +365,8 @@ class Evaluation:
                     self._update_true_positive_entry(entity_id, candidate_id)
                     _true_positives += 1  
                 _current_batch_size += 1
-
+            self._total_emissions += 1
+            print(f"Emission[{self._total_emissions}]")
             _new_recall = _true_positives / self.num_of_true_duplicates
             # _normalized_auc += ((_new_recall + _current_recall) / 2) * (_current_batch_size / self.num_of_true_duplicates)
             _current_recall = _new_recall

@@ -494,10 +494,9 @@ class EmbeddingsNNBPM(ProgressiveMatching):
             entity_id = self.ennbb._si.d1_retained_ids[sorted_neighborhood] \
             if self.data.is_dirty_er \
             else self.ennbb._si.d2_retained_ids[sorted_neighborhood]
-            
             for neighbor_index, neighbor in enumerate(neighbors):
                 if(neighbor != -1):
-                    neighbor_id = self.ennbb._si.d1_retained_ids[neighbor]                    
+                    neighbor_id = self.ennbb._si.d1_retained_ids[neighbor]              
                     _current_emissions = _remaining_emissions if neighbor_index else _first_emissions
                     _current_emissions.append((entity_id, neighbor_id, neighbor_scores[neighbor_index]))
 
@@ -579,7 +578,6 @@ class EmbeddingsNNBPM(ProgressiveMatching):
                     neighbor = self.ennbb._si.d1_retained_ids[_neighbors[row][column]]
                     neighbor_id = self.data._gt_to_ids_reversed_1[neighbor] if neighbor < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[neighbor]
                     _d1_entity, _d2_entity = (entity_id, neighbor_id) if entity < self.data.dataset_limit else (neighbor_id, entity_id)
-            
                 if _d2_entity in self.data.pairs_of[_d1_entity]:
                     _tps_checked[canonical_swap(_d1_entity, _d2_entity)] = False
         

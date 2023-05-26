@@ -224,14 +224,14 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                 print("Cannot save embeddings, subset embeddings storing not supported.")
             else:
                 if not self._d1_loaded:
-                    p1 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + self.data.dataset_name_1 \
-                                                            if self.data.dataset_name_1 is not None else "d1" +'_1.npy')
+                    p1 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + (self.data.dataset_name_1 \
+                                                            if self.data.dataset_name_1 is not None else "d1") +'.npy')
                     print("Saving file: ", p1)
                     np.save(p1, self.vectors_1)
                 
                 if not self._d2_loaded:
-                    p2 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + self.data.dataset_name_2 \
-                                                            if self.data.dataset_name_2 is not None else "d2" +'_2.npy')
+                    p2 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + (self.data.dataset_name_2 \
+                                                            if self.data.dataset_name_2 is not None else "d2") +'.npy')
                     print("Saving file: ", p2)
                     np.save(p2, self.vectors_2)
 
