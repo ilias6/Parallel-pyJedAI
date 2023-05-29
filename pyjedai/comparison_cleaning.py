@@ -638,9 +638,9 @@ class ProgressiveCardinalityEdgePruning(CardinalityEdgePruning):
     def _set_threshold(self) -> None:
         self._threshold = self._budget
 
-    def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, store_weights: bool = True, cc: AbstractMetablocking = None, full_emission : bool = False) -> dict:
+    def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, store_weights: bool = True, cc: AbstractMetablocking = None, emit_all_tps_stop : bool = False) -> dict:
         
-        self._full_emission : bool = full_emission
+        self._emit_all_tps_stop : bool = emit_all_tps_stop
         if(cc is None):
             return super().process(blocks, data, tqdm_disable, store_weights)
         else:
@@ -673,20 +673,20 @@ class ProgressiveCardinalityNodePruning(CardinalityNodePruning):
         self._budget = budget
 
     def _set_threshold(self) -> None:
-        self._threshold = max(1, 2 * self._budget / self.data.num_of_entities) if not self._full_emission else 2 * self._budget
+        self._threshold = max(1, 2 * self._budget / self.data.num_of_entities) if not self._emit_all_tps_stop else 2 * self._budget
 
     def process(self, blocks: dict,
                 data: Data,
                 tqdm_disable: bool = False,
                 store_weights: bool = True,
                 cc: AbstractMetablocking = None,
-                full_emission : bool = False) -> dict:
-        self._full_emission : bool = full_emission
+                emit_all_tps_stop : bool = False) -> dict:
+        self._emit_all_tps_stop : bool = emit_all_tps_stop
         if(cc is None):
             return super().process(blocks, data, tqdm_disable, store_weights)
             
         else:
-            self._threshold = max(1, 2 * self._budget / data.num_of_entities) if not self._full_emission else 2 * self._budget         
+            self._threshold = max(1, 2 * self._budget / data.num_of_entities) if not self._emit_all_tps_stop else 2 * self._budget         
             self.trimmed_blocks : dict = defaultdict(set)
 
             for entity_id, neighbors in blocks.items():
@@ -730,7 +730,7 @@ class ProgressiveSortedNeighborhood(AbstractMetablocking):
             blocks: dict,
             data: Data,
             tqdm_disable: bool = False,
-            full_emission : bool = False
+            emit_all_tps_stop : bool = False
     ) -> PriorityQueue:
         """Calculates top comparisons for Progressive Matching
 
@@ -751,7 +751,7 @@ class ProgressiveSortedNeighborhood(AbstractMetablocking):
             desc=self._method_name,
             disable=self.tqdm_disable
         )
-        self._full_emission : bool = full_emission
+        self._emit_all_tps_stop : bool = emit_all_tps_stop
         self._num_of_blocks = len(blocks)
         self._blocks: dict = blocks
         
@@ -816,9 +816,9 @@ class GlobalProgressiveSortedNeighborhood(ProgressiveSortedNeighborhood):
     def _apply_main_processing(self) -> PriorityQueue:
         self._max_window = 2 if self.data.num_of_entities <= 100 else int(2 ** (math.log10(self.data.num_of_entities) + 1) + 1)
         # TO DO: budget taken as argument in prediction, not algorithm constructor
-        self._budget = float('inf') if self._full_emission else self._budget
-        self._top_pairs : PriorityQueue = PriorityQueue(2 * int(self._budget))
-        _top_unsorted_pairs: PriorityQueue = PriorityQueue(2 * int(self._budget))
+        self._budget = float('inf') if self._emit_all_tps_stop else self._budget
+        self._top_pairs : PriorityQueue = PriorityQueue(2 * int(self._budget)) if not self._emit_all_tps_stop else PriorityQueue()
+        _top_unsorted_pairs: PriorityQueue = PriorityQueue(2 * int(self._budget)) if not self._emit_all_tps_stop else PriorityQueue()
         
         for entity in range(self.data.dataset_limit):
             entity_positions = self._position_index.get_positions(entity)
@@ -898,7 +898,7 @@ class LocalProgressiveSortedNeighborhood(ProgressiveSortedNeighborhood):
         self._current_window = 1 
         self._top_pairs: List[Tuple[int, int]] = []
         # TO DO: budget taken as argument in prediction, not algorithm constructor
-        self._budget = float('inf') if self._full_emission else self._budget
+        self._budget = float('inf') if self._emit_all_tps_stop else self._budget
         
         while(self._has_next()):
             _window_top_pairs = PriorityQueue()
@@ -1037,7 +1037,7 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
         """
         _weigth, _entity, _neighbor = pair
         
-        _budget = float('inf') if self._full_emission else self._budget
+        _budget = float('inf') if self._emit_all_tps_stop else self._budget
         
         if(self._emitted_comparisons < _budget):
             self.pairs.append((_entity, _neighbor))
@@ -1090,7 +1090,7 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
                       
         return self.pairs     
 
-    def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, store_weigths : bool = True, cc: AbstractMetablocking = None, method : str = 'HB', full_emission : bool = False) -> None:
+    def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, store_weigths : bool = True, cc: AbstractMetablocking = None, method : str = 'HB', emit_all_tps_stop : bool = False) -> None:
         """Calculates the weights between entities, stores them in descending order of their average weight,
            stores the top comparison per entity
 
@@ -1114,7 +1114,7 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
             disable=self.tqdm_disable
         )
         
-        self._full_emission : bool = full_emission
+        self._emit_all_tps_stop : bool = emit_all_tps_stop
         self._num_of_blocks = len(blocks)
         self._blocks: dict = blocks
         self._stored_weights : dict = defaultdict(float)

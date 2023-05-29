@@ -143,7 +143,7 @@ class ProgressiveMatching(EntityMatching):
             comparison_cleaner: AbstractMetablocking = None,
             tqdm_disable: bool = False,
             method : str = 'HB',
-            full_emission : bool = False) -> Graph:
+            emit_all_tps_stop : bool = False) -> Graph:
         """Main method of  progressive entity matching. Inputs a set of blocks and outputs a graph \
             that contains of the entity ids (nodes) and the similarity scores between them (edges).
             Args:
@@ -151,7 +151,7 @@ class ProgressiveMatching(EntityMatching):
                 data (Data): dataset module
                 tqdm_disable (bool, optional): Disables progress bar. Defaults to False.
                 method (str) : DFS/BFS/Hybrid approach for specified algorithm
-                full_emission (bool) : Emit all possible candidates for produced subset
+                emit_all_tps_stop (bool) : Stop emission once all true positives are found
             Returns:
                 networkx.Graph: entity ids (nodes) and similarity scores between them (edges)
         """
@@ -159,7 +159,7 @@ class ProgressiveMatching(EntityMatching):
         self.tqdm_disable = tqdm_disable
         self._comparison_cleaner: AbstractMetablocking = comparison_cleaner
         self._method = method
-        self._full_emission = full_emission
+        self._emit_all_tps_stop = emit_all_tps_stop
         self.true_pair_checked = None 
 
         if not blocks:
@@ -325,9 +325,9 @@ class GlobalTopPM(HashBasedProgressiveMatching):
 
     def _predict_raw_blocks(self, blocks: dict) -> None:
         pcep : ProgressiveCardinalityEdgePruning = ProgressiveCardinalityEdgePruning(self._w_scheme, self._budget)
-        candidates : dict = pcep.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, full_emission=self._full_emission)
+        candidates : dict = pcep.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, emit_all_tps_stop=self._emit_all_tps_stop)
         self.blocks = candidates
-        if(self._full_emission): self.true_pair_checked = self.extract_tps_checked()
+        if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked()
 
         for entity_id, candidate_ids in candidates.items():
             for candidate_id in candidate_ids:
@@ -339,9 +339,9 @@ class GlobalTopPM(HashBasedProgressiveMatching):
 
     def _predict_prunned_blocks(self, blocks: dict) -> None:
         pcep : ProgressiveCardinalityEdgePruning = ProgressiveCardinalityEdgePruning(self._w_scheme, self._budget)
-        candidates : dict = pcep.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=self._comparison_cleaner, full_emission=self._full_emission)
+        candidates : dict = pcep.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=self._comparison_cleaner, emit_all_tps_stop=self._emit_all_tps_stop)
         self.blocks = candidates
-        if(self._full_emission): self.true_pair_checked = self.extract_tps_checked()
+        if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked()
 
         for entity_id, candidate_ids in candidates.items():
             for candidate_id in candidate_ids:
@@ -378,9 +378,9 @@ class LocalTopPM(HashBasedProgressiveMatching):
 
     def _predict_raw_blocks(self, blocks: dict) -> None:
         pcnp : ProgressiveCardinalityNodePruning = ProgressiveCardinalityNodePruning(self._w_scheme, self._budget)
-        candidates : dict = pcnp.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, full_emission=self._full_emission)
+        candidates : dict = pcnp.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, emit_all_tps_stop=self._emit_all_tps_stop)
         self.blocks = candidates
-        if(self._full_emission): self.true_pair_checked = self.extract_tps_checked()
+        if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked()
         
         for entity_id, candidate_ids in candidates.items():
             for candidate_id in candidate_ids:
@@ -392,9 +392,9 @@ class LocalTopPM(HashBasedProgressiveMatching):
     def _predict_prunned_blocks(self, blocks: dict) -> None:
 
         pcnp : ProgressiveCardinalityNodePruning = ProgressiveCardinalityNodePruning(self._w_scheme, self._budget)
-        candidates : dict = pcnp.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=self._comparison_cleaner, full_emission=self._full_emission)
+        candidates : dict = pcnp.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=self._comparison_cleaner, emit_all_tps_stop=self._emit_all_tps_stop)
         self.blocks = candidates
-        if(self._full_emission): self.true_pair_checked = self.extract_tps_checked()
+        if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked()
 
         for entity_id, candidate_ids in candidates.items():
             for candidate_id in candidate_ids:
@@ -544,7 +544,7 @@ class EmbeddingsNNBPM(ProgressiveMatching):
         self.final_blocks = self.ennbb.build_blocks(data = self.data,
                      num_of_clusters = self._num_of_clusters,
                      top_k = int(max(1, int(self._budget / self.data.num_of_entities) + (self._budget % self.data.num_of_entities > 0)))
-                     if not self._full_emission else self._budget,
+                     if not self._emit_all_tps_stop else self._budget,
                      return_vectors = False,
                      tqdm_disable = False,
                      save_embeddings = True,
@@ -557,7 +557,7 @@ class EmbeddingsNNBPM(ProgressiveMatching):
         self.final_vectors = (self.ennbb.vectors_1, self.ennbb.vectors_2)
 
         self._produce_pairs()
-        if(self._full_emission):
+        if(self._emit_all_tps_stop):
             self.true_pair_checked = self.extract_tps_checked()
         return self.pairs
 
@@ -641,12 +641,12 @@ class GlobalPSNM(SimilarityBasedProgressiveMatching):
 
     def _predict_raw_blocks(self, blocks: dict):
         gpsn : GlobalProgressiveSortedNeighborhood = GlobalProgressiveSortedNeighborhood(self._pwScheme, self._budget)
-        candidates :  PriorityQueue = gpsn.process(blocks=blocks, data=self.data, tqdm_disable=True, full_emission=self._full_emission)
+        candidates :  PriorityQueue = gpsn.process(blocks=blocks, data=self.data, tqdm_disable=True, emit_all_tps_stop=self._emit_all_tps_stop)
         self.pairs = []
         while(not candidates.empty()):
             _, entity_id, candidate_id = candidates.get()
             self.pairs.append((entity_id, candidate_id))
-            if(self._full_emission): self.true_pair_checked = self.extract_tps_checked(entity=entity_id, neighbor=candidate_id)
+            if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked(entity=entity_id, neighbor=candidate_id)
           
         return self.pairs
 
@@ -695,9 +695,9 @@ class LocalPSNM(SimilarityBasedProgressiveMatching):
 
     def _predict_raw_blocks(self, blocks: dict):
         lpsn : LocalProgressiveSortedNeighborhood = LocalProgressiveSortedNeighborhood(self._pwScheme, self._budget)
-        candidates : list = lpsn.process(blocks=blocks, data=self.data, tqdm_disable=True, full_emission=self._full_emission)
+        candidates : list = lpsn.process(blocks=blocks, data=self.data, tqdm_disable=True, emit_all_tps_stop=self._emit_all_tps_stop)
         self.pairs = candidates
-        if(self._full_emission): self.true_pair_checked = self.extract_tps_checked(candidates=candidates) 
+        if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked(candidates=candidates) 
         return self.pairs
 
     def _predict_prunned_blocks(self, blocks: dict):
@@ -747,8 +747,8 @@ class RandomPM(ProgressiveMatching):
     def _predict_prunned_blocks(self, blocks: dict) -> None:
         _all_pairs = [(id1, id2) for id1 in blocks for id2 in blocks[id1]]
         _total_pairs = len(_all_pairs)
-        random_pairs = sample(_all_pairs, self._budget) if self._budget <= _total_pairs and not self._full_emission else _all_pairs
-        if(self._full_emission): self.true_pair_checked = self.extract_tps_checked(candidates=random_pairs)
+        random_pairs = sample(_all_pairs, self._budget) if self._budget <= _total_pairs and not self._emit_all_tps_stop else _all_pairs
+        if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked(candidates=random_pairs)
         self.pairs.add_edges_from(random_pairs)
         
     def extract_tps_checked(self, **kwargs) -> dict:
@@ -794,9 +794,9 @@ class PESM(HashBasedProgressiveMatching):
     def _predict_raw_blocks(self, blocks: dict) -> None:
         
         pes : ProgressiveEntityScheduling = ProgressiveEntityScheduling(self._w_scheme, self._budget)
-        pes.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, method=self._method, full_emission=self._full_emission)
+        pes.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, method=self._method, emit_all_tps_stop=self._emit_all_tps_stop)
         self.pairs = pes.produce_pairs()
-        if(self._full_emission): self.true_pair_checked = self.extract_tps_checked(candidates=self.pairs)
+        if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked(candidates=self.pairs)
 
     def _predict_prunned_blocks(self, blocks: dict):
         return self._predict_raw_blocks(blocks)
