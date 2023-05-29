@@ -254,7 +254,7 @@ tokenizers==0.12.1
     # via transformers
 tomli==2.0.1 ; python_version < "3.11"
     # via pyjedai (pyproject.toml)
-torch==1.12.1
+torch==1.13.1
     # via
     #   sentence-transformers
     #   torchvision
