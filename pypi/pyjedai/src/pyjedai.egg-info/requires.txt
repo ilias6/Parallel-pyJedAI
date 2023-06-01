@@ -20,6 +20,7 @@ transformers>=4.21
 sentence-transformers>=2.2
 faiss-cpu>=1.7
 optuna>=3.0
+py-stringmatching>=0.4
 
 [:python_version < "3.11"]
 tomli

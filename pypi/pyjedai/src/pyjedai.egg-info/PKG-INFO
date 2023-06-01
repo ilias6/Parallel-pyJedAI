@@ -1,11 +1,11 @@
 Metadata-Version: 2.1
 Name: pyjedai
-Version: 0.0.5
+Version: 0.0.6
 Summary: An open-source library that builds powerful end-to-end Entity Resolution workflows.
 Author-email: Konstantinos Nikoletos <nikoletos.kon@gmail.com>, George Papadakis <gpapadis84@gmail.com>
 License: Apache Software License 2.0
-Project-URL: Homepage, https://github.com/AI-team-UoA/pyJedAI
-Project-URL: Documentation, https://github.com/AI-team-UoA/pyJedAI/wiki
+Project-URL: Homepage, http://pyjedai.rtfd.io
+Project-URL: Documentation, http://pyjedai.rtfd.io
 Project-URL: Bug Tracker, https://github.com/AI-team-UoA/pyJedAI/issues
 Project-URL: Source code, https://github.com/AI-team-UoA/pyJedAI/tree/main/pyjedai
 Keywords: deduplication,entity-resolution,link-discovery
@@ -123,7 +123,7 @@ __Status__
 
 # Team & Authors
 
-<img align="right" src="https://github.com/AI-team-UoA/.github/blob/main/AI_LOGO.png?raw=true" alt="pyJedAI" width="200"/>
+<img align="right" src="https://github.com/AI-team-UoA/.github/blob/main/AI_LOGO.png?raw=true" alt="pyJedAI" width="250"/>
 
 - [Konstantinos Nikoletos](https://nikoletos-k.github.io)
 - Jakub Maciejewski
