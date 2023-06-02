@@ -62,6 +62,17 @@ from random import sample
 from .utils import sorted_enumerate, canonical_swap
 from abc import abstractmethod
 from typing import Tuple, List
+from .utils import SubsetIndexer, WhooshDataset, WhooshNeighborhood, is_infinite
+import pandas as pd
+import os
+from whoosh.fields import TEXT, Schema, ID
+from whoosh.index import create_in
+from whoosh.qparser import QueryParser
+from whoosh.scoring import TF_IDF, Frequency, PL2, BM25F
+
+
+# Directory where the whoosh index is stored
+INDEXER_DIR = '.indexer'
 
 # Package import from https://anhaidgroup.github.io/py_stringmatching/v0.4.2/index.html
 
@@ -813,4 +824,151 @@ class PESM(HashBasedProgressiveMatching):
             if _d2_entity in self.data.pairs_of[_d1_entity]:
                 _tps_checked[canonical_swap(_d1_entity, _d2_entity)] = False  
         return _tps_checked
+    
+    
+class WhooshProgressiveMatching(ProgressiveMatching):
+    """Applies progressive index based matching using whoosh library 
+    """
+
+    _method_name: str = "Whoosh Progressive Matching"
+    _method_info: str = "Applies Whoosh Progressive Matching - Indexes the entities of the second dataset, " + \
+                        "stores their specified attributes, " + \
+                        "defines a query for each entity of the first dataset, " + \
+                        "and retrieves its pair candidates from the indexer within specified budget"
+
+    def __init__(
+            self,
+            budget: int = 0,
+            metric: str = 'TF-IDF',
+            tokenizer: str = 'white_space_tokenizer',
+            similarity_threshold: float = 0.5,
+            qgram: int = 2, # for jaccard
+            tokenizer_return_set = True, # unique values or not
+            attributes: any = None,
+            delim_set: list = None, # DelimiterTokenizer
+            padding: bool = True, # QgramTokenizer
+            prefix_pad: str = '#', # QgramTokenizer (if padding=True)
+            suffix_pad: str = '$' # QgramTokenizer (if padding=True)
+        ) -> None:
+        # budget set to float('inf') implies unlimited budget
+        super().__init__(budget, metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+     
+    def _set_whoosh_datasets(self) -> None:
+        """Saves the rows of both datasets corresponding to the indices of the entities that have been retained after comparison cleaning
+        """
         
+        self._whoosh_d1 = self.data.dataset_1[self.attributes] if self.attributes else self.data.dataset_1
+        self._whoosh_d1 = self._whoosh_d1[self._whoosh_d1[self.data.id_column_name_1].isin(self._whoosh_d1_retained_index)]
+        if(not self.data.is_dirty_er):  
+            self._whoosh_d2 = self.data.dataset_2[self.attributes] if self.attributes else self.data.dataset_2
+            self._whoosh_d2 = self._whoosh_d2[self._whoosh_d2[self.data.id_column_name_2].isin(self._whoosh_d2_retained_index)]
+        
+
+    def _set_retained_entries(self) -> None:
+        """Saves the indices of entities of both datasets that have been retained after comparison cleaning
+        """
+        self._whoosh_d1_retained_index = pd.Index([self.data._gt_to_ids_reversed_1[id] 
+        for id in self._si.d1_retained_ids])
+        
+        if(not self.data.is_dirty_er):
+            self._whoosh_d2_retained_index = pd.Index([self.data._gt_to_ids_reversed_2[id] 
+        for id in self._si.d2_retained_ids])
+    
+    
+    def initialize_index_path(self):
+        """Creates index directory if non-existent, constructs the absolute path to the current whoosh index
+        """
+        if not os.path.exists(INDEXER_DIR):
+            os.makedirs(INDEXER_DIR)
+            INDEXER_DIR = os.path.abspath(INDEXER_DIR)
+            print('Created index directory at: ' + INDEXER_DIR)  
+        _d1_name = self.data.dataset_name_1 if self.data.dataset_name_1 is not None else 'd1'    
+        self._index_path = os.path.join(INDEXER_DIR, _d1_name if self.data.is_dirty_er else (_d1_name + (self.data.dataset_name_2 if self.data.dataset_name_2 is not None else 'd2')))
+    
+    def _create_index(self):
+        """Defines the schema [ID, CONTENT], creates the index in the defined path 
+           and populates it with all the entities of the target dataset (first - Dirty ER, second - Clean ER)
+        """
+        self._schema = Schema(ID=ID(stored=True), content=TEXT(stored=True))
+        self._index = create_in(self._index_path, self._schema)
+        writer = self._index.writer()
+        
+        _target_dataset = self._whoosh_d1 if self.data.is_dirty_er else self._whoosh_d2
+        _id_column_name = self.data.id_column_name_1 if self.data.is_dirty_er else self.data.id_column_name_2
+        
+        for _, entity in _target_dataset.iterrows():
+            entity_values = [str(entity[column]) for column in _target_dataset.columns if column != _id_column_name]
+            writer.add_document(ID=entity[_id_column_name], content=' '.join(entity_values))
+        writer.commit()
+    
+    def _populate_whoosh_dataset(self) -> None:
+        """For each retained entity in the first dataset, construct a query with its text content,
+           parses it to the indexers, retrieves best candidates and stores them in entity's neighborhood.
+           Finally, neighborhoods are sorted in descending order of their average weight
+        """
+        # None value for budget implies unlimited budget in whoosh 
+        _query_budget = None if is_infinite(self._budget) else max(1, 2 * self._budget / len(self._whoosh_d1))
+        
+        if(self.metric not in whoosh_similarity_function):
+            print(f'{self.metric} Similarity Function is Undefined')
+            self.metric = 'Frequency'
+        print(f'Applying {self.metric} Similarity Function')
+        _scorer = whoosh_similarity_function[self.metric]
+        
+        with self._index.searcher(weighting=_scorer) as searcher:
+            self._parser = QueryParser('content', self._index.schema)
+            for _, entity in self._whoosh_d1.iterrows():
+                entity_values = [str(entity[column]) for column in self._whoosh_d1.columns if column != self.data.id_column_name_1]
+                entity_string = ' '.join(entity_values)
+                entity_id = entity[self.data.id_column_name_1]
+                query_results = searcher.search(entity_string, limit = _query_budget)
+                
+                for neighbor in query_results:
+                    _score = neighbor['score']
+                    _neighbor_id = neighbor['ID']
+                    self._sorted_dataset._insert_entity_neighbor(entity=entity_id, neighbor=_neighbor_id, weight=_score)
+        
+        self._sorted_dataset._sort_neighborhoods_by_avg_weight()
+        
+    def _emit_pairs(self) -> None:
+        """Returns a list of candidate pairs that have been emitted following the requested method"""       
+        self.pairs = self._sorted_dataset._emit_pairs(method=self._method, data=self.data)
+                       
+    def _predict_raw_blocks(self, blocks: dict) -> None:
+        self._start_time = time()
+        self._si = SubsetIndexer(blocks=blocks, data=self.data, subset=False)
+        self._set_retained_entries()
+        self._set_whoosh_datasets()
+        self._create_index()
+        self._to_emit_pairs : List[Tuple[int, int]] = []
+        self._budget = float('inf') if self._emit_all_tps_stop else self._budget
+        self._sorted_dataset = WhooshDataset(list(self._whoosh_d1_retained_index), self._budget)
+        self._populate_whoosh_dataset()
+        self._emit_pairs()
+        self.execution_time = time() - self._start_time
+        if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked(candidates=self.pairs)
+        
+    def _predict_prunned_blocks(self, blocks: dict) -> None:
+        self._predict_raw_blocks(blocks)    
+        
+    def extract_tps_checked(self, **kwargs) -> dict:
+        _tps_checked = dict()
+        _candidates = kwargs['candidates']
+        
+        for entity, neighbor in _candidates:
+            entity_id = self.data._gt_to_ids_reversed_1[entity] if entity < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[entity]
+            neighbor_id = self.data._gt_to_ids_reversed_1[neighbor] if neighbor < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[neighbor]
+            _d1_entity, _d2_entity = (entity_id, neighbor_id) if entity < self.data.dataset_limit else (neighbor_id, entity_id)
+            if _d2_entity in self.data.pairs_of[_d1_entity]:
+                _tps_checked[canonical_swap(_d1_entity, _d2_entity)] = False  
+        return _tps_checked 
+
+whoosh_similarity_function = {
+    'TF-IDF' : TF_IDF(),
+    'Frequency' : Frequency(),
+    'PL2' : PL2(),
+    'BM25F' : BM25F()
+}
+        
+        
+

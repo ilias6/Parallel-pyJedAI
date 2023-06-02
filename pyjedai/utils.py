@@ -6,6 +6,10 @@ from nltk.tokenize import word_tokenize
 from pyjedai.datamodel import Block, Data
 from typing import List, Tuple
 import random
+from queue import PriorityQueue
+import math
+import sys
+from time import time
 
 # ----------------------- #
 # Constants
@@ -266,7 +270,219 @@ class PositionIndex(ABC):
             
     def get_positions(self, entity: int):
         return self._entity_positions[entity]
+
+class WhooshNeighborhood(ABC):
+    """Stores information about the neighborhood of a given entity ID:
+    - ID : The identifier of the entity as it is defined within the original dataframe
+    - Total Weight : The total weight of entity's neighbors
+    - Number of Neighbors : The total number of Neighbors
+    - Neighbors : Entity's neighbors sorted in descending order of weight
+    - Stage : Insert / Pop stage (entities stored in ascending / descending weight order)
+
+    Args:
+        ABC (ABC): ABC Module 
+    """
     
+    def __init__(self, id : int, budget : float) -> None:
+        self._id : int = id
+        self._budget : float = budget
+        self._neighbors : PriorityQueue = PriorityQueue(self._budget) if not is_infinite(self._budget) else PriorityQueue()
+        self._insert_stage : bool = True
+        self._minimum_weight : float = sys.float_info.min
+        self._neighbors_num : int = 0
+        self._total_weight : float = 0.0
+        self._average_weight : float = None
+        
+    def _insert(self, neighbor_id: int, weight : float) -> None:
+        if(not self._insert_stage): self._change_state()
+        
+        if weight >= self._minimum_weight:
+            self._neighbors.put((weight, neighbor_id))
+        if self._neighbors.qsize() > self._budget:
+            self._minimum_weight = self._neighbors.get()[0]
+            
+        self._update_neighbors_counter_by(1)
+        self._update_total_weight_by(weight)
+            
+    def _pop(self) -> None:
+        if(self._insert_stage): self._change_state()
+        
+        if(self._empty()):
+            raise ValueError("No neighbors to pop!")
+        
+        _weight, _neighbor_id = self._neighbors.get()
+        return -_weight, _neighbor_id
+    
+    def _empty(self) -> bool:
+        return self._neighbors.empty()
+    
+    def _change_state(self) -> None:
+        "Neighborhood can either be accepting or emitting neighbors" + \
+        "Accepting Stage - Neighbors stored in ascending weight order" + \
+        "Emitting Stage - Neighbors stored in descending weight order" 
+        _neighbors_resorted : PriorityQueue = PriorityQueue(2 * int(self._budget)) if not is_infinite(self._budget) else PriorityQueue()
+        while(not self._neighbors.empty()):
+            _weight, _neighbor_id = self._neighbors.get()
+            _neighbors_resorted.put((-_weight, _neighbor_id))
+            
+        self._neighbors = _neighbors_resorted
+        self._insert_stage = not self._insert_stage
+        
+    def _update_total_weight_by(self, weight) -> None:
+        self._total_weight = self._total_weight + weight
+        
+    def _update_neighbors_counter_by(self, count) -> None:
+        self._neighbors_num = self._neighbors_num + count
+        
+    def _get_neighbors_num(self) -> int:
+        return self._neighbors_num
+    
+    def _get_total_weight(self) -> float:
+        return self._total_weight
+    
+    def _get_average_weight(self) -> float:
+        if(self._average_weight is None):
+            self._average_weight = 0.0 if not self._get_neighbors_num() else (float(self._get_total_weight()) / float(self._get_neighbors_num()))
+            return self._average_weight
+        else:
+            return self._average_weight
+    
+    def __eq__(self, other):
+        if isinstance(other, WhooshNeighborhood):
+            return self._get_average_weight() == other._get_average_weight()
+        return NotImplemented
+    
+    def __lt__(self, other):
+        if isinstance(other, WhooshNeighborhood):
+            return self._get_average_weight() < other._get_average_weight()
+        return NotImplemented
+    
+    def __gt__(self, other):
+        if isinstance(other, WhooshNeighborhood):
+            return self._get_average_weight() > other._get_average_weight()
+        return NotImplemented
+    
+    def __le__(self, other):
+        if isinstance(other, WhooshNeighborhood):
+            return self._get_average_weight() <= other._get_average_weight()
+        return NotImplemented
+    
+    def __ge__(self, other):
+        if isinstance(other, WhooshNeighborhood):
+            return self._get_average_weight() >= other._get_average_weight()
+        return NotImplemented 
+    
+class WhooshDataset(ABC):
+    """Stores a dictionary [Entity -> Entity's Neighborhood Data (Whoosh Neighborhood)]
+       Supplies auxiliarry functions for information retrieval from the sorted dataset
+
+    Args:
+        ABC (ABC): ABC Module
+    """
+     
+    def __init__(self, entity_ids : List[int], budget : float) -> None:
+        self._budget : float = budget
+        self._total_entities : int = len(entity_ids)
+        self._entity_budget : float = budget if is_infinite(self._budget) else max(1, 2 * self._budget / self._total_entities)
+        self._neighborhoods : dict = {}
+        for entity_id in entity_ids:  
+            self._neighborhoods[id] = WhooshNeighborhood(id=entity_id, budget=self._entity_budget)
+        # used in defining proper emission strategy
+        self._sorted_entities : List[int] = None
+        self._current_neighborhood_index : int = 0
+        self._current_entity : int = None
+        self._current_neighborhood : WhooshNeighborhood = None
+            
+    def _insert_entity_neighbor(self, entity : int, neighbor : int, weight : float) -> None:
+        self._neighborhoods[entity]._insert(neighbor, weight)
+        
+    def _pop_entity_neighbor(self, entity : int) -> Tuple[float, int]:
+        return self._neighborhoods[entity]._pop()
+    
+    def _get_entity_neighborhood(self, entity : int) -> WhooshNeighborhood:
+        return self._neighborhoods[entity]
+    
+    def _entity_has_neighbors(self, entity : int) -> bool:
+        return not self._neighborhoods[entity]._empty()
+    
+    def _sort_neighborhoods_by_avg_weight(self) -> None:
+        """Store a list of entity ids sorted in descending order of the average weight of their corresponding neighborhood"""
+        self._sorted_entities : List = sorted(self._neighborhoods, key=lambda entity: self._neighborhoods[entity]._get_average_weight(), reverse=True)
+    
+    def _get_current_neighborhood(self) -> WhooshNeighborhood:
+        return self._neighborhoods[self._current_entity]
+        
+    def _enter_next_neighborhood(self) -> None:
+        """Sets the next in descending average weight order neighborhood
+        """
+        _curr_nei_idx : int = self._current_neighborhood_index
+        self._current_neighborhood_index = _curr_nei_idx + 1 if _curr_nei_idx + 1 < self._total_entities else 0
+        self._current_entity = self._sorted_entities[self._current_neighborhood_index]
+        self._current_neighborhood = self._neighborhoods[self._current_entity]
+        
+    def _successful_emission(self, pair : Tuple[int, int]) -> bool:
+        
+        _entity, _neighbor = pair
+        _entity_id = self._data._ids_mapping_1[_entity]
+        _neighbor_id = self._data._ids_mapping_1[_neighbor] if self._data.is_dirty_er else self._data._ids_mapping_2[_neighbor]
+                
+        if(self._emitted_comparisons < self._budget):
+            self._emitted_pairs.append((_entity_id, _neighbor_id))
+            self._emitted_comparisons += 1
+            return True
+        else:
+            return False
+        
+    def _emit_pairs(self, method : str, data : Data) -> List[Tuple[int, int]]:
+        """Emits candidate pairs according to specified method
+
+        Args:
+            method (str): Emission Method
+            data (Data): Dataset Module
+
+        Returns:
+            List[Tuple[int, int]]: List of candidate pairs
+        """
+        
+        self._method : str = method
+        self._data : Data = data
+        
+        self._emitted_pairs = []
+        self._emitted_comparisons = 0    
+        
+        if(self._method == 'HB'):
+            for sorted_entity in self._sorted_entities:
+                if(self._entity_has_neighbors(sorted_entity)):
+                    _, neighbor = self._pop_entity_neighbor(sorted_entity)
+                    if(not self._successful_emission(pair=(sorted_entity, neighbor))):
+                        return self._emitted_pairs
+                   
+        if(self._method == 'HB' or self._method == 'DFS'):
+            _checked_entity = np.zeros(self._total_entities, dtype=bool)
+            _sorted_entity_to_index = dict(zip(self._sorted_entities, range(0, self._total_entities)))
+            
+            for index, sorted_entity in enumerate(self._sorted_entities):
+                _checked_entity[index] = True
+                while(self._entity_has_neighbors(sorted_entity)):
+                    _, neighbor = self._pop_entity_neighbor(sorted_entity)
+                    if(neighbor not in _sorted_entity_to_index or _checked_entity[_sorted_entity_to_index[neighbor]]):
+                        if(not self._successful_emission(pair=(sorted_entity, neighbor))):
+                            return self._emitted_pairs
+        else:
+            _emissions_left = True
+            _checked_entities = set()
+            while(_emissions_left):
+                _emissions_left = False
+                for sorted_entity in self._sorted_entities:
+                    if(self._entity_has_neighbors(sorted_entity)):
+                        _, neighbor = self._pop_entity_neighbor(sorted_entity)
+                        if(canonical_swap(sorted_entity, neighbor) not in _checked_entities):
+                            if(not self._successful_emission(pair=(sorted_entity, neighbor))):
+                                return self._emitted_pairs
+                            _checked_entities.add(canonical_swap(sorted_entity, neighbor))
+                            _emissions_left = True
+        return self._emitted_pairs
+            
 def canonical_swap(id1: int, id2: int) -> Tuple[int, int]:
     """Returns the identifiers in canonical order
 
@@ -284,6 +500,14 @@ def canonical_swap(id1: int, id2: int) -> Tuple[int, int]:
 
 def sorted_enumerate(seq, reverse=True):
     return [i for (v, i) in sorted(((v, i) for (i, v) in enumerate(seq)), reverse=reverse)]
+
+
+def is_infinite(value : float):
+    return math.isinf(value) and value > 0
+
+
+
+
             
             
         
