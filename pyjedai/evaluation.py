@@ -18,7 +18,6 @@ from .utils import batch_pairs
 from .utils import canonical_swap
 from math import inf
 from .utils import PredictionData
-from .prioritization import ProgressiveMatching
 import random
 import matplotlib.pyplot as plt
 
@@ -374,7 +373,7 @@ class Evaluation:
         _normalized_auc = sum(_recall_progress) / (len(pairs) + 1.0)
         return _recall_progress, _normalized_auc
     
-    def evaluate_auc_roc(self, matchers_data : List[Tuple[str, ProgressiveMatching]], batch_size : int = 1, proportional : bool = True) -> None:
+    def evaluate_auc_roc(self, matchers_data : List[Tuple], batch_size : int = 1, proportional : bool = True) -> None:
         """For each matcher, takes its prediction data, calculates cumulative recall and auc, plots the corresponding ROC curve, populates prediction data with performance info
         Args:
             matchers_data List[Tuple[str, ProgressiveMatching]]: Progressive Matchers and their names

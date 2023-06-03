@@ -186,7 +186,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                 print("Loading embeddings from file...")
                 
                 p1 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + (self.data.dataset_name_1 \
-                                                    if self.data.dataset_name_1 is not None else "d1") +'_1.npy')
+                                                    if self.data.dataset_name_1 is not None else "d1") +'.npy')
                 print("Loading file: ", p1)
                 if os.path.exists(p1):
                     self.vectors_1 = vectors_1 = np.load(p1)
@@ -197,7 +197,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                     print("Embeddings not found. Creating new ones.")
                 
                 p2 = os.path.join(EMBEDDINGS_DIR, self.vectorizer + '_' + (self.data.dataset_name_2 \
-                                                    if self.data.dataset_name_2 is not None else "d2") +'_2.npy')    
+                                                    if self.data.dataset_name_2 is not None else "d2") +'.npy')    
                 print("Loading file: ", p2)
                 if os.path.exists(p2):
                     self.vectors_2 = vectors_2 = np.load(p2)
