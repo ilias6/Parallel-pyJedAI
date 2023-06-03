@@ -409,7 +409,6 @@ class Evaluation:
             matcher_prediction_data.set_total_emissions(self._total_emissions)
             matcher_prediction_data.set_normalized_auc(normalized_auc)
             matcher_prediction_data.set_cumulative_recall(cumulative_recall[-1])
-            print(matcher_name)
             progressive_matcher.set_prediction_data(matcher_prediction_data)
 
         self.visualize_roc(methods_data = self._matchers_auc_roc_data, proportional = proportional)

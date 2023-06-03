@@ -49,6 +49,7 @@ from tqdm.autonotebook import tqdm
 from .datamodel import Data, PYJEDAIFeature
 from .evaluation import Evaluation
 from .utils import WordQgrammsTokenizer
+from whoosh.scoring import TF_IDF, Frequency, PL2, BM25F
 
 # Package import from https://anhaidgroup.github.io/py_stringmatching/v0.4.2/index.html
 
@@ -82,7 +83,11 @@ metrics_mapping = {
     'dice': Dice(),
     'overlap_coefficient' : OverlapCoefficient(),
     'token_sort': TokenSort(),
-    'cosine_vector_similarity': cosine
+    'cosine_vector_similarity': cosine,
+    'TF-IDF' : TF_IDF(),
+    'Frequency' : Frequency(),
+    'PL2' : PL2(),
+    'BM25F' : BM25F()
 }
 
 string_metrics = [
@@ -102,7 +107,11 @@ vector_metrics = [
     'cosine_vector_similarity'
 ]
 
-available_metrics = string_metrics + set_metrics + bag_metrics + vector_metrics
+index_metrics = [
+    'TF-IDF', 'Frequency', 'PL2', 'BM25F'
+] 
+
+available_metrics = string_metrics + set_metrics + bag_metrics + vector_metrics + index_metrics
 
 
 class EntityMatching(PYJEDAIFeature):

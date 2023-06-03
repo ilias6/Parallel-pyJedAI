@@ -321,7 +321,7 @@ class WhooshNeighborhood(ABC):
         "Neighborhood can either be accepting or emitting neighbors" + \
         "Accepting Stage - Neighbors stored in ascending weight order" + \
         "Emitting Stage - Neighbors stored in descending weight order" 
-        _neighbors_resorted : PriorityQueue = PriorityQueue(2 * int(self._budget)) if not is_infinite(self._budget) else PriorityQueue()
+        _neighbors_resorted : PriorityQueue = PriorityQueue(int(self._budget)) if not is_infinite(self._budget) else PriorityQueue()
         while(not self._neighbors.empty()):
             _weight, _neighbor_id = self._neighbors.get()
             _neighbors_resorted.put((-_weight, _neighbor_id))
@@ -387,7 +387,7 @@ class WhooshDataset(ABC):
         self._entity_budget : float = budget if is_infinite(self._budget) else max(1, 2 * self._budget / self._total_entities)
         self._neighborhoods : dict = {}
         for entity_id in entity_ids:  
-            self._neighborhoods[id] = WhooshNeighborhood(id=entity_id, budget=self._entity_budget)
+            self._neighborhoods[entity_id] = WhooshNeighborhood(id=entity_id, budget=self._entity_budget)
         # used in defining proper emission strategy
         self._sorted_entities : List[int] = None
         self._current_neighborhood_index : int = 0

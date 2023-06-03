@@ -67,12 +67,12 @@ import pandas as pd
 import os
 from whoosh.fields import TEXT, Schema, ID
 from whoosh.index import create_in
-from whoosh.qparser import QueryParser
+from whoosh import qparser
 from whoosh.scoring import TF_IDF, Frequency, PL2, BM25F
 
 
 # Directory where the whoosh index is stored
-INDEXER_DIR = '.indexer'
+INDEXER_DIR='.indexer'
 
 # Package import from https://anhaidgroup.github.io/py_stringmatching/v0.4.2/index.html
 
@@ -101,7 +101,18 @@ metrics_mapping = {
     'dice': Dice(),
     'overlap_coefficient' : OverlapCoefficient(),
     'token_sort': TokenSort(),
-    'cosine_vector_similarity': cosine_similarity
+    'cosine_vector_similarity': cosine_similarity,
+    'TF-IDF' : TF_IDF(),
+    'Frequency' : Frequency(),
+    'PL2' : PL2(),
+    'BM25F' : BM25F()
+}
+
+whoosh_similarity_function = {
+    'TF-IDF' : TF_IDF(),
+    'Frequency' : Frequency(),
+    'PL2' : PL2(),
+    'BM25F' : BM25F()
 }
 
 string_metrics = [
@@ -117,11 +128,15 @@ bag_metrics = [
     'tfidf'
 ]
 
+index_metrics = [
+    'TF-IDF', 'Frequency', 'PL2', 'BM25F'
+] 
+
 vector_metrics = [
     'cosine_vector_similarity'
 ]
 
-available_metrics = string_metrics + set_metrics + bag_metrics + vector_metrics
+available_metrics = string_metrics + set_metrics + bag_metrics + vector_metrics + index_metrics
 
 class ProgressiveMatching(EntityMatching):
     """Applies the matching process to a subset of available pairs progressively 
@@ -818,7 +833,7 @@ class PESM(HashBasedProgressiveMatching):
         return _tps_checked
     
     
-class WhooshProgressiveMatching(ProgressiveMatching):
+class WhooshPM(ProgressiveMatching):
     """Applies progressive index based matching using whoosh library 
     """
 
@@ -849,10 +864,10 @@ class WhooshProgressiveMatching(ProgressiveMatching):
         """Saves the rows of both datasets corresponding to the indices of the entities that have been retained after comparison cleaning
         """
         
-        self._whoosh_d1 = self.data.dataset_1[self.attributes] if self.attributes else self.data.dataset_1
+        self._whoosh_d1 = self.data.dataset_1[self.attributes + [self.data.id_column_name_1]] if self.attributes else self.data.dataset_1
         self._whoosh_d1 = self._whoosh_d1[self._whoosh_d1[self.data.id_column_name_1].isin(self._whoosh_d1_retained_index)]
         if(not self.data.is_dirty_er):  
-            self._whoosh_d2 = self.data.dataset_2[self.attributes] if self.attributes else self.data.dataset_2
+            self._whoosh_d2 = self.data.dataset_2[self.attributes + [self.data.id_column_name_2]] if self.attributes else self.data.dataset_2
             self._whoosh_d2 = self._whoosh_d2[self._whoosh_d2[self.data.id_column_name_2].isin(self._whoosh_d2_retained_index)]
         
 
@@ -867,15 +882,17 @@ class WhooshProgressiveMatching(ProgressiveMatching):
         for id in self._si.d2_retained_ids])
     
     
-    def initialize_index_path(self):
+    def _initialize_index_path(self):
         """Creates index directory if non-existent, constructs the absolute path to the current whoosh index
         """
-        if not os.path.exists(INDEXER_DIR):
-            os.makedirs(INDEXER_DIR)
-            INDEXER_DIR = os.path.abspath(INDEXER_DIR)
-            print('Created index directory at: ' + INDEXER_DIR)  
-        _d1_name = self.data.dataset_name_1 if self.data.dataset_name_1 is not None else 'd1'    
-        self._index_path = os.path.join(INDEXER_DIR, _d1_name if self.data.is_dirty_er else (_d1_name + (self.data.dataset_name_2 if self.data.dataset_name_2 is not None else 'd2')))
+        global INDEXER_DIR
+        INDEXER_DIR = os.path.abspath(INDEXER_DIR)  
+        _d1_name = self.data.dataset_name_1 if self.data.dataset_name_1 is not None else 'd3'    
+        self._index_path = os.path.join(INDEXER_DIR, _d1_name if self.data.is_dirty_er else (_d1_name + (self.data.dataset_name_2 if self.data.dataset_name_2 is not None else 'd4')))
+        if not os.path.exists(self._index_path):
+            print('Created index directory at: ' + self._index_path)
+            os.makedirs(self._index_path, exist_ok=True)
+        
     
     def _create_index(self):
         """Defines the schema [ID, CONTENT], creates the index in the defined path 
@@ -908,15 +925,16 @@ class WhooshProgressiveMatching(ProgressiveMatching):
         _scorer = whoosh_similarity_function[self.metric]
         
         with self._index.searcher(weighting=_scorer) as searcher:
-            self._parser = QueryParser('content', self._index.schema)
+            self._parser = qparser.QueryParser('content', schema=self._index.schema, group=qparser.OrGroup)
             for _, entity in self._whoosh_d1.iterrows():
                 entity_values = [str(entity[column]) for column in self._whoosh_d1.columns if column != self.data.id_column_name_1]
                 entity_string = ' '.join(entity_values)
                 entity_id = entity[self.data.id_column_name_1]
-                query_results = searcher.search(entity_string, limit = _query_budget)
+                entity_query = self._parser.parse(entity_string)
+                query_results = searcher.search(entity_query, limit = _query_budget)
                 
                 for neighbor in query_results:
-                    _score = neighbor['score']
+                    _score = neighbor.score
                     _neighbor_id = neighbor['ID']
                     self._sorted_dataset._insert_entity_neighbor(entity=entity_id, neighbor=_neighbor_id, weight=_score)
         
@@ -931,6 +949,7 @@ class WhooshProgressiveMatching(ProgressiveMatching):
         self._si = SubsetIndexer(blocks=blocks, data=self.data, subset=False)
         self._set_retained_entries()
         self._set_whoosh_datasets()
+        self._initialize_index_path()
         self._create_index()
         self._to_emit_pairs : List[Tuple[int, int]] = []
         self._budget = float('inf') if self._emit_all_tps_stop else self._budget
@@ -954,13 +973,6 @@ class WhooshProgressiveMatching(ProgressiveMatching):
             if _d2_entity in self.data.pairs_of[_d1_entity]:
                 _tps_checked[canonical_swap(_d1_entity, _d2_entity)] = False  
         return _tps_checked 
-
-whoosh_similarity_function = {
-    'TF-IDF' : TF_IDF(),
-    'Frequency' : Frequency(),
-    'PL2' : PL2(),
-    'BM25F' : BM25F()
-}
         
         
 

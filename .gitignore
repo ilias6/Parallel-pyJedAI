@@ -170,3 +170,4 @@ data/magellan/existingDatasets/dirty_dblp_acm/tableA.csv
 *.npy
 .hypothesis/unicode_data/11.0.0/charmap.json.gz
 tests/.hypothesis/
+.indexer
