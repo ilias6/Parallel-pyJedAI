@@ -62,7 +62,7 @@ from random import sample
 from .utils import sorted_enumerate, canonical_swap
 from abc import abstractmethod
 from typing import Tuple, List
-from .utils import SubsetIndexer, WhooshDataset, WhooshNeighborhood, is_infinite
+from .utils import SubsetIndexer, WhooshDataset, WhooshNeighborhood, is_infinite, PredictionData
 import pandas as pd
 import os
 from whoosh.fields import TEXT, Schema, ID
@@ -172,6 +172,7 @@ class ProgressiveMatching(EntityMatching):
         self._method = method
         self._emit_all_tps_stop = emit_all_tps_stop
         self.true_pair_checked = None 
+        self._prediction_data : PredictionData = None
 
         if not blocks:
             raise ValueError("Empty blocks structure")
@@ -193,33 +194,6 @@ class ProgressiveMatching(EntityMatching):
         self._progress_bar.close()
 
         return self.pairs
-
-    def evaluate_auc_roc(self, methods_prediction_data : List[Tuple[str, List]], batch_size : int = 1, proportional : bool = True, true_positives_checked : List[dict] = None) -> None:
-        """For each method, takes its predictions, calculates cumulative recall and auc, plots the corresponding ROC curve
-        Args:
-            methods_prediction_data (list): List with each entry containing the method name, its predicted pairs
-            batch_size (int, optional): Emitted pairs step at which cumulative recall is recalculated. Defaults to 1.
-        Raises:
-            AttributeError: No Data object
-            AttributeError: No Ground Truth file
-        """
-        if self.data is None:
-            raise AttributeError("Can not proceed to AUC ROC evaluation without data object.")
-
-        if self.data.ground_truth is None:
-            raise AttributeError("Can not proceed to AUC ROC evaluation without a ground-truth file. " +
-                    "Data object has not been initialized with the ground-truth file")
-
-        eval_obj = Evaluation(self.data)
-        methods_auc_roc_data = []
-
-        for index, packed_data in enumerate(methods_prediction_data):
-            method_name, predictions = packed_data
-            method_tps_checked = None if true_positives_checked is None else true_positives_checked[index]
-            cumulative_recall, normalized_auc = eval_obj.calculate_roc_auc_data(eval_obj.data, predictions, batch_size, method_tps_checked)
-            methods_auc_roc_data.append((method_name, normalized_auc, cumulative_recall))
-
-        eval_obj.visualize_roc(methods_data = methods_auc_roc_data, proportional = proportional)
 
     def evaluate(self,
                  prediction,
@@ -269,6 +243,24 @@ class ProgressiveMatching(EntityMatching):
             dict: Dictionary that shows whether a TP pair (key) has been emitted (value)
         """
         pass
+    
+    def get_prediction_data(self) -> PredictionData:
+        if(self._prediction_data is None):
+            raise ValueError("Pairs not emitted yet - No Data to show")
+        return self._prediction_data
+    
+    def get_total_emissions(self) -> int:
+        return self.get_prediction_data().get_total_emissions()
+    
+    def get_cumulative_recall(self) -> float:
+        return self.get_prediction_data().get_cumulative_recall()
+    
+    def get_normalized_auc(self) -> float:
+        return self.get_prediction_data().get_normalized_auc()
+    
+    def set_prediction_data(self, prediction_data : PredictionData):
+        self._prediction_data : PredictionData = prediction_data
+        
 
 class HashBasedProgressiveMatching(ProgressiveMatching):
     """Applies hash based candidate graph prunning, sorts retained comparisons and applies Progressive Matching

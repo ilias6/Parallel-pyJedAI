@@ -10,6 +10,7 @@ from queue import PriorityQueue
 import math
 import sys
 from time import time
+from networkx import Graph
 
 # ----------------------- #
 # Constants
@@ -482,6 +483,74 @@ class WhooshDataset(ABC):
                             _checked_entities.add(canonical_swap(sorted_entity, neighbor))
                             _emissions_left = True
         return self._emitted_pairs
+    
+class PredictionData(ABC):
+    """Auxiliarry module used to store basic information about the to-emit, predicted pairs
+       It is used to retrieve that data efficiently during the evaluation phase, and subsequent storage of emission data (e.x. total emissions)
+
+    Args:
+        ABC (ABC): ABC Module
+    """
+    def __init__(self, name : str, predictions, tps_checked = dict) -> None:
+        self.set_name(name)
+        self.set_tps_checked(tps_checked)
+        self.set_predictions(self._format_predictions(predictions))
+        # Pairs have not been emitted yet - Data Module has not been populated with performance data
+        self.set_total_emissions(None)
+        self.set_normalized_auc(None)
+        self.set_cumulative_recall(None)
+    
+    def _format_predictions(self, predictions) -> List[Tuple[int, int]]:
+        """Transforms given predictions into a list of duplets (candidate pairs)
+           Currently Graph and Default input is supported
+
+        Args:
+            predictions (Graph / List[Tuple[int, int]]): Progressive Matcher predictions
+
+        Returns:
+            List[Tuple[int, int]]: Formatted Predictions
+        """
+        return [edge[:2] for edge in predictions.edges] if isinstance(predictions, Graph) else predictions
+        
+    def get_name(self) -> str:
+        return self._name
+    
+    def get_predictions(self) -> List[Tuple[int, int]]:
+        return self._predictions
+    
+    def get_tps_checked(self) -> dict:
+        return self._tps_checked
+    
+    def get_total_emissions(self) -> int:
+        if(self._total_emissions is None): raise ValueError("Pairs not emitted yet - Total Emissions are undefined")
+        return self._total_emissions
+    
+    def get_normalized_auc(self) -> float:
+        if(self._normalized_auc is None): raise ValueError("Pairs not emitted yet - Normalized AUC is undefined")
+        return self._normalized_auc
+    
+    def get_cumulative_recall(self) -> float:
+        if(self._cumulative_recall is None): raise ValueError("Pairs not emitted yet - Cumulative Recall is undefined")
+        return self._cumulative_recall
+    
+    def set_name(self, name : str):
+        self._name : str = name
+    
+    def set_predictions(self, predictions : List[Tuple[int, int]]) -> None:
+        self._predictions : List[Tuple[int, int]] = predictions
+    
+    def set_tps_checked(self, tps_checked : dict) -> None:
+        self._tps_checked : dict = tps_checked
+    
+    def set_total_emissions(self, total_emissions : int) -> None:
+        self._total_emissions : int = total_emissions
+        
+    def set_normalized_auc(self, normalized_auc : float) -> None:
+        self._normalized_auc : float = normalized_auc
+        
+    def set_cumulative_recall(self, cumulative_recall : float) -> None:
+        self._cumulative_recall : float = cumulative_recall        
+
             
 def canonical_swap(id1: int, id2: int) -> Tuple[int, int]:
     """Returns the identifiers in canonical order

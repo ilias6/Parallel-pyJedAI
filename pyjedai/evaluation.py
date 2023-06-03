@@ -17,7 +17,8 @@ from .utils import are_matching
 from .utils import batch_pairs
 from .utils import canonical_swap
 from math import inf
-
+from .utils import PredictionData
+from .prioritization import ProgressiveMatching
 import random
 import matplotlib.pyplot as plt
 
@@ -308,15 +309,11 @@ class Evaluation:
             entity (int): Entity ID
             candidate (int): Candidate ID
         """
-        print(f"TP[{entity}][{candidate}]")
         if(self._till_full_tps_emission()):
             if(not self._true_positive_checked[canonical_swap(entity, candidate)]):
                 self._true_positive_checked[canonical_swap(entity, candidate)] = True
                 self._tps_found += 1
-                print(f"Not Checked")
-                print(f"Total TPs Found: {self._tps_found}")
-                return 
-        print(f"Checked Already")
+                return
     
 
     def calculate_roc_auc_data(self, data: Data, pairs, batch_size : int  = 1, true_positive_checked : dict = None) -> List[Tuple[int, int]]:
@@ -332,7 +329,7 @@ class Evaluation:
 
         if(true_positive_checked is not None): 
             for pair in true_positive_checked.keys():
-                true_positive_checked[pair] = False 
+                true_positive_checked[pair] = False
 
         if(data.ground_truth is None):
             raise AttributeError("Can calculate ROC AUC without a ground-truth file. \
@@ -366,7 +363,6 @@ class Evaluation:
                     _true_positives += 1  
                 _current_batch_size += 1
             self._total_emissions += 1
-            print(f"Emission[{self._total_emissions}]")
             _new_recall = _true_positives / self.num_of_true_duplicates
             # _normalized_auc += ((_new_recall + _current_recall) / 2) * (_current_batch_size / self.num_of_true_duplicates)
             _current_recall = _new_recall
@@ -377,6 +373,46 @@ class Evaluation:
         # _normalized_auc = 0 if(ideal_auc == 0) else _normalized_auc / ideal_auc
         _normalized_auc = sum(_recall_progress) / (len(pairs) + 1.0)
         return _recall_progress, _normalized_auc
+    
+    def evaluate_auc_roc(self, matchers_data : List[Tuple[str, ProgressiveMatching]], batch_size : int = 1, proportional : bool = True) -> None:
+        """For each matcher, takes its prediction data, calculates cumulative recall and auc, plots the corresponding ROC curve, populates prediction data with performance info
+        Args:
+            matchers_data List[Tuple[str, ProgressiveMatching]]: Progressive Matchers and their names
+            data (Data) : Data Module
+            batch_size (int, optional): Emitted pairs step at which cumulative recall is recalculated. Defaults to 1.
+            proportional (bool) : Proportional Visualization
+        Raises:
+            AttributeError: No Data object
+            AttributeError: No Ground Truth file
+        """
+        
+        if self.data is None:
+            raise AttributeError("Can not proceed to AUC ROC evaluation without data object.")
+
+        if self.data.ground_truth is None:
+            raise AttributeError("Can not proceed to AUC ROC evaluation without a ground-truth file. " +
+                    "Data object has not been initialized with the ground-truth file")
+
+        self._matchers_auc_roc_data = []
+
+        for matcher_data in matchers_data:
+            
+            matcher_name, progressive_matcher = matcher_data
+            matcher_prediction_data : PredictionData = PredictionData(matcher_name, progressive_matcher.pairs, progressive_matcher.true_pair_checked)
+            
+            matcher_predictions = matcher_prediction_data.get_predictions()
+            matcher_tps_checked = matcher_prediction_data.get_tps_checked()
+            
+            cumulative_recall, normalized_auc = self.calculate_roc_auc_data(self.data, matcher_predictions, batch_size, matcher_tps_checked)
+                    
+            self._matchers_auc_roc_data.append((matcher_name, normalized_auc, cumulative_recall))
+            matcher_prediction_data.set_total_emissions(self._total_emissions)
+            matcher_prediction_data.set_normalized_auc(normalized_auc)
+            matcher_prediction_data.set_cumulative_recall(cumulative_recall[-1])
+            print(matcher_name)
+            progressive_matcher.set_prediction_data(matcher_prediction_data)
+
+        self.visualize_roc(methods_data = self._matchers_auc_roc_data, proportional = proportional)
 
 def write(
         prediction: any,
