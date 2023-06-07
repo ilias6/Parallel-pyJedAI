@@ -453,6 +453,56 @@ class EmbeddingsNNBPM(ProgressiveMatching):
         self._similarity_search = similarity_search
         self._vector_size = vector_size
         self._num_of_clusters = num_of_clusters
+        
+        
+    def predict(self,
+        data: Data,
+        blocks: dict = None,
+        comparison_cleaner: AbstractMetablocking = None,
+        tqdm_disable: bool = False,
+        method : str = 'HB',
+        emit_all_tps_stop : bool = False) -> Graph:
+        """Main method of  progressive entity matching. Inputs a set of blocks and outputs a graph \
+            that contains of the entity ids (nodes) and the similarity scores between them (edges).
+            Args:
+                blocks (dict): blocks of entities
+                data (Data): dataset module
+                tqdm_disable (bool, optional): Disables progress bar. Defaults to False.
+                method (str) : DFS/BFS/Hybrid approach for specified algorithm
+                emit_all_tps_stop (bool) : Stop emission once all true positives are found
+            Returns:
+                networkx.Graph: entity ids (nodes) and similarity scores between them (edges)
+        """
+        start_time = time()
+        self.tqdm_disable = tqdm_disable
+        self._comparison_cleaner: AbstractMetablocking = comparison_cleaner
+        self._method = method
+        self._emit_all_tps_stop = emit_all_tps_stop
+        self.true_pair_checked = None 
+        self._prediction_data : PredictionData = None
+        self.data = data
+        self.pairs = Graph()
+        
+        if blocks is None:
+        # applying the process to the whole dataset
+            self._predict_raw_blocks(blocks)
+        else:
+            all_blocks = list(blocks.values())
+            self._progress_bar = tqdm(total=len(blocks),
+                                    desc=self._method_name+" ("+self.metric+")",
+                                    disable=self.tqdm_disable)
+            if 'Block' in str(type(all_blocks[0])):
+                self._predict_raw_blocks(blocks)
+            elif isinstance(all_blocks[0], set):
+                if(self._comparison_cleaner == None):
+                    raise AttributeError("No precalculated weights were given from the CC step") 
+                self._predict_prunned_blocks(blocks)
+            else:
+                raise AttributeError("Wrong type of Blocks")
+            self._progress_bar.close()
+            
+        self.execution_time = time() - start_time
+        return self.pairs
 
     def _top_pair_emission(self) -> None:
         """Applies global sorting to all entity pairs produced by NN,
@@ -557,7 +607,7 @@ class EmbeddingsNNBPM(ProgressiveMatching):
         else:
             raise AttributeError(self._method + ' emission technique is undefined!')
 
-    def _predict_raw_blocks(self, blocks: dict) -> None:
+    def _predict_raw_blocks(self, blocks: dict = None) -> None:
         self.ennbb : EmbeddingsNNBlockBuilding = EmbeddingsNNBlockBuilding(self._vectorizer, self._similarity_search)
         self.final_blocks = self.ennbb.build_blocks(data = self.data,
                      num_of_clusters = self._num_of_clusters,
@@ -579,7 +629,7 @@ class EmbeddingsNNBPM(ProgressiveMatching):
             self.true_pair_checked = self.extract_tps_checked()
         return self.pairs
 
-    def _predict_prunned_blocks(self, blocks: dict) -> None:
+    def _predict_prunned_blocks(self, blocks: dict = None) -> None:
         return self._predict_raw_blocks(blocks)
     
     def extract_tps_checked(self, **kwargs) -> dict:
