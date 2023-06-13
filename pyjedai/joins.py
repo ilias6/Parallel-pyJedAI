@@ -276,12 +276,12 @@ class AbstractJoin(PYJEDAIFeature):
             "qgrams": self.qgrams
         }    
 
-class ΕJoin(AbstractJoin):
+class EJoin(AbstractJoin):
     """
-     Ε Join algorithm
+     E Join algorithm
     """
     _method_name = "EJoin"
-    _method_info = " ΕJoin algorithm"
+    _method_info = " EJoin algorithm"
     _method_short_name = "EJ"
 
     def __init__(
