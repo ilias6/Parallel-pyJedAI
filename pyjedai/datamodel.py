@@ -2,6 +2,10 @@
 """
 import pandas as pd
 from pandas import DataFrame, concat
+import re
+import nltk
+nltk.download('stopwords')
+from nltk.corpus import stopwords
 
 from abc import ABC, abstractmethod
 
@@ -221,6 +225,70 @@ class Data:
             print("Number of matching pairs in ground-truth: ", len(self.ground_truth))
         print(56*"-", "\n")
 
+    
+    # Functions that removes stopwords, punctuation, uni-codes, numbers from the dataset
+    def clean_dataset(self, 
+                      remove_stopwords: bool = True, 
+                      remove_punctuation: bool = True, 
+                      remove_numbers:bool = True,
+                      remove_unicodes: bool = True) -> None:
+        """Removes stopwords, punctuation, uni-codes, numbers from the dataset.
+        """
+        
+        # Make self.dataset_1 and self.dataset_2 lowercase
+        self.dataset_1 = self.dataset_1.applymap(lambda x: x.lower())
+        if not self.is_dirty_er:
+            self.dataset_2 = self.dataset_2.applymap(lambda x: x.lower())
+            
+        if remove_numbers:
+            self.dataset_1 = self.dataset_1.applymap(lambda x: re.sub(r'\d+', '', x))
+            if not self.is_dirty_er:
+                self.dataset_2 = self.dataset_2.applymap(lambda x: re.sub(r'\d+', '', x))    
+                
+        if remove_unicodes:
+            self.dataset_1 = self.dataset_1.applymap(lambda x: re.sub(r'[^\x00-\x7F]+', '', x))
+            if not self.is_dirty_er:
+                self.dataset_2 = self.dataset_2.applymap(lambda x: re.sub(r'[^\x00-\x7F]+', '', x))
+            
+        if remove_punctuation:
+            self.dataset_1  = self.dataset_1.applymap(lambda x: re.sub(r'[^\w\s]','',x))
+            if not self.is_dirty_er:
+                self.dataset_2 = self.dataset_2.applymap(lambda x: re.sub(r'[^\w\s]','',x))
+        
+        if remove_stopwords:
+            self.dataset_1 = self.dataset_1.applymap(lambda x: ' '.join([word for word in x.split() if word not in (stopwords.words('english'))]))
+            if not self.is_dirty_er:
+                self.dataset_2 = self.dataset_2.applymap(lambda x: ' '.join([word for word in x.split() if word not in (stopwords.words('english'))]))    
+
+        self.entities = self.dataset_1 = self.dataset_1.astype(str)
+        
+        # Concatenated columns into new dataframe
+        self.entities_d1 = self.dataset_1[self.attributes_1]
+
+        if not self.is_dirty_er:
+            self.dataset_2 = self.dataset_2.astype(str)
+            self.entities_d2 = self.dataset_2[self.attributes_2]
+            self.entities = pd.concat([self.dataset_1, self.dataset_2],
+                                      ignore_index=True)
+
+    def stats_about_data(self) -> None:
+        
+        stats_df = pd.DataFrame(columns=['word_count_1', 'word_count_2'])
+        
+        # Calculate the average number of words per line
+        stats_df['word_count_1'] = self.dataset_1.apply(lambda row: len(row.str.split()), axis=1)
+        print(stats_df['word_count_1'])
+        average_words_per_line_1 = stats_df['word_count_1'].mean()
+        print(average_words_per_line_1)
+        
+        if not self.is_dirty_er:
+            stats_df['word_count_2'] = self.dataset_2.apply(lambda row: len(row.str.split()), axis=1)
+            average_words_per_line_2 = stats_df['word_count_2'].mean()
+            print(average_words_per_line_2)
+            
+        return stats_df
+
+        
 class Block:
     """The main module used for storing entities in the blocking steps of pyjedai module. \
         Consists of 2 sets of profile entities 1 for Dirty ER and 2 for Clean-Clean ER.
