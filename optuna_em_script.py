@@ -89,14 +89,14 @@ for i in range(0,len(D1CSV)):
                 sb = StandardBlocking()
                 blocks = sb.build_blocks(data, tqdm_disable=False)
 
-                bf = BlockFiltering(ratio=0.8)
-                filtered_blocks = bf.process(blocks, data, tqdm_disable=False)
-
                 cbbp = BlockPurging(smoothing_factor=1.0)
-                cleaned_blocks = cbbp.process(filtered_blocks, data, tqdm_disable=False)
+                blocks = cbbp.process(blocks, data, tqdm_disable=False)
+
+                bf = BlockFiltering(ratio=0.8)
+                blocks = bf.process(blocks, data, tqdm_disable=False)
 
                 wep = CardinalityNodePruning(weighting_scheme='JS')
-                candidate_pairs_blocks = wep.process(filtered_blocks, data, tqdm_disable=False)
+                candidate_pairs_blocks = wep.process(blocks, data, tqdm_disable=False)
 
                 em = EntityMatching(
                     metric=trial.suggest_categorical('metric', available_metrics),
