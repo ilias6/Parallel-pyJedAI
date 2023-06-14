@@ -47,7 +47,7 @@ for i in range(0,len(D1CSV)):
 
     # Create a csv file 
     with open(d+'_tfidf_optuna_em.csv', 'w') as f:
-        f.write('trial, metric, threshold, tokenizer, metric, qgram, precision, recall, f1, runtime\n')
+        f.write('trial, metric, threshold, tokenizer, metric, qgram, precision, recall, f1, em_f1, runtime\n')
         data = Data(
             dataset_1=pd.read_csv("./data/ccer/" + d + "/" + d1 , 
                                 sep=s,
@@ -70,10 +70,6 @@ for i in range(0,len(D1CSV)):
         title = d + "_tfidf_entity_matching"
         study_name = title  # Unique identifier of the study.
 
-        tokenizers = ['char_qgram_tokenizer', 'word_qgram_tokenizer']
-        metrics = ['cosine', 'jaccard', 'tfidf']
-
-
         '''
         OPTUNA objective function
         '''
@@ -91,42 +87,46 @@ for i in range(0,len(D1CSV)):
 
                 wep = CardinalityNodePruning(weighting_scheme='JS')
                 candidate_pairs_blocks = wep.process(blocks, data, tqdm_disable=False)
-
+                wep.evaluate(candidate_pairs_blocks)
+                
                 em = EntityMatching(metric='tf-idf', 
-                                    tokenizer = trial.suggest_categorical('tokenizer', tokenizers), 
-                                    qgram=trial.suggest_int('qgram', 1, 5),
-                                    tfidf_similarity_metric=trial.suggest_categorical('tokenizer', metrics), 
+                                    tokenizer = trial.suggest_categorical("tokenizer", ["char_qgram_tokenizer", "word_qgram_tokenizer"]), 
+                                    qgram=trial.suggest_int("qgram", 1, 5),
+                                    tfidf_similarity_metric=trial.suggest_categorical("tfidf_similarity_metric", ["cosine", "jaccard", "dice"]), 
                                     similarity_threshold=0.0
                 )
                 pairs_graph = em.predict(candidate_pairs_blocks, data, tqdm_disable=False)
-
+                em_results = em.evaluate(pairs_graph, data)
+                
                 thresholds = [em.get_weights_avg(), em.get_weights_median(), em.get_weights_avg()+em.get_weights_standard_deviation(), em.get_weights_median()+em.get_weights_standard_deviation()]
-
+                
                 ccc = UniqueMappingClustering()
-                clusters = ccc.process(pairs_graph, data, similarity_threshold=trial.suggest_categorical('similarity_threshold', thresholds))
+                clusters = ccc.process(pairs_graph, data, similarity_threshold=trial.suggest_categorical("similarity_threshold", thresholds))
 
                 results = ccc.evaluate(clusters, with_classification_report=True, verbose=True)
 
                 t2 = time.time()
                 f1, precision, recall = results['F1 %'], results['Precision %'], results['Recall %']
 
-                f.write('{}, {}, {}, {}, {}, {},{}\n'.format(trial.number, em.metric, ccc.similarity_threshold, em.tokenizer, em.tfidf_similarity_metric, em.qgram, precision, recall, f1, t2-t1))
+                f.write('{}, {}, {}, {}, {}, {},{}\n'.format(trial.number, em.metric, ccc.similarity_threshold, em.tokenizer, em.tfidf_similarity_metric, em.qgram, precision, recall, f1, em_results['F1 %'], t2-t1))
             
                 return f1
 
             except ValueError as e:
                 # Handle the exception and force Optuna to continue
+                
+                print(e)
                 trial.set_user_attr("failed", True)
-                f.write('{}, {}, {}, {}, {}, {},{}\n'.format(trial.number, str(e), None, None,None,None, None, None, None, None))
+                f.write('{}, {}, {}, {}, {}, {},{}\n'.format(trial.number, str(e), None, None,None,None, None, None, None, None, None))
                 return optuna.TrialPruned()
         
         study_name = title  # Unique identifier of the study.
-        num_of_trials = 100
+        num_of_trials = 1
         study = optuna.create_study(
             directions=["maximize"],
             study_name=study_name,
             storage=storage_name,
-            load_if_exists=True
+            load_if_exists=False
         )
         print("Optuna trials starting")
         study.optimize(
