@@ -59,7 +59,7 @@ for i in datasets_wanted:
 
     # Create a csv file 
     with open(d+'_bw.csv', 'w') as f:
-        f.write('trial, metric, threshold, precision, recall, f1, runtime\n')
+        f.write('trial, metric, tokenizer, qgram, threshold, precision, recall, f1, runtime\n')
         data = Data(dataset_1=pd.read_csv("./data/ccer/" + d + "/" + d1 , sep=s, engine=e, na_filter=False).astype(str),
                     id_column_name_1='id',
                     dataset_2=pd.read_csv("./data/ccer/" + d + "/" + d2 , sep=s, engine=e, na_filter=False).astype(str),
@@ -92,7 +92,7 @@ for i in datasets_wanted:
 
                             em = EntityMatching(
                                 metric=em_method,
-                                toknizer=tokenizer,
+                                tokenizer=tokenizer,
                                 qgram=q,
                                 similarity_threshold=0.0
                             )
