@@ -121,7 +121,7 @@ for i in range(0,len(D1CSV)):
                 return optuna.TrialPruned()
         
         study_name = title  # Unique identifier of the study.
-        num_of_trials = 1
+        num_of_trials = 100
         study = optuna.create_study(
             directions=["maximize"],
             study_name=study_name,
