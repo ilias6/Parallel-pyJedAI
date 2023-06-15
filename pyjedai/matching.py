@@ -218,7 +218,7 @@ class EntityMatching(PYJEDAIFeature):
         self.pairs = Graph()
         all_blocks = list(blocks.values())
         self._progress_bar = tqdm(total=len(blocks),
-                                  desc=self._method_name+" ("+self.metric+")",
+                                  desc=self._method_name+" ("+self.metric+ ", " + str(self.tokenizer) + ")",
                                   disable=self.tqdm_disable)
         
         if self.metric == 'tf-idf':
@@ -374,12 +374,20 @@ class EntityMatching(PYJEDAIFeature):
         )
 
     def _configuration(self) -> dict:
-        return {
+        conf =  {
             "Metric" : self.metric,
             "Attributes" : self.attributes,
-            "Similarity threshold" : self.similarity_threshold
+            "Similarity threshold" : self.similarity_threshold,
+            "Tokenizer" : self.tokenizer
         }
 
+        if self.metric == 'tf-idf':
+            conf["Similarity metric"] = self.tfidf_similarity_metric
+            if self.tokenizer == 'word_qgram_tokenizer' or self.tokenizer == 'char_qgram_tokenizer':
+                conf["QGram size"] = self.qgram
+
+        return conf
+        
     def get_weights_avg(self) -> float:
         return sum([w for _, _, w in self.pairs.edges(data='weight')])/len(self.pairs.edges(data='weight'))
 
@@ -530,13 +538,6 @@ class EntityMatching(PYJEDAIFeature):
                                 export_to_dict,
                                 with_classification_report,
                                 verbose)
-
-    def _configuration(self) -> dict:
-        return {
-            "Tokenizer" : self.tokenizer,
-            "Metric" : self.metric,
-            "Similarity Threshold" : self.similarity_threshold
-        }
         
     def stats(self) -> None:
         pass
