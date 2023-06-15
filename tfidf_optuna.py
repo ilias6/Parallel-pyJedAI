@@ -101,14 +101,14 @@ for i in range(0,len(D1CSV)):
                 thresholds = [em.get_weights_avg(), em.get_weights_median(), em.get_weights_avg()+em.get_weights_standard_deviation(), em.get_weights_median()+em.get_weights_standard_deviation()]
                 
                 ccc = UniqueMappingClustering()
-                clusters = ccc.process(pairs_graph, data, similarity_threshold=trial.suggest_categorical("similarity_threshold", thresholds))
+                clusters = ccc.process(pairs_graph, data, similarity_threshold=trial.suggest_float("similarity_threshold", 0, 1))
 
                 results = ccc.evaluate(clusters, with_classification_report=True, verbose=True)
 
                 t2 = time.time()
                 f1, precision, recall = results['F1 %'], results['Precision %'], results['Recall %']
 
-                f.write('{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n'.format(trial.number, em.metric, ccc.similarity_threshold, em.tokenizer, em.tfidf_similarity_metric, em.qgram, precision, recall, f1, em_results['F1 %'], t2-t1))
+                f.write('{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {} \n'.format(trial.number, em.metric, ccc.similarity_threshold, em.tokenizer, em.tfidf_similarity_metric, em.qgram, precision, recall, f1, em_results['F1 %'], t2-t1))
             
                 return f1
 
