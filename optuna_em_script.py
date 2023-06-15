@@ -111,7 +111,7 @@ for i in range(0,len(D1CSV)):
                 t2 = time.time()
                 f1, precision, recall = results['F1 %'], results['Precision %'], results['Recall %']
 
-                f.write('{}, {}, {}, {}, {}, {},{}\n'.format(trial.number, em.metric, ccc.similarity_threshold, precision, recall, f1, t2-t1))
+                f.write('{}, {}, {}, {}, {}, {}, {}\n'.format(trial.number, em.metric, ccc.similarity_threshold, precision, recall, f1, t2-t1))
             
                 return f1
 

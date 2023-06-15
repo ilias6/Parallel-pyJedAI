@@ -108,7 +108,7 @@ for i in range(0,len(D1CSV)):
                 t2 = time.time()
                 f1, precision, recall = results['F1 %'], results['Precision %'], results['Recall %']
 
-                f.write('{}, {}, {}, {}, {}, {},{}\n'.format(trial.number, em.metric, ccc.similarity_threshold, em.tokenizer, em.tfidf_similarity_metric, em.qgram, precision, recall, f1, em_results['F1 %'], t2-t1))
+                f.write('{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n'.format(trial.number, em.metric, ccc.similarity_threshold, em.tokenizer, em.tfidf_similarity_metric, em.qgram, precision, recall, f1, em_results['F1 %'], t2-t1))
             
                 return f1
 
@@ -117,7 +117,7 @@ for i in range(0,len(D1CSV)):
                 
                 print(e)
                 trial.set_user_attr("failed", True)
-                f.write('{}, {}, {}, {}, {}, {},{}\n'.format(trial.number, str(e), None, None,None,None, None, None, None, None, None))
+                f.write('{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n'.format(trial.number, str(e), None, None, None, None, None, None, None, None, None))
                 return optuna.TrialPruned()
         
         study_name = title  # Unique identifier of the study.

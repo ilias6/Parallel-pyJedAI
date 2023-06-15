@@ -84,10 +84,10 @@ for i in datasets_wanted:
                             t2 = time.time()
                             f1, precision, recall = results['F1 %'], results['Precision %'], results['Recall %']
 
-                            f.write('{}, {}, {}, {}, {}, {},{}\n'.format(trial, m, t, q, thr, precision, recall, f1, t2-t1))
+                            f.write('{}, {}, {}, {}, {}, {}, {}, {}, {}\n'.format(trial, m, t, q, thr, precision, recall, f1, t2-t1))
                         
                         except ValueError as e:
 
                             # Handle the exception and force Optuna to continue
-                            f.write('{}, {}, {}, {}, {}, {},{}\n'.format(trial, str(e), None, None, None, None, None))                    
+                            f.write('{}, {}, {}, {}, {}, {}, {}, {}, {}\n'.format(trial, str(e), None, None, None, None, None, None, None))                    
     f.close()
