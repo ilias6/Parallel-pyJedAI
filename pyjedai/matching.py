@@ -46,7 +46,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity, pairwise_distances
 from tqdm.autonotebook import tqdm
 from sklearn.metrics import jaccard_score
-from scipy.spatial.distance import dice
+from scipy.spatial.distance import dice, jaccard
 
 from .datamodel import Data, PYJEDAIFeature
 from .evaluation import Evaluation
@@ -312,13 +312,15 @@ class EntityMatching(PYJEDAIFeature):
                 self.tfidf_similarity_matrix = cosine_similarity(self.tfidf_matrix)
             elif self.tfidf_similarity_metric == 'jaccard':
                 self.tfidf_matrix = self.tfidf_vectorizer.fit_transform(self.corpus)
-                self.tfidf_similarity_matrix = 1 - pairwise_distances(self.tfidf_matrix.toarray() , metric="jaccard")
+                self.tfidf_similarity_matrix = 1 - pairwise_distances( self.tfidf_matrix.toarray(), metric="jaccard")
             elif self.tfidf_similarity_metric == 'dice':
                 self.tfidf_matrix = self.tfidf_vectorizer.fit_transform(self.corpus).toarray()
 
     def _calculate_tfidf_similarity(self, entity_id1: int, entity_id2: int) -> float:
 
-        if self.tfidf_similarity_metric == 'cosine' or self.tfidf_similarity_metric == 'jaccard':
+        if self.tfidf_similarity_metric == 'cosine':
+            return self.tfidf_similarity_matrix[entity_id1][entity_id2]
+        elif self.tfidf_similarity_metric == 'jaccard':
             return self.tfidf_similarity_matrix[entity_id1][entity_id2]
         elif self.tfidf_similarity_metric == 'dice':
             return 1-dice(self.tfidf_matrix[entity_id1], self.tfidf_matrix[entity_id2])
