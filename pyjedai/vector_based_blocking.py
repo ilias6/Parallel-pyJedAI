@@ -25,6 +25,7 @@ from transformers import (AlbertModel, AlbertTokenizer, BertModel,
                           XLNetTokenizer)
 
 transformers.logging.set_verbosity_error()
+from faiss import normalize_L2
 
 from .datamodel import Data, PYJEDAIFeature
 from .evaluation import Evaluation
@@ -105,7 +106,8 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                      save_embeddings: bool = True,
                      load_embeddings_if_exist: bool = False,
                      with_entity_matching: bool = False,
-                     input_cleaned_blocks: dict = None
+                     input_cleaned_blocks: dict = None,
+                     similarity_distance: str = 'cosine'
     ) -> any:
         """Main method of the vector based approach. Contains two steps. First an embedding method. \
             And afterwards a similarity search upon the vectors created in the previous step.
@@ -134,11 +136,13 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
             dict: Entity ids to sets of top-K candidate ids. OR
             Tuple(np.array, np.array): vectors from d1 and vectors from d2
         """
+        print('Building blocks via Embeddings-NN Block Building [' + self.vectorizer + ', ' + self.similarity_search + ']')
         _start_time = time()
         self.blocks = dict()
         self.with_entity_matching = with_entity_matching
         self.save_embeddings, self.load_embeddings_if_exist = save_embeddings, load_embeddings_if_exist
         self.max_word_embeddings_size = max_word_embeddings_size
+        self.simiarity_distance = similarity_distance
         self.data, self.attributes_1, self.attributes_2, self.vector_size, self.num_of_clusters, self.top_k, self.input_cleaned_blocks \
             = data, attributes_1, attributes_2, vector_size, num_of_clusters, top_k, input_cleaned_blocks
         self._progress_bar = tqdm(total=data.num_of_entities,
@@ -324,7 +328,11 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                                         return_attention_mask = True,
                                         max_length=self.max_word_embeddings_size,
                                         padding='max_length')
+
+            encoded_input = {key: value.to(self.device) for key, value in encoded_input.items()}  # Move input tensors to GPU
+
             with torch.no_grad():
+                encoded_input = {key: value.to(self.device) for key, value in encoded_input.items()}  # Move input tensors to GPU
                 output = model(**encoded_input)
                 vector = output.last_hidden_state[:, 0, :]
                 
@@ -359,9 +367,32 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
 
     def _similarity_search_with_FAISS(self):
         index = faiss.IndexFlatL2(self.vectors_1.shape[1])
-        index.metric_type = faiss.METRIC_INNER_PRODUCT
+        
+        if self.simiarity_distance == 'cosine' or self.simiarity_distance == 'cosine_without_normalization':
+            index.metric_type = faiss.METRIC_INNER_PRODUCT
+        elif self.simiarity_distance == 'euclidean':
+            index.metric_type = faiss.METRIC_L2
+        else:
+            raise ValueError("Invalid similarity distance: ", self.simiarity_distance)
+
+        if self.simiarity_distance == 'cosine':
+            faiss.normalize_L2(self.vectors_1)
+            faiss.normalize_L2(self.vectors_2)
+            print("NORMALIZED")
+            
         index.train(self.vectors_1)  # train on the vectors of dataset 1
+
+        if self.simiarity_distance == 'cosine':
+            faiss.normalize_L2(self.vectors_1)
+            faiss.normalize_L2(self.vectors_2)
+            print("NORMALIZED")
+
         index.add(self.vectors_1)   # add the vectors and update the index
+
+        if self.simiarity_distance == 'cosine':
+            faiss.normalize_L2(self.vectors_1)
+            faiss.normalize_L2(self.vectors_2)
+            print("NORMALIZED")
         
         self.distances, self.neighbors = index.search(self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
                                     self.top_k)
