@@ -12,7 +12,9 @@ from pyjedai.matching import EntityMatching
 from pyjedai.clustering import ConnectedComponentsClustering, UniqueMappingClustering
 from optuna.study import MaxTrialsCallback
 from optuna.trial import TrialState
-import numpy as np
+
+db_name = "pyjedai_blocking_workflow"
+storage_name = "sqlite:///{}.db".format(db_name)
 
 D1CSV = [
     "rest1.csv", "abt.csv", "amazon.csv", "dblp.csv",  "imdb.csv",  "imdb.csv",  "tmdb.csv",  "walmart.csv",   "dblp.csv",    "imdb.csv"
@@ -32,10 +34,14 @@ engine = [
     'python', 'python','python','python','python','python','python','python','python', None
 ]
 
-datasets_wanted = [1]
+
+bf_ratio = {1:0.9, 2:0.075, 7:0.6}
+weighting_schemes = {1:'JS',2:'CBS',7:'ARCS'}
+
+datasets_wanted = [1, 2, 7]
 for i in datasets_wanted:
     print("\n\nDataset: ", D[i])
-    trial = 0
+
     d = D[i]
     d1 = D1CSV[i]
     d2 = D2CSV[i]
@@ -44,7 +50,7 @@ for i in datasets_wanted:
     e = engine[i]
 
     # Create a csv file 
-    with open(d+'_best_WB.csv', 'w') as f:
+    with open(d+'_optuna_em.csv', 'w') as f:
         f.write('trial, metric, threshold, precision, recall, f1, runtime\n')
         data = Data(
             dataset_1=pd.read_csv("./data/ccer/" + d + "/" + d1 , 
@@ -65,8 +71,11 @@ for i in datasets_wanted:
         if 'aggregated value' in data.attributes_2:
             data.dataset_2 = data.dataset_2.drop(columns=['aggregated value'], inplace=True)
 
+        title = d + "_bw"
+        study_name = title  # Unique identifier of the study
+
         set_metrics = [
-            # 'cosine'
+            'cosine', 'dice', 'generalized_jaccard', 'jaccard', 'overlap_coefficient'
         ]
 
         bag_metrics = [
@@ -75,43 +84,60 @@ for i in datasets_wanted:
 
         available_metrics = set_metrics + bag_metrics
 
-        for em_method in available_metrics:
-            for thr in np.arange(0, 0.2, 0.01):
 
-                trial += 1
-                try:
-                    t1 = time.time()
-                    sb = StandardBlocking()
-                    blocks = sb.build_blocks(data, tqdm_disable=False)
-                    
-                    cbbp = BlockPurging(smoothing_factor=1.0)
-                    blocks = cbbp.process(blocks, data, tqdm_disable=False)
+        '''
+        OPTUNA objective function
+        '''
+        def objective(trial):
+            try:
+                t1 = time.time()
+                sb = StandardBlocking()
+                blocks = sb.build_blocks(data, tqdm_disable=False)
 
-                    bf = BlockFiltering(ratio=0.8)
-                    blocks = bf.process(blocks, data, tqdm_disable=False)
-
-                    wep = CardinalityNodePruning(weighting_scheme='JS')
-                    candidate_pairs_blocks = wep.process(blocks, data, tqdm_disable=False)
-
-                    EM = EntityMatching(
-                        metric=em_method,
-                        similarity_threshold=0.0
-                    )
-                    pairs_graph = EM.predict(candidate_pairs_blocks, data, tqdm_disable=False)
-
-                    ccc = UniqueMappingClustering()
-                    clusters = ccc.process(pairs_graph, data,similarity_threshold=thr)
-
-                    results = ccc.evaluate(clusters, with_classification_report=True, verbose=True)
-
-                    t2 = time.time()
-                    f1, precision, recall = results['F1 %'], results['Precision %'], results['Recall %']
-
-                    f.write('{}, {}, {}, {}, {}, {},{}\n'.format(trial, EM.metric, ccc.similarity_threshold, precision, recall, f1, t2-t1))
+                bf = BlockFiltering(ratio=bf_ratio[i])
+                blocks = bf.process(blocks, data, tqdm_disable=False)
                 
-                except ValueError as e:
+                wep = CardinalityNodePruning(weighting_scheme='JS')
+                candidate_pairs_blocks = wep.process(blocks, data, tqdm_disable=False)
 
-                    # Handle the exception and force Optuna to continue
-                    f.write('{}, {}, {}, {}, {}, {},{}\n'.format(trial, str(e), None, None, None, None, None))                    
-                    
+                EM = EntityMatching(
+                    metric=trial.suggest_categorical('metric', available_metrics),
+                    similarity_threshold=0.0
+                )
+                pairs_graph = EM.predict(candidate_pairs_blocks, data, tqdm_disable=False)
+
+                ccc = UniqueMappingClustering()
+                clusters = ccc.process(pairs_graph, data,similarity_threshold=trial.suggest_float('similarity_threshold', 0.0, 1.0))
+                results = ccc.evaluate(clusters, with_classification_report=True, verbose=False)
+
+                t2 = time.time()
+                f1, precision, recall = results['F1 %'], results['Precision %'], results['Recall %']
+
+                f.write('{}, {}, {}, {}, {}, {},{}\n'.format(trial.number, EM.metric, ccc.similarity_threshold, precision, recall, f1, t2-t1))
+            
+                return f1
+
+            except ValueError as e:
+                # Handle the exception and force Optuna to continue
+                trial.set_user_attr("failed", True)
+                f.write('{}, {}, {}, {}, {}, {},{}\n'.format(trial.number, str(e), None, None, None, None, None))
+                return optuna.TrialPruned()
+        
+        study_name = title  # Unique identifier of the study.
+        num_of_trials = 50
+        study = optuna.create_study(
+            directions=["maximize"],
+            study_name=study_name,
+            storage=storage_name,
+            load_if_exists=True
+        )
+        print("Optuna trials starting")
+        study.optimize(
+            objective, 
+            n_trials=num_of_trials, 
+            show_progress_bar=True,
+            callbacks=[MaxTrialsCallback(num_of_trials, states=(TrialState.COMPLETE,))]
+        )
+        print("Optuna trials finished")
+
     f.close()

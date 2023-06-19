@@ -68,8 +68,7 @@ for i in range(0,len(D1CSV)):
             data.dataset_2 = data.dataset_2.drop(columns=['aggregated value'], inplace=True)
 
         title = d + "_WB_EntityMatching"
-        study_name = title  # Unique identifier of the study
-
+        study_name = title  # Unique identifier of the study.
         set_metrics = [
             'cosine', 'dice', 'generalized_jaccard', 'jaccard', 'overlap_coefficient'
         ]
@@ -78,7 +77,7 @@ for i in range(0,len(D1CSV)):
             'tf-idf'
         ]
 
-        available_metrics = string_metrics + set_metrics + bag_metrics
+        available_metrics = set_metrics + bag_metrics
 
 
         '''
@@ -88,32 +87,31 @@ for i in range(0,len(D1CSV)):
             try:
                 t1 = time.time()
                 sb = StandardBlocking()
-                blocks = sb.build_blocks(data, tqdm_disable=True)
-
-                bf = BlockFiltering(ratio=0.8)
-                filtered_blocks = bf.process(blocks, data, tqdm_disable=True)
+                blocks = sb.build_blocks(data, tqdm_disable=False)
 
                 cbbp = BlockPurging(smoothing_factor=1.0)
-                cleaned_blocks = cbbp.process(filtered_blocks, data, tqdm_disable=True)
+                blocks = cbbp.process(blocks, data, tqdm_disable=False)
+
+                bf = BlockFiltering(ratio=0.8)
+                blocks = bf.process(blocks, data, tqdm_disable=False)
 
                 wep = CardinalityNodePruning(weighting_scheme='JS')
-                candidate_pairs_blocks = wep.process(filtered_blocks, data, tqdm_disable=True)
+                candidate_pairs_blocks = wep.process(blocks, data, tqdm_disable=False)
 
-                EM = EntityMatching(
+                em = EntityMatching(
                     metric=trial.suggest_categorical('metric', available_metrics),
                     similarity_threshold=0.0
                 )
-                pairs_graph = EM.predict(candidate_pairs_blocks, data, tqdm_disable=True)
-
+                pairs_graph = em.predict(candidate_pairs_blocks, data, tqdm_disable=False)
                 ccc = UniqueMappingClustering()
                 clusters = ccc.process(pairs_graph, data,similarity_threshold=trial.suggest_float('similarity_threshold', 0.0, 1.0))
 
-                results = ccc.evaluate(clusters, with_classification_report=True, verbose=False)
+                results = ccc.evaluate(clusters, with_classification_report=True, verbose=True)
 
                 t2 = time.time()
                 f1, precision, recall = results['F1 %'], results['Precision %'], results['Recall %']
 
-                f.write('{}, {}, {}, {}, {}, {},{}\n'.format(trial.number, EM.metric, ccc.similarity_threshold, precision, recall, f1, t2-t1))
+                f.write('{}, {}, {}, {}, {}, {}, {}\n'.format(trial.number, em.metric, ccc.similarity_threshold, precision, recall, f1, t2-t1))
             
                 return f1
 
