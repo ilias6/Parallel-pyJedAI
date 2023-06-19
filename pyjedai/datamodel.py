@@ -72,7 +72,8 @@ class Data:
                 attributes_2: list = None,
                 id_column_name_2: str = None,
                 dataset_name_2: str = None,
-                ground_truth: DataFrame = None
+                ground_truth: DataFrame = None,
+                inorder_gt: bool = True
     ) -> None:
         # Original Datasets as pd.DataFrame
         if isinstance(dataset_1, pd.DataFrame):
@@ -98,6 +99,7 @@ class Data:
         self.entities: DataFrame
 
         # Datasets specs
+        self.inorder_gt = inorder_gt
         self.is_dirty_er = dataset_2 is None
         self.dataset_limit = self.num_of_entities_1 = len(dataset_1)
         self.num_of_entities_2: int = len(dataset_2) if dataset_2 is not None else 0
@@ -165,11 +167,10 @@ class Data:
             - pairs_of : ids of first dataset to ids of true matches from second dataset"""
         
         self.pairs_of = defaultdict(set)
+        d1_col_index, d2_col_index = (0, 1) if self.inorder_gt else (1,0)
         
         for _, row in self.ground_truth.iterrows():
-            id1 = row[0]
-            id2 = row[1]
-            
+            id1, id2 = (row[d1_col_index], row[d2_col_index])
             if id1 in self.pairs_of: self.pairs_of[id1].append(id2)
             else: self.pairs_of[id1] = [id2]  
     
