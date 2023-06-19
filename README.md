@@ -107,5 +107,14 @@ For local deployment and testing:
 
 </details>
 
+<details>
+<summary>View results with optuna dashboard</summary>
+
+1. Go to pyJedAI public repo
+2. ```pip install optuna-dashboard ```
+3. ```optuna-dashboard sqlite:///pyjedai.db``` , at the dir containing pyjedai.db file
+
+</details>
+
 
 
