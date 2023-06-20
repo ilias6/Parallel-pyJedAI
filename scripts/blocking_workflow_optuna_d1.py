@@ -88,13 +88,16 @@ with open(d+'_optuna_em.csv', 'w') as f:
             t1 = time.time()
             sb = StandardBlocking()
             blocks = sb.build_blocks(data, tqdm_disable=False)
+            sb.evaluate(blocks)
 
             bf = BlockFiltering(ratio=0.9)
             blocks = bf.process(blocks, data, tqdm_disable=False)
-            
+            bf.evaluate(blocks)
+                        
             wep = WeightedEdgePruning(weighting_scheme='JS')
             candidate_pairs_blocks = wep.process(blocks, data, tqdm_disable=False)
-
+            wep.evaluate(candidate_pairs_blocks)
+            
             EM = EntityMatching(
                 metric=trial.suggest_categorical('metric', available_metrics),
                 similarity_threshold=0.0

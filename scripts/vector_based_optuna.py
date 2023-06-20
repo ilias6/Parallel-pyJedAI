@@ -48,25 +48,6 @@ for i in range(0,len(D1CSV)):
     with open(d+'_WB.csv', 'w') as f:
         f.write('trial, metric, threshold, precision, recall, f1, runtime\n')
         
-        data = Data(
-            dataset_1=pd.read_csv("./data/ccer/" + d + "/" + d1 , 
-                                sep=s,
-                                engine=e,
-                                na_filter=False).astype(str),
-            id_column_name_1='id',
-            dataset_2=pd.read_csv("./data/ccer/" + d + "/" + d2 , 
-                                sep=s, 
-                                engine=e, 
-                                na_filter=False).astype(str),
-            id_column_name_2='id',
-            ground_truth=pd.read_csv("./data/ccer/" + d + "/gt.csv", sep=s, engine=e))
-
-        if 'aggregated value' in data.attributes_1:
-            data.dataset_1 = data.dataset_1.drop(columns=['aggregated value'], inplace=True)
-        
-        if 'aggregated value' in data.attributes_2:
-            data.dataset_2 = data.dataset_2.drop(columns=['aggregated value'], inplace=True)
-
         title = d + "_WB_EntityMatching"
         study_name = title  # Unique identifier of the study.
         gensim = ['fasttext','glove', 'word2vec']
@@ -81,6 +62,28 @@ for i in range(0,len(D1CSV)):
         def objective(trial):
             try:
                 t1 = time.time()
+        
+                data = Data(
+                    dataset_1=pd.read_csv("./data/ccer/" + d + "/" + d1 , 
+                                        sep=s,
+                                        engine=e,
+                                        na_filter=False).astype(str),
+                    id_column_name_1='id',
+                    dataset_2=pd.read_csv("./data/ccer/" + d + "/" + d2 , 
+                                        sep=s, 
+                                        engine=e, 
+                                        na_filter=False).astype(str),
+                    id_column_name_2='id',
+                    ground_truth=pd.read_csv("./data/ccer/" + d + "/gt.csv", sep=s, engine=e))
+                
+                if 'aggregated value' in data.attributes_1:
+                    data.dataset_1 = data.dataset_1.drop(columns=['aggregated value'], inplace=True)
+                
+                if 'aggregated value' in data.attributes_2:
+                    data.dataset_2 = data.dataset_2.drop(columns=['aggregated value'], inplace=True)
+
+                
+                
                 emb = EmbeddingsNNBlockBuilding(vectorizer=trial.suggest_categorical('vectorizer', vectorizers),
                                                 similarity_search='faiss')
                 _, g = emb.build_blocks(data, 
