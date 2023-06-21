@@ -56,10 +56,11 @@ class PYJEDAIFeature(ABC):
             "\nParameters: " + parameters +
             "\nRuntime: {:2.4f} seconds".format(self.execution_time)
         )
-        
+
     @abstractmethod
     def stats(self) -> None:
         pass
+
 class Data:
     """The corpus of the dataset that will be processed with pyjedai. \
         Contains all the information of the dataset and will be passed to each step \
@@ -69,7 +70,7 @@ class Data:
     def __init__(
                 self,
                 dataset_1: DataFrame,
-                id_column_name_1: str,
+                id_column_name_1: str,                
                 attributes_1: list = None,
                 dataset_name_1: str = None,
                 dataset_2: DataFrame = None,
@@ -120,6 +121,14 @@ class Data:
         if not self.is_dirty_er:
             self.dataset_2.fillna("", inplace=True)
 
+        self.dataset_name_1 = dataset_name_1
+        self.dataset_name_2 = dataset_name_2
+        
+        # Fill NaN values with empty string
+        self.dataset_1.fillna("", inplace=True)
+        if not self.is_dirty_er:
+            self.dataset_2.fillna("", inplace=True)
+            
         # Attributes
         if attributes_1 is None:
             if dataset_1.columns.values.tolist():
@@ -131,16 +140,17 @@ class Data:
                     "Dataset 1 must contain column names if attributes_1 is empty.")
         else:
             self.attributes_1: list = attributes_1
+
         if dataset_2 is not None:
             if attributes_2 is None:
                 if dataset_2.columns.values.tolist():
                     self.attributes_2 = dataset_2.columns.values.tolist()
                     if self.id_column_name_2 in self.attributes_2:
                         self.attributes_2.remove(self.id_column_name_1)
+                else:
+                    raise AttributeError("Dataset 2 must contain column names if attributes_2 is empty.")
             else:
-                raise AttributeError("Dataset 2 must contain column names if attributes_2 is empty.")
-        else:
-            self.attributes_2: list = attributes_2
+                self.attributes_2: list = attributes_2
 
         # Ground truth data
         if ground_truth is not None:
@@ -151,7 +161,7 @@ class Data:
             self._gt_to_ids_reversed_2: dict
 
         self.entities = self.dataset_1 = self.dataset_1.astype(str)
-
+        
         # Concatenated columns into new dataframe
         self.entities_d1 = self.dataset_1[self.attributes_1]
 
@@ -237,7 +247,7 @@ class Data:
         if self.ground_truth is not None:
             print("Number of matching pairs in ground-truth: ", len(self.ground_truth))
         print(56*"-", "\n")
-        
+
     
     # Functions that removes stopwords, punctuation, uni-codes, numbers from the dataset
     def clean_dataset(self, 
@@ -301,6 +311,7 @@ class Data:
             
         return stats_df
 
+        
 class Block:
     """The main module used for storing entities in the blocking steps of pyjedai module. \
         Consists of 2 sets of profile entities 1 for Dirty ER and 2 for Clean-Clean ER.

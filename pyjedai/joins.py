@@ -268,6 +268,9 @@ class AbstractJoin(PYJEDAIFeature):
     def stats(self) -> None:
         pass
 
+    def stats(self) -> None:
+        pass
+
     def _configuration(self) -> dict:
         return {
             "similarity_threshold" : self.similarity_threshold,
@@ -276,12 +279,12 @@ class AbstractJoin(PYJEDAIFeature):
             "qgrams": self.qgrams
         }    
 
-class ΕJoin(AbstractJoin):
+class EJoin(AbstractJoin):
     """
-     Ε Join algorithm
+     E Join algorithm
     """
     _method_name = "EJoin"
-    _method_info = " ΕJoin algorithm"
+    _method_info = " EJoin algorithm"
     _method_short_name = "EJ"
 
     def __init__(

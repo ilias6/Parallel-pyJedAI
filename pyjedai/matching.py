@@ -187,7 +187,7 @@ class EntityMatching(PYJEDAIFeature):
                     tokenizer, available_tokenizers
                 )
             )
-
+        
     def predict(self,
                 blocks: dict,
                 data: Data,
@@ -335,6 +335,49 @@ class EntityMatching(PYJEDAIFeature):
         else:
             raise AttributeError("Please select one tf-idf similarity metric from the given: cosine, jaccard, dice")
 
+    def _calculate_tfidf(self) -> None:
+        
+        analyzer = 'char' if self.tokenizer == 'char_qgram_tokenizer' else 'word'
+        vectorizer = TfidfVectorizer(analyzer='') if self.qgram is None else TfidfVectorizer(analyzer=analyzer, ngram_range=(self.qgram, self.qgram))
+        
+        d1 = self.data.dataset_1[self.attributes] if self.attributes else self.data.dataset_1
+        self._entities_d1 = d1 \
+                    .apply(" ".join, axis=1) \
+                    .apply(lambda x: x.lower()) \
+                    .values.tolist()
+        
+        d2 = self.data.dataset_2[self.attributes] if self.attributes and not self.data.is_dirty_er else self.data.dataset_2
+        self._entities_d2 = d2 \
+                    .apply(" ".join, axis=1) \
+                    .apply(lambda x: x.lower()) \
+                    .values.tolist() if not self.data.is_dirty_er else None
+                    
+        if self.data.is_dirty_er:
+            pass
+        else:
+            self.corpus = self._entities_d1 + self._entities_d2
+            self.tfidf_vectorizer = vectorizer.fit(self.corpus)
+            
+            if self.tfidf_similarity_metric == 'cosine':
+                self.tfidf_matrix = vectorizer.transform(self.corpus)
+                self.tfidf_similarity_matrix = cosine_similarity(self.tfidf_matrix)
+            elif self.tfidf_similarity_metric == 'jaccard':
+                self.tfidf_matrix = self.tfidf_vectorizer.fit_transform(self.corpus)
+                self.tfidf_similarity_matrix = 1 - pairwise_distances( self.tfidf_matrix.toarray(), metric="jaccard")
+            elif self.tfidf_similarity_metric == 'dice':
+                self.tfidf_matrix = self.tfidf_vectorizer.fit_transform(self.corpus).toarray()
+
+    def _calculate_tfidf_similarity(self, entity_id1: int, entity_id2: int) -> float:
+
+        if self.tfidf_similarity_metric == 'cosine':
+            return self.tfidf_similarity_matrix[entity_id1][entity_id2]
+        elif self.tfidf_similarity_metric == 'jaccard':
+            return self.tfidf_similarity_matrix[entity_id1][entity_id2]
+        elif self.tfidf_similarity_metric == 'dice':
+            return 1-dice(self.tfidf_matrix[entity_id1], self.tfidf_matrix[entity_id2])
+        else:
+            raise AttributeError("Please select one tf-idf similarity metric from the given: cosine, jaccard, dice")
+
     def _similarity(self, entity_id1: int, entity_id2: int) -> float:
 
         similarity: float = 0.0
@@ -369,7 +412,7 @@ class EntityMatching(PYJEDAIFeature):
             te2 = self._tokenizer.tokenize(e2) if self._metric in set_metrics else e2
             similarity = metrics_mapping[self._metric].get_sim_score(te1, te2)
 
-        return similarity
+        return similarity        
 
     def report(self) -> None:
         """Prints Block Building method configuration
@@ -439,7 +482,6 @@ class EntityMatching(PYJEDAIFeature):
         plt.axvline(x = self.get_weights_avg()+self.get_weights_standard_deviation(), color = 'green', label = 'Average + SD weight')
         plt.legend()
         plt.show()
-
 
     def plot_distribution_of_scores(self) -> None:
         title = "Distribution of scores with " + self.metric + " metric in graph from entity matching"
@@ -549,7 +591,7 @@ class EntityMatching(PYJEDAIFeature):
                                 export_to_dict,
                                 with_classification_report,
                                 verbose)
-
+        
     def stats(self) -> None:
         pass
     

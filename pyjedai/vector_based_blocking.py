@@ -9,7 +9,6 @@ import sys
 import warnings
 from time import time
 from typing import List, Tuple
-import re
 
 import faiss
 import gensim.downloader as api
@@ -165,6 +164,8 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         self._d1_valid_indices: list[int] = self._si.d1_retained_ids
         self._d2_valid_indices: list[int] = [x - self.data.dataset_limit for x in self._si.d2_retained_ids]   
         
+        # print(data.attributes_1, data.attributes_2)
+        print(attributes_1 if attributes_1 else data.attributes_1)
         self._entities_d1 = data.dataset_1[attributes_1 if attributes_1 else data.attributes_1] \
                             .apply(" ".join, axis=1) \
                             .apply(self._tokenize_entity) \
@@ -251,7 +252,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
             self._similarity_search_with_SCANN()
         else:
             raise AttributeError("Not available method")
-        self._progress_bar.close()
+        self._progress_bar.close()        
         self.execution_time = time() - _start_time
         
         if self.with_entity_matching:
@@ -315,7 +316,6 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                                                                      tokenizer) if not self.data.is_dirty_er and not self._d2_loaded else self.vectors_2
         return self.vectors_1, self.vectors_2
 
-
     def _transform_entities_to_word_embeddings(self, entities, model, tokenizer) -> np.array:
     
         model = model.to(self.device)
@@ -357,6 +357,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         vectors_2 = []
         if not self.data.is_dirty_er and not self._d2_loaded:            
             for e2 in self._entities_d2:
+                # print("e2: ", e2)
                 vector = model.encode(e2)
                 vectors_2.append(vector)
                 self._progress_bar.update(1)
@@ -498,6 +499,11 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                                 with_classification_report,
                                 verbose)
         
+        if with_stats:
+            self.stats()
+
+        return evaluation
+
         if with_stats:
             self.stats()
 

@@ -104,7 +104,7 @@ class Evaluation:
             self.recall = self.true_positives / self.num_of_true_duplicates
             if self.precision == 0.0 or self.recall == 0.0:
                 self.f1 = 0.0
-                # raise DivisionByZero("Recall or Precision is equal to zero. Can't calculate F1 score.")
+                #raise DivisionByZero("Recall or Precision is equal to zero. Can't calculate F1 score.")
             else:
                 self.f1 = 2*((self.precision*self.recall)/(self.precision+self.recall))
 

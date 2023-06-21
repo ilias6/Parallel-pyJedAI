@@ -143,7 +143,6 @@ class AbstractBlockBuilding(AbstractBlockProcessing):
         self.max_block_size: int = None
         self.min_block_comparisons: int = None
         self.max_block_comparisons: int = None
-        
     def build_blocks(
             self,
             data: Data,

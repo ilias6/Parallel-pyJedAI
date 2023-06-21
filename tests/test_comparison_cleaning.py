@@ -21,11 +21,11 @@ def test_datamodel_dirty_er():
     assert dirty_data is not None
 
 clean_clean_data = Data(
-    dataset_1=pd.read_csv("data/ccer/D2/abt.csv", sep='|', engine='python').astype(str),
+    dataset_1=pd.read_csv("data/test/ccer/abt_100.csv", sep='|', engine='python').astype(str),
     id_column_name_1='id',
-    dataset_2=pd.read_csv("data/ccer/D2/buy.csv", sep='|', engine='python').astype(str),
+    dataset_2=pd.read_csv("data/test/ccer/buy_100.csv", sep='|', engine='python').astype(str),
     id_column_name_2='id',
-    ground_truth=pd.read_csv("data/ccer/D2/gt.csv", sep='|', engine='python')
+    ground_truth=pd.read_csv("data/test/ccer/gt_100.csv", sep='|', engine='python')
 )
 clean_clean_data.print_specs()
 

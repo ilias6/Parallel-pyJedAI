@@ -9,6 +9,7 @@ src/pyjedai/comparison_cleaning.py
 src/pyjedai/datamodel.py
 src/pyjedai/evaluation.py
 src/pyjedai/joins.py
+src/pyjedai/logs.py
 src/pyjedai/matching.py
 src/pyjedai/utils.py
 src/pyjedai/vector_based_blocking.py

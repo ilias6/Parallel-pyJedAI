@@ -43,7 +43,11 @@ __Brainstorming-sheet__: [google-sheet](https://docs.google.com/spreadsheets/d/1
       ```
    where dist is the directory with the files that will be uploaded.
 3. If everything is ok, test ```pip install pyjedai```.
-
+4. Pypi token "github-automation"
+   ```
+   pypi-AgEIcHlwaS5vcmcCJDQxYmFlNTQwLTA2NDgtNDViNi1hZmIxLTM1YmI0YmI1OTM2NgACD1sxLFsicHlqZWRhaSJdXQACLFsyLFsiNTYwNTZkZjctM2QwNS00ZWQ5LWFkOWYtMzE4N2NjYzNjN2IwIl1dAAAGIJfnzGM5PO9O1AkGkKzt7o4Qnt66oTEuNX8k2A47Qb1i
+   ```
+   
 [Link to instructions](https://packaging.python.org/en/latest/tutorials/packaging-projects/)
 
 </details>
@@ -106,6 +110,16 @@ For local deployment and testing:
 4. Open index.html to a browser
 
 </details>
+
+<details>
+<summary>View results with optuna dashboard</summary>
+
+1. Go to pyJedAI public repo
+2. ```pip install optuna-dashboard ```
+3. ```optuna-dashboard sqlite:///pyjedai.db``` , at the dir containing pyjedai.db file
+
+</details>
+
 
 <details>
 <summary>View results with optuna dashboard</summary>
