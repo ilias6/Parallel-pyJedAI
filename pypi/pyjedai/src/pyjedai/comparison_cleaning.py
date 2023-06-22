@@ -398,10 +398,10 @@ class CardinalityEdgePruning(WeightedEdgePruning):
             weight = self._get_weight(entity_id, neighbor_id)
             if weight >= self._minimum_weight:
                 self._top_k_edges.put(
-                    (weight, entity_id, neighbor_id)
+                    (-weight, entity_id, neighbor_id)
                 )
                 if self._threshold < self._top_k_edges.qsize():
-                    self._minimum_weight = self._top_k_edges.get()[0]
+                    self._minimum_weight = -self._top_k_edges.get()[0]
 
 class CardinalityNodePruning(CardinalityEdgePruning):
     """A Meta-blocking method that retains for every entity, \
@@ -460,10 +460,10 @@ class CardinalityNodePruning(CardinalityEdgePruning):
             weight = self._get_weight(entity_id, neighbor_id)
             if weight >= self._minimum_weight:
                 self._top_k_edges.put(
-                    (weight, entity_id, neighbor_id)
+                    (-weight, entity_id, neighbor_id)
                 )
                 if self._threshold < self._top_k_edges.qsize():
-                    self._minimum_weight = self._top_k_edges.get()[0]
+                    self._minimum_weight = -self._top_k_edges.get()[0]
         if self._top_k_edges:         
             self._nearest_entities.setdefault(entity_id, set())
         while not self._top_k_edges.empty():

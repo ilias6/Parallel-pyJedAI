@@ -264,6 +264,9 @@ class AbstractJoin(PYJEDAIFeature):
                         export_to_dict,
                         with_classification_report,
                         verbose)
+        
+    def stats(self) -> None:
+        pass
 
     def stats(self) -> None:
         pass

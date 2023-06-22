@@ -51,6 +51,8 @@ data/rdf/restaurants/restaurant1_restaurant2_goldstandard.rdf
 data/rdf/restaurants/restaurant1_restaurant2_goldstandard.rdf.csv
 data/rdf/restaurants/restaurant2.nt
 data/rdf/restaurants/restaurant2.nt.csv
+data/datasets/
+data/datasets-backup/
 dev-only/vectorization.py
 dev-only/vectorization.py
 documentation/~$workflow-example.odp
@@ -169,6 +171,7 @@ data/magellan/existingDatasets/dirty_dblp_acm/tableA.csv
 *.npy
 .hypothesis/unicode_data/11.0.0/charmap.json.gz
 tests/.hypothesis/
+.indexer
 results_vb/pyjedai.db
 results_vb/nohup.out
 results_vb/D9_WB.csv
