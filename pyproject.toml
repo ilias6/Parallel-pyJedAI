@@ -5,9 +5,9 @@ requires      = ["setuptools>=61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "devpyjedai"
+name = "pyjedai"
 version = "0.0.1"
-description = "Dev-pyJedAI"
+description = "Development pyJedAI package"
 readme = "README.md"
 authors = [
     { name = "Konstantinos Nikoletos", email = "nikoletos.kon@gmail.com" },
