@@ -27,4 +27,4 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.PYJEDAI_TEST_PYPI_TOKEN }}
       run: |
         python -m build --sdist --wheel
-        twine upload --repository devpyjedai dist/*
+        twine upload --repository testpypi dist/*
