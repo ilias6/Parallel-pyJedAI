@@ -22,9 +22,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install setuptools wheel twine build
     - name: Build and publish
-      env:
-        TWINE_USERNAME: PYJEDAI_TEST_PYPI_TOKEN
-        TWINE_PASSWORD: ${{ secrets.PYJEDAI_TEST_PYPI_TOKEN }}
+#       env:
+#         TWINE_USERNAME: PYJEDAI_TEST_PYPI_TOKEN
+#         TWINE_PASSWORD: ${{ secrets.PYJEDAI_TEST_PYPI_TOKEN }}
       run: |
         python -m build --sdist --wheel
         twine upload -u PYJEDAI_TEST_PYPI_TOKEN -p ${{ secrets.PYJEDAI_TEST_PYPI_TOKEN }} --repository testpypi dist/*
