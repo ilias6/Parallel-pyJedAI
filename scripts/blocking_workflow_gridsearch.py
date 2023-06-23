@@ -94,6 +94,7 @@ for i in datasets_wanted:
                                 metric=em_method,
                                 tokenizer=tokenizer,
                                 qgram=q,
+                                tfidf_similarity_metric='jaccard',
                                 similarity_threshold=0.0
                             )
                             pairs_graph = em.predict(candidate_pairs_blocks, data, tqdm_disable=False)

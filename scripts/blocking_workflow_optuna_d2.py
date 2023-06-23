@@ -34,7 +34,7 @@ engine = [
     'python', 'python','python','python','python','python','python','python','python', None
 ]
 
-i=2
+i=1
 print("\n\nDataset: ", D[i])
 
 d = D[i]
@@ -90,14 +90,14 @@ with open(d+'_optuna_em.csv', 'w') as f:
             blocks = sb.build_blocks(data, tqdm_disable=False)
             sb.evaluate(blocks)
 
-            bf = BlockFiltering(ratio=0.075)
+            bf = BlockFiltering(ratio=0.9)
             blocks = bf.process(blocks, data, tqdm_disable=False)
             bf.evaluate(blocks)
-
-            wep = WeightedNodePruning(weighting_scheme='ARCS')
+                        
+            wep = WeightedEdgePruning(weighting_scheme='EJS')
             candidate_pairs_blocks = wep.process(blocks, data, tqdm_disable=False)
             wep.evaluate(candidate_pairs_blocks)
-
+            
             EM = EntityMatching(
                 metric=trial.suggest_categorical('metric', available_metrics),
                 similarity_threshold=0.0
