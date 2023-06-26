@@ -1,34 +1,9 @@
-[![pyJedAI Tests](https://github.com/Nikoletos-K/pyJedAI-Dev/actions/workflows/tests.yml/badge.svg)](https://github.com/Nikoletos-K/pyJedAI-Dev/actions/workflows/tests.yml)
-
 # Development repo for [pyJedAI](https://github.com/Nikoletos-K/pyJedAI)
 Contains all the files of pyjedai. This repo is for experiments. Commit only here.
 
 #### Usefull links
 __PyPI__: [https://pypi.org/project/pyjedai/](https://pypi.org/project/pyjedai/)
-
-__Brainstorming-sheet__: [google-sheet](https://docs.google.com/spreadsheets/d/17AseLUaQrdLWbE5gDQI-Lu-JhnqdYO7o0PNG10vzAVg/edit?usp=sharing)
-
-
-## Development to production process:
-1. Assure that all tests are passing in dev.
-2. Pass each feature seperatelly.
-3. Update and run demo notebooks
-
-## Visualizations
-
-<details>
-<summary>Embeddings with NN approach [ongoing]</summary>
-
-![pyJedAI](https://user-images.githubusercontent.com/47646955/189627063-8536a4fd-cc0e-45ec-a038-cff1a3746570.jpg)
-
-</details>
-
-<details>
-<summary>Reading Process</summary>
-
-![pyJedAI](https://user-images.githubusercontent.com/47646955/190148478-2221e67c-b694-4116-aa64-3d6a6a88be7e.jpg)
-
-</details>
+__TestPyPI__: [https://test.pypi.org/project/pyjedai/](https://test.pypi.org/project/pyjedai/)
 
 ## Useful info
 
@@ -51,6 +26,11 @@ __Brainstorming-sheet__: [google-sheet](https://docs.google.com/spreadsheets/d/1
 [Link to instructions](https://packaging.python.org/en/latest/tutorials/packaging-projects/)
 
 </details>
+
+<summary>PyPI upload from public repo </summary>
+
+</details>
+
 <details>
 <summary>Conda Virtual Environment</summary>
 
@@ -75,16 +55,7 @@ __Brainstorming-sheet__: [google-sheet](https://docs.google.com/spreadsheets/d/1
 [Link to instructions](https://machinelearningmastery.com/profiling-python-code/)
 
 </details>
-<details>
-<summary>Optimization ideas</summary>
 
-1. Avoid pd.itterows()
-2. Avoid looping in a set -> transform it first with list()
-3. PyPy      
-
-[Link to instructions](https://machinelearningmastery.com/profiling-python-code/)
-
-</details>
 <details>
 <summary>Jekyll website dev</summary>
 
@@ -120,15 +91,6 @@ For local deployment and testing:
 
 </details>
 
-
-<details>
-<summary>View results with optuna dashboard</summary>
-
-1. Go to pyJedAI public repo
-2. ```pip install optuna-dashboard ```
-3. ```optuna-dashboard sqlite:///pyjedai.db``` , at the dir containing pyjedai.db file
-
-</details>
 
 
 
