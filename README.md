@@ -2,8 +2,9 @@
 Contains all the files of pyjedai. This repo is for experiments. Commit only here.
 
 #### Usefull links
-__PyPI__: [https://pypi.org/project/pyjedai/](https://pypi.org/project/pyjedai/)
-__TestPyPI__: [https://test.pypi.org/project/pyjedai/](https://test.pypi.org/project/pyjedai/)
+- __PyPI__: [https://pypi.org/project/pyjedai/](https://pypi.org/project/pyjedai/)
+- __TestPyPI__: [https://test.pypi.org/project/pyjedai/](https://test.pypi.org/project/pyjedai/)
+- __Anaconda__: furute work
 
 ## Useful info
 
@@ -27,8 +28,9 @@ __TestPyPI__: [https://test.pypi.org/project/pyjedai/](https://test.pypi.org/pro
 
 </details>
 
-<summary>PyPI upload from public repo </summary>
 <details>
+<summary>PyPI upload from public repo </summary>
+
 </details>
 
 <details>
