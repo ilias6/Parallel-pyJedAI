@@ -28,7 +28,7 @@ __TestPyPI__: [https://test.pypi.org/project/pyjedai/](https://test.pypi.org/pro
 </details>
 
 <summary>PyPI upload from public repo </summary>
-
+<details>
 </details>
 
 <details>
