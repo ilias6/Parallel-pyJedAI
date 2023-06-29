@@ -12,7 +12,8 @@ import math
 import sys
 from time import time
 from networkx import Graph
-
+from ordered_set import OrderedSet
+from math import floor
 # ----------------------- #
 # Constants
 # ----------------------- #
@@ -30,12 +31,12 @@ def create_entity_index(blocks: dict, is_dirty_er: bool) -> dict:
     entity_index = {}
     for key, block in blocks.items():
         for entity_id in block.entities_D1:
-            entity_index.setdefault(entity_id, set())
+            entity_index.setdefault(entity_id, OrderedSet())
             entity_index[entity_id].add(key)
 
         if not is_dirty_er:
             for entity_id in block.entities_D2:
-                entity_index.setdefault(entity_id, set())
+                entity_index.setdefault(entity_id, OrderedSet())
                 entity_index[entity_id].add(key)
 
     return entity_index
@@ -52,6 +53,17 @@ def are_matching(entity_index, id1, id2) -> bool:
     if isinstance(list(entity_index.values())[0], set): # Blocks case
         return len(entity_index[id1].intersection(entity_index[id2])) > 0
     return entity_index[id1] == entity_index[id2] # Clusters case
+
+def get_blocks_cardinality(blocks: dict, is_dirty_er: bool) -> int:
+    """Returns the cardinality of the blocks.
+
+    Args:
+        blocks (dict): Blocks.
+
+    Returns:
+        int: Cardinality.
+    """
+    return sum([block.get_cardinality(is_dirty_er) for block in blocks.values()])
 
 def drop_big_blocks_by_size(blocks: dict, max_block_size: int, is_dirty_er: bool) -> dict:
     """Drops blocks if:
@@ -152,6 +164,8 @@ def chi_square(in_array: np.array) -> float:
             sum_sq += ((in_array[r][c]-expected)**2)/expected
     return sum_sq
 
+def java_math_round(value):
+    return int(value + 0.5)
 
 def batch_pairs(iterable, batch_size: int = 1):
     """
