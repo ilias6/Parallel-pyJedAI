@@ -52,34 +52,6 @@ class Evaluation:
     def _set_total_matching_pairs(self, total_matching_pairs) -> None:
         self.total_matching_pairs = total_matching_pairs
 
-    
-    # if isinstance(prediction, dict) and isinstance(list(prediction.values())[0], set):
-    #     # case of candidate pairs, entity-id -> {entity-id, ..}
-    #     self.total_matching_pairs = sum([len(block) for block in prediction.values()])
-    #     for _, (id1, id2) in gt.iterrows():
-    #         id1 = self.data._ids_mapping_1[id1]
-    #         id2 = self.data._ids_mapping_1[id2] if self.data.is_dirty_er else self.data._ids_mapping_2[id2]
-    #         if (id1 in prediction and id2 in prediction[id1]) or   \
-    #             (id2 in prediction and id1 in prediction[id2]):
-    #             self.true_positives += 1
-    # elif isinstance(prediction, nx.Graph):
-    #     self.total_matching_pairs = prediction.number_of_edges()
-    #     for _, (id1, id2) in gt.iterrows():
-    #         id1 = self.data._ids_mapping_1[id1]
-    #         id2 = self.data._ids_mapping_1[id2] if self.data.is_dirty_er else self.data._ids_mapping_2[id2]
-    #         if (id1 in prediction and id2 in prediction[id1]) or   \
-    #              (id2 in prediction and id1 in prediction[id2]):
-    #             self.true_positives += 1
-    # else: # blocks, clusters evaluation
-    #     entity_index: dict = self._create_entity_index(prediction, all_gt_ids)
-    #     for _, (id1, id2) in gt.iterrows():
-    #         id1 = self.data._ids_mapping_1[id1]
-    #         id2 = self.data._ids_mapping_1[id2] if self.data.is_dirty_er else self.data._ids_mapping_2[id2]
-    #         if id1 in entity_index and    \
-    #             id2 in entity_index and     \
-    #                 are_matching(entity_index, id1, id2):
-    #             self.true_positives += 1
-
     def calculate_scores(self, true_positives=None, total_matching_pairs=None) -> None:
         if true_positives is not None:
             self.true_positives = true_positives
@@ -98,13 +70,12 @@ class Evaluation:
             self.false_negatives = self.num_of_true_duplicates - self.true_positives
             self.false_positives = self.total_matching_pairs - self.true_positives
             cardinality = (self.data.num_of_entities_1*(self.data.num_of_entities_1-1))/2 \
-                if self.data.is_dirty_er else self.data.num_of_entities_1 * self.data.num_of_entities_2
-            self.true_negatives = cardinality - self.false_negatives - self.false_positives
+                if self.data.is_dirty_er else (self.data.num_of_entities_1 * self.data.num_of_entities_2)
+            self.true_negatives = cardinality - self.false_negatives - self.num_of_true_duplicates
             self.precision = self.true_positives / self.total_matching_pairs
             self.recall = self.true_positives / self.num_of_true_duplicates
             if self.precision == 0.0 or self.recall == 0.0:
                 self.f1 = 0.0
-                #raise DivisionByZero("Recall or Precision is equal to zero. Can't calculate F1 score.")
             else:
                 self.f1 = 2*((self.precision*self.recall)/(self.precision+self.recall))
 
