@@ -9,6 +9,7 @@ from nltk.corpus import stopwords
 
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from ordered_set import OrderedSet
 
 class PYJEDAIFeature(ABC):
 
@@ -317,8 +318,8 @@ class Block:
         Consists of 2 sets of profile entities 1 for Dirty ER and 2 for Clean-Clean ER.
     """
     def __init__(self) -> None:
-        self.entities_D1: set = set()
-        self.entities_D2: set = set()
+        self.entities_D1: set = OrderedSet()
+        self.entities_D2: set = OrderedSet()
 
     def get_cardinality(self, is_dirty_er) -> int:
         """Returns block cardinality.
@@ -348,7 +349,7 @@ class Block:
             key (any): Block key
             is_dirty_er (bool): Dirty or Clean-Clean ER.
         """
-        print("\nBlock ", "\033[1;32m"+key+"\033[0m", " contains entities with ids: ")
+        print("\nBlock ", "\033[1;32m"+key+"\033[0m", " has cardinality ", str(self.get_cardinality(is_dirty_er)) ," and contains entities with ids: ")
         if is_dirty_er:
             print("Dirty dataset: " + "[\033[1;34m" + \
              str(len(self.entities_D1)) + " entities\033[0m]")
