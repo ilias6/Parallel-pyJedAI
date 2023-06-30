@@ -198,3 +198,6 @@ results_cpu/D10_WB.csv
 results_cpu.tar.gz
 results.tar.gz
 data/
+dev-only/
+*.pyc
+src/pyjedai/__pycache__/*
