@@ -379,21 +379,18 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         if self.simiarity_distance == 'cosine':
             faiss.normalize_L2(self.vectors_1)
             faiss.normalize_L2(self.vectors_2)
-            print("NORMALIZED")
             
         index.train(self.vectors_1)  # train on the vectors of dataset 1
 
         if self.simiarity_distance == 'cosine':
             faiss.normalize_L2(self.vectors_1)
             faiss.normalize_L2(self.vectors_2)
-            print("NORMALIZED")
 
         index.add(self.vectors_1)   # add the vectors and update the index
 
         if self.simiarity_distance == 'cosine':
             faiss.normalize_L2(self.vectors_1)
             faiss.normalize_L2(self.vectors_2)
-            print("NORMALIZED")
         
         self.distances, self.neighbors = index.search(self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
                                     self.top_k)
