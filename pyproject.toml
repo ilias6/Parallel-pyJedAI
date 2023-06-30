@@ -41,7 +41,7 @@ dependencies = [
     'tomli; python_version < "3.11"',
     "py-stringmatching >= 0.4",
     "whoosh >= 2.7",
-    "valentine>=0.1.5",
+    "valentine>=0.1; python_version > '3.7'",
     "ordered-set >= 4.0"
 ]
 
