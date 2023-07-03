@@ -18,6 +18,10 @@ from .comparison_cleaning import CardinalityNodePruning
 from .matching import EntityMatching
 from .clustering import ConnectedComponentsClustering, UniqueMappingClustering
 
+from .prioritization import ProgressiveMatching
+from .utils import new_dictionary_from_keys, get_class_function_arguments
+
+
 plt.style.use('seaborn-whitegrid')
 
 class WorkFlow(ABC):
@@ -326,6 +330,319 @@ class WorkFlow(ABC):
             Tuple[float, float, float]: F-Measure, Precision, Recall.
         """
         return self.f1[-1], self.precision[-1], self.recall[-1]
+
+
+class ProgressiveWorkFlow(Workflow):
+    """Main module of the pyjedAI and the simplest way to create an end-to-end PER workflow.
+    """
+
+    def __init__(
+            self,
+            name: str = None
+    ) -> None:
+        self.f1: list = []
+        self.recall: list = []
+        self.precision: list = []
+        self.runtime: list = []
+        self.configurations: list = []
+        self.workflow_exec_time: float
+        self._id: int = next(self._id)
+        self.name: str = name if name else "Workflow-" + str(self._id)
+        self._workflow_bar: tqdm
+        self.final_pairs = None
+
+    def run(self,
+            matcher: ProgressiveMatching,
+            algorithm: str,
+            data: Data,
+            verbose: bool = False,
+            with_classification_report: bool = False,
+            workflow_step_tqdm_disable: bool = True,
+            workflow_tqdm_enable: bool = False,
+            matcher_arguments**
+        ) -> None:
+        """Main function for creating an Progressive ER workflow.
+
+        Args:
+            matcher (ProgressiveMatching): Progressive ER Algorithm used to propose candidate pairs
+            algorithm (str): Candidate pairs emission technique
+            data (Data): Dataset Module, used to derive schema-awereness status
+            verbose (bool, optional): Print detailed report for each step. Defaults to False.
+            with_classification_report (bool, optional): Print pairs counts. Defaults to False.
+            workflow_step_tqdm_disable (bool, optional):  Tqdm progress bar in each step. Defaults to True.
+            workflow_tqdm_enable (bool, optional): Overall progress bar. Defaults to False.
+            number_of_nearest_neighbors (int, optional): Number of nearest neighbours in cardinality based algorithms. Defaults to None.
+            indexing (str, optional): Inorder/Reverse/Bilateral indexing of datasets. Defaults to None.
+            similarity_function (str, optional): Function used to evaluate the similarity of two vector based representations of entities. Defaults to None.
+            language_model (str, optional): Language model used to vectorize the entities. Defaults to None.
+            tokenizer (str, optional): Text tokenizer used. Defaults to None.
+            weighting_scheme (str, optional): Scheme used to evaluate the weight between nodes of intermediate representation graph. Defaults to None.
+            block_building (dict, optional): Algorithm and its parameters used to construct the blocks. Defaults to None.
+            block_purging (dict, optional): Algorithm and its parameters used to delete obsolete blocks. Defaults to None.
+            block_filtering (dict, optional): Algorithm and its parameters used to lower the cardinality of blocks. Defaults to None.
+            window_size (dict, optional): Window size in the Sorted Neighborhood Progressive ER workflows. Defaults to None.
+        """
+        self.block_building, self.block_purging, self.block_filtering, self.algorithm = \
+        block_building, block_purging, block_filtering, algorithm
+        steps = [self.block_building, self.block_purging, self.block_filtering, self.algorithm]
+        num_of_steps = sum(x is not None for x in steps)
+        self._workflow_bar = tqdm(total=num_of_steps,
+                                  desc=self.name,
+         
+        self.matcher : ProgressiveMatching = matcher                         disable=not workflow_tqdm_enable)
+        self.data : Data = data
+        self.algorithm : str = algorithm
+        self._init_experiment()
+        start_time = time()
+        #
+        # Block Building step: Only one algorithm can be performed
+        #
+        block_building_method = (self.block_building['method'](**self.block_building["params"]) \
+                                                    if "params" in self.block_building \
+                                                    else self.block_building['method']()) if self.block_building \
+                                                    else (None if not self._blocks_required() else StandardBlocking())
+
+        block_building_blocks = None
+        if block_building_method:
+            block_building_blocks = \
+                block_building_method.build_blocks(data,
+                                                attributes_1=self.block_building["attributes_1"] \
+                                                                    if "attributes_1" in self.block_building else None,
+                                                    attributes_2=self.block_building["attributes_2"] \
+                                                                    if "attributes_2" in self.block_building else None,
+                                                    tqdm_disable=workflow_step_tqdm_disable)
+            self.final_pairs = block_building_blocks
+            res = block_building_method.evaluate(block_building_blocks,
+                                                export_to_dict=True,
+                                                with_classification_report=with_classification_report,
+                                                verbose=verbose)
+            self._save_step(res, block_building_method.method_configuration())
+            self._workflow_bar.update(1)
+
+        if(block_building_blocks is not None):
+            #
+            # Block Purging step [optional]
+            #
+            bblocks = block_building_blocks
+            block_purging_blocks = None
+            if(self.block_purging is not None):
+                block_purging_method = self.block_purging['method'](**self.block_purging["params"]) \
+                                                if "params" in self.block_purging
+                                                else self.block_purging['method']()
+                block_purging_blocks = block_purging_method(bblocks,
+                                                            data,
+                                                            tqdm_disable=workflow_step_tqdm_disable)
+                self.final_pairs = bblocks = block_purging_blocks
+                res = block_purging_method.evaluate(bblocks,
+                                                    export_to_dict=True,
+                                                    with_classification_report=with_classification_report,
+                                                    verbose=verbose)
+                self._save_step(res, block_purging_method.method_configuration())
+                self._workflow_bar.update(1)
+            #
+            # Block Filtering step [optional]
+            #
+            block_filtering_blocks = None
+            if(self.block_filtering is not None):
+                block_filtering_method = self.block_filtering['method'](**self.block_filtering["params"]) \
+                                                if "params" in self.block_filtering
+                                                else self.block_filtering['method']()
+                block_filtering_blocks = block_filtering_method(bblocks,
+                                                            data,
+                                                            tqdm_disable=workflow_step_tqdm_disable)
+                self.final_pairs = bblocks = block_filtering_blocks
+                res = block_filtering_method.evaluate(bblocks,
+                                                    export_to_dict=True,
+                                                    with_classification_report=with_classification_report,
+                                                    verbose=verbose)
+                self._save_step(res, block_filtering_method.method_configuration())
+                self._workflow_bar.update(1)
+
+        #
+        # Progressive Matching step
+        #
+        constructor_arguments = new_dictionary_from_keys(dictionary=matcher_arguments, keys=get_class_function_arguments(class_reference=matcher, function_name='__init__'))
+        predictor_arguments = new_dictionary_from_keys(dictionary=matcher_arguments, keys=get_class_function_arguments(class_reference=matcher, function_name='predict'))
+        
+        progressive_matcher : ProgressiveMatching = matcher(**constructor_arguments)
+        candidates : List[Tuple[float, int, int]] = progressive_matcher.predict(budget=float('inf'), **predictor_arguments)
+        
+        # entity_matching_method = self.entity_matching['method'](**self.entity_matching["params"]) \
+        #                                 if "params" in self.entity_matching \
+        #                                 else self.entity_matching['method']()
+        # self.final_pairs = em_graph = entity_matching_method.predict(
+        #     comparison_cleaning_blocks if comparison_cleaning_blocks is not None \
+        #         else block_building_blocks,
+        #     data,
+        #     tqdm_disable=workflow_step_tqdm_disable
+        # )
+        # res = entity_matching_method.evaluate(em_graph,
+        #                                         export_to_dict=True,
+        #                                         with_classification_report=with_classification_report,
+        #                                         verbose=verbose)
+        # self._save_step(res, entity_matching_method.method_configuration())
+        self._workflow_bar.update(1)
+        self.workflow_exec_time = time() - start_time
+
+
+    def _blocks_required(self) -> None
+
+    def _init_experiment(self) -> None:
+        self.f1: list = []
+        self.recall: list = []
+        self.precision: list = []
+        self.runtime: list = []
+        self.configurations: list = []
+        self.workflow_exec_time: float
+
+    def visualize(
+            self,
+            f1: bool = True,
+            recall: bool = True,
+            precision: bool = True,
+            separate: bool = False
+    ) -> None:
+        """Performance Visualization of the workflow.
+
+        Args:
+            f1 (bool, optional): F-Measure. Defaults to True.
+            recall (bool, optional): Recall. Defaults to True.
+            precision (bool, optional): Precision. Defaults to True.
+            separate (bool, optional): Separate plots. Defaults to False.
+        """
+        method_names = [conf['name'] for conf in self.configurations]
+        exec_time = []
+        prev = 0
+
+        for i, _ in enumerate(self.runtime):
+            exec_time.append(prev + self.runtime[i])
+            prev = exec_time[i]
+
+        if separate:
+            fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(10, 8))
+            fig.suptitle(self.name + " Visualization", fontweight='bold', fontsize=14)
+            fig.subplots_adjust(top=0.88)
+            axs[0, 0].plot(method_names,
+                           self.precision,
+                           linewidth=2.0,
+                           label="Precision",
+                           marker='o',
+                           markersize=10)
+            axs[0, 0].set_ylabel("Scores %", fontsize=12)
+            axs[0, 0].set_title("Precision", fontsize=12)
+            axs[0, 1].plot(method_names,
+                           self.recall,
+                           linewidth=2.0,
+                           label="Recall",
+                           marker='*',
+                           markersize=10)
+            axs[0, 1].set_ylabel("Scores %", fontsize=12)
+            axs[0, 1].set_title("Recall", fontsize=12)            
+            axs[1, 0].plot(method_names,
+                           self.f1,
+                           linewidth=2.0,
+                           label="F1-Score",
+                           marker='x',
+                           markersize=10)
+            axs[1, 0].set_ylabel("Scores %", fontsize=12)
+            axs[1, 0].set_title("F1-Score", fontsize=12)
+            # axs[0, 0].legend(loc='lower right')
+            axs[1, 1].plot(method_names,
+                           exec_time,
+                           linewidth=2.0,
+                           label="Time",
+                           marker='.',
+                           markersize=10,
+                           color='r')
+            axs[1, 1].set_ylabel("Time (sec)", fontsize=12)
+            axs[1, 1].set_title("Execution time", fontsize=12)
+            fig.autofmt_xdate()
+        else:
+            fig, axs = plt.subplots(nrows=2, ncols=1, figsize=(10, 8))
+            fig.suptitle(self.name + " Visualization", fontweight='bold', fontsize=14)
+            fig.subplots_adjust(top=0.88)
+            if precision:
+                axs[0].plot(method_names,
+                            self.precision,
+                            linewidth=2.0,
+                            label="Precision",
+                            marker='o',
+                            markersize=10)
+            if recall:
+                axs[0].plot(method_names,
+                            self.recall,
+                            linewidth=2.0,
+                            label="Recall",
+                            marker='*',
+                            markersize=10)
+            if f1:
+                axs[0].plot(method_names,
+                            self.f1, linewidth=2.0,
+                            label="F1-Score",
+                            marker='x',
+                            markersize=10)
+            axs[0].set_xlabel("Models", fontsize=12)
+            axs[0].set_ylabel("Scores %", fontsize=12)
+            axs[0].set_title("Performance per step", fontsize=12)
+            axs[0].legend(loc='lower right')
+            exec_time = []
+            prev = 0
+            for i, _ in enumerate(self.runtime):
+                exec_time.append(prev + self.runtime[i])
+                prev = exec_time[i]
+            axs[1].plot(method_names,
+                        exec_time,
+                        linewidth=2.0,
+                        label="F1-Score",
+                        marker='.',
+                        markersize=10,
+                        color='r')
+            axs[1].set_ylabel("Time (sec)", fontsize=12)
+            axs[1].set_title("Execution time", fontsize=12)
+            fig.autofmt_xdate()
+        plt.show()
+
+    def to_df(self) -> pd.DataFrame:
+        """Transform results into a pandas.DataFrame
+
+        Returns:
+            pd.DataFrame: Results
+        """
+        workflow_df = pd.DataFrame(
+            columns=['Algorithm', 'F1', 'Recall', 'Precision', 'Runtime (sec)', 'Params'])
+        workflow_df['F1'], workflow_df['Recall'], \
+        workflow_df['Precision'], workflow_df['Runtime (sec)'] = \
+            self.f1, self.recall, self.precision, self.runtime
+        workflow_df['Algorithm'] = [c['name'] for c in self.configurations]
+        workflow_df['Params'] = [c['parameters'] for c in self.configurations]
+
+        return workflow_df
+
+    def export_pairs(self) -> pd.DataFrame:
+        """Export pairs to file.
+
+        Returns:
+            pd.DataFrame: pairs as a DataFrame
+        """
+        return write(self.final_pairs, self.data)
+
+    def _save_step(self, results: dict, configuration: dict) -> None:
+        self.f1.append(results['F1 %'])
+        self.recall.append(results['Recall %'])
+        self.precision.append(results['Precision %'])
+        self.configurations.append(configuration)
+        self.runtime.append(configuration['runtime'])
+
+    def get_final_scores(self) -> Tuple[float, float, float]:
+        """Final scores in the last step of the workflow.
+
+        Returns:
+            Tuple[float, float, float]: F-Measure, Precision, Recall.
+        """
+        return self.f1[-1], self.precision[-1], self.recall[-1]
+
+
+
 
 def compare_workflows(workflows: List[WorkFlow], with_visualization=True) -> pd.DataFrame:
     """Compares workflows by creating multiple plots and tables with results.

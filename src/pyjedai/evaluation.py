@@ -351,7 +351,7 @@ class Evaluation:
         self._total_emissions : int = 0
         for batch in batches:
             _current_batch_size : int = 0
-            for entity, candidate in batch:
+            for score, entity, candidate in batch:
                 if(self._all_tps_emitted()): break
                 entity_id = data._gt_to_ids_reversed_1[entity] if entity < data.dataset_limit else data._gt_to_ids_reversed_2[entity]
                 candidate_id = data._gt_to_ids_reversed_1[candidate] if candidate < data.dataset_limit else data._gt_to_ids_reversed_2[candidate]

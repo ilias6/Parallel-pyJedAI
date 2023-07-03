@@ -177,15 +177,27 @@ class Data:
         else:
             self.ground_truth = None
 
+    # def _store_pairs(self) -> None:
+    #     """Creates a mapping:
+    #         - pairs_of : ids of first dataset to ids of true matches from second dataset"""
+        
+    #     self.pairs_of = defaultdict(set)
+    #     d1_col_index, d2_col_index = (0, 1) if self.inorder_gt else (1,0)
+        
+    #     for _, row in self.ground_truth.iterrows():
+    #         id1, id2 = (row[d1_col_index], row[d2_col_index])
+    #         if id1 in self.pairs_of: self.pairs_of[id1].append(id2)
+    #         else: self.pairs_of[id1] = [id2]  
+    
+    
     def _store_pairs(self) -> None:
         """Creates a mapping:
             - pairs_of : ids of first dataset to ids of true matches from second dataset"""
         
         self.pairs_of = defaultdict(set)
-        d1_col_index, d2_col_index = (0, 1) if self.inorder_gt else (1,0)
         
         for _, row in self.ground_truth.iterrows():
-            id1, id2 = (row[d1_col_index], row[d2_col_index])
+            id1, id2 = (row[0], row[1])
             if id1 in self.pairs_of: self.pairs_of[id1].append(id2)
             else: self.pairs_of[id1] = [id2]  
     

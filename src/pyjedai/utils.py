@@ -12,6 +12,7 @@ import math
 import sys
 from time import time
 from networkx import Graph
+import inspect
 
 # ----------------------- #
 # Constants
@@ -529,7 +530,7 @@ class PredictionData(ABC):
         Returns:
             List[Tuple[int, int]]: Formatted Predictions
         """
-        return [edge[:2] for edge in predictions.edges] if isinstance(predictions, Graph) else predictions
+        return [edge[:3] for edge in predictions.edges] if isinstance(predictions, Graph) else predictions
         
     def get_name(self) -> str:
         return self._name
@@ -593,7 +594,60 @@ def sorted_enumerate(seq, reverse=True):
 def is_infinite(value : float):
     return math.isinf(value) and value > 0
 
+def reverse_data_indexing(data : Data) -> Data:
+    """Returns a new data model based upon the given data model with reversed indexing of the datasets
+    Args:
+        data (Data): input dat a model
 
+    Returns:
+        Data : New Data Module with reversed indexing
+    """
+    return Data(dataset_1 = data.dataset_2,
+                id_column_name_1 = data.id_column_name_2,
+                attributes_1 = data.attributes_2,
+                dataset_name_1 = data.dataset_name_2,
+                dataset_2 = data.dataset_1,
+                attributes_2 = data.attributes_1,
+                id_column_name_2 = data.id_column_name_1,
+                dataset_name_2 = data.dataset_name_1,
+                ground_truth = data.ground_truth)
+
+def get_class_function_arguments(class_reference, function_name : str) -> List[str]:
+    """Returns a list of argument names for requested function of the given class
+    Args:
+        class_reference: Reference to a class
+        function_name (str): Name of the requested function
+
+    Returns:
+        List[str] : List of requested function's arguments' names
+    """
+    if not inspect.isclass(class_reference):
+        raise ValueError(f"{class_reference.__name__} class reference is not valid.")
+
+    if not hasattr(class_reference, function_name):
+        raise ValueError(f"The class {class_reference.__name__} does not have a function named {function_name}.")
+
+    function_obj = getattr(class_reference, function_name)
+    if not inspect.isfunction(function_obj):
+        raise ValueError(f"The provided name {function_name} does not correspond to a function in class '{class_reference.__name__}'.")
+
+    function_signature = inspect.signature(function_obj)
+    argument_names = list(function_signature.parameters.keys())[1:]
+
+    return argument_names
+
+def new_dictionary_from_keys(dictionary : dict, keys : list) -> dict:
+    """Returns a subset of the given dictionary including only the given keys.
+       Unrecognized keys are not included.
+    Args:
+        dictionary (dict): Target dictionary
+        keys (list): Keys to keep
+
+    Returns:
+        dict : Subset of the given dictionary including only the requested keys
+    """
+    new_dictionary : dict = {key: dictionary[key] for key in keys if key in dictionary}
+    return new_dictionary
 
 
             

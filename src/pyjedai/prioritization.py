@@ -62,13 +62,15 @@ from random import sample
 from .utils import sorted_enumerate, canonical_swap
 from abc import abstractmethod
 from typing import Tuple, List
-from .utils import SubsetIndexer, WhooshDataset, WhooshNeighborhood, is_infinite, PredictionData
+from .utils import SubsetIndexer, WhooshDataset, WhooshNeighborhood, is_infinite, PredictionData, reverse_data_indexing
 import pandas as pd
 import os
 from whoosh.fields import TEXT, Schema, ID
 from whoosh.index import create_in
 from whoosh import qparser
 from whoosh.scoring import TF_IDF, Frequency, PL2, BM25F
+from collections import defaultdict
+import sys
 
 
 # Directory where the whoosh index is stored
@@ -147,8 +149,7 @@ class ProgressiveMatching(EntityMatching):
 
     def __init__(
             self,
-            budget: int = 0,
-            metric: str = 'dice',
+            similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
             qgram: int = 2, # for jaccard
@@ -160,18 +161,18 @@ class ProgressiveMatching(EntityMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
-        self._budget : int = budget
+        super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
 
     def predict(self,
             blocks: dict,
-            data: Data,
+            budget: int = 0,
+            indexing : str = 'inorder',
             comparison_cleaner: AbstractMetablocking = None,
             tqdm_disable: bool = False,
-            method : str = 'HB',
-            emit_all_tps_stop : bool = False) -> Graph:
-        """Main method of  progressive entity matching. Inputs a set of blocks and outputs a graph \
-            that contains of the entity ids (nodes) and the similarity scores between them (edges).
+            algorithm : str = 'HB',
+            emit_all_tps_stop : bool = False) -> List[Tuple[float, int, int]]:
+        """Main method of  progressive entity matching. Inputs a set of blocks and outputs a list \
+           that contains duplets of ids corresponding to candidate pairs to emit.
             Args:
                 blocks (dict): blocks of entities
                 data (Data): dataset module
@@ -183,32 +184,144 @@ class ProgressiveMatching(EntityMatching):
         """
         start_time = time()
         self.tqdm_disable = tqdm_disable
+        self._budget : int = budget
+        self._indexing : str = indexing
         self._comparison_cleaner: AbstractMetablocking = comparison_cleaner
-        self._method = method
+        self._algorithm = algorithm
         self._emit_all_tps_stop = emit_all_tps_stop
         self.true_pair_checked = None 
         self._prediction_data : PredictionData = None
 
         if not blocks:
             raise ValueError("Empty blocks structure")
-        self.data = data
-        self.pairs = Graph()
+        
+        self._pairs_top_score : dict = defaultdict(lambda: -1)
         all_blocks = list(blocks.values())
         self._progress_bar = tqdm(total=len(blocks),
-                                desc=self._method_name+" ("+self.metric+")",
-                                disable=self.tqdm_disable)
-        if 'Block' in str(type(all_blocks[0])):
-            self._predict_raw_blocks(blocks)
-        elif isinstance(all_blocks[0], set):
-            if(self._comparison_cleaner == None):
-                raise AttributeError("No precalculated weights were given from the CC step") 
-            self._predict_prunned_blocks(blocks)
-        else:
-            raise AttributeError("Wrong type of Blocks")
-        self.execution_time = time() - start_time
-        self._progress_bar.close()
+                        desc=self._method_name+" ("+self.similarity_function+")",
+                        disable=self.tqdm_disable)
+        
+        if(indexing == 'bilateral') self._indexing = 'inorder'
+        if(self._indexing == 'inorder'):
+            if 'Block' in str(type(all_blocks[0])):
+                self._predict_raw_blocks(blocks)
+            elif isinstance(all_blocks[0], set):
+                if(self._comparison_cleaner == None):
+                    raise AttributeError("No precalculated weights were given from the CC step") 
+                self._predict_prunned_blocks(blocks)
+            else:
+                raise AttributeError("Wrong type of Blocks")
+            self.update_top_scores()
+            
+            
+        if(indexing == 'bilateral') self._indexing = 'reverse'
+        if(self._indexing == 'reverse'):
+            self.data = reverse_data_indexing(self.data)
+            if 'Block' in str(type(all_blocks[0])):
+                self._predict_raw_blocks(blocks)
+            elif isinstance(all_blocks[0], set):
+                if(self._comparison_cleaner == None):
+                    raise AttributeError("No precalculated weights were given from the CC step") 
+                self._predict_prunned_blocks(blocks)
+            else:
+                raise AttributeError("Wrong type of Blocks")
+            self.update_top_scores()
+            
+        self.update_top_pairs()
 
+        self.pairs = []
+        while(not self._candidate_pairs.empty()):
+            self.pairs.append(self._candidate_pairs.get())
+            
+        self.execution_time = time() - start_time
+        self._progress_bar.close()           
         return self.pairs
+    
+    
+    def update_top_scores() -> None:
+        """Conducts the identifier translation from workflow to dataframe context and
+           stores the top score for each pair candidate from all indexing phases
+        """
+        _smallest_score: float = sys.float_info.min
+        
+        for score, entity, candidate in self.pairs:
+            entity_id = self.data._gt_to_ids_reversed_1[entity] if entity < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[entity]
+            candidate_id = self.data._gt_to_ids_reversed_1[candidate] if candidate < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[candidate]
+            _d1_entity, _d2_entity = (entity_id, candidate_id) if entity < self.data.dataset_limit else (candidate_id, entity_id)
+            _d1_entity, _d2_entity = (_d1_entity, _d2_entity) if(self._indexing == 'reverse') else (_d2_entity, _d1_entity) 
+            _current_top_score : float = self._pairs_top_score[(_d1_entity, _d2_entity)]
+            
+            if(abs(score) > _current_top_score):
+                self._pairs_top_score[(_d1_entity, _d2_entity)] = abs(score)
+                
+                
+    def update_top_pairs() -> None:
+        """Extracts the top pairs in the global indexing context (after all the indexing phases have commenced)
+        """
+        _minimum_score: float = sys.float_info.min
+        _final_candidates: PriorityQueue = PriorityQueue()
+        
+        for entity, candidate in self._pairs_top_score:
+            _score = self._pairs_top_score[(entity, candidate)]
+            if _score >= self._minimum_score:
+                _final_candidates.put(
+                    (_score, entity, candidate)
+                )
+                if self._budget < _final_candidates.qsize():
+                    _minimum_score = _final_candidates.get()[0]
+                    
+        self.pairs : List[float, int, int] = []
+        while(not _final_candidates.empty()):
+            self.pairs.append(_final_candidates.get())
+            
+        self.pairs = sorted(self.pairs, key=lambda x: x[0], reverse=True)
+    
+    # def predict(self,
+    #     blocks: dict,
+    #     d1: 
+    #     tqdm_disable: bool = False,
+    #     method : str = 'HB',
+    #     emit_all_tps_stop : bool = False) -> List[Tuple[int, int]]:
+    #     """Main method of  progressive entity matching applied on raw blocks.
+    #         Allows for simple and reverse unilateral, as well as bilateral candidate pairs emission.
+    #         Returns a list of tuples contains the duplets of ids of candidate pair items.
+    #         Args:
+    #             blocks (dict): raw blocks of entities
+    #             tqdm_disable (bool, optional): Disables progress bar. Defaults to False.
+    #             method (str) : DFS/BFS/Hybrid approach for specified algorithm
+    #             emit_all_tps_stop (bool) : Stop emission once all true positives are found
+    #         Returns:
+    #             networkx.Graph: entity ids (nodes) and similarity scores between them (edges)
+    #     """
+    #     start_time = time()
+    #     self.tqdm_disable = tqdm_disable
+    #     self._comparison_cleaner: AbstractMetablocking = comparison_cleaner
+    #     self._method = method
+    #     self._emit_all_tps_stop = emit_all_tps_stop
+    #     self.true_pair_checked = None 
+    #     self._prediction_data : PredictionData = None
+
+
+
+    #     if not blocks:
+    #         raise ValueError("Empty blocks structure")
+    #     self.data = data
+    #     all_blocks = list(blocks.values())
+    #     self._progress_bar = tqdm(total=len(blocks),
+    #                             desc=self._method_name+" ("+self.similarity_function+")",
+    #                             disable=self.tqdm_disable)
+    #     if 'Block' in str(type(all_blocks[0])):
+    #         self._predict_raw_blocks(blocks)
+    #     elif isinstance(all_blocks[0], set):
+    #         if(self._comparison_cleaner == None):
+    #             raise AttributeError("No precalculated weights were given from the CC step") 
+    #         self._predict_prunned_blocks(blocks)
+    #     else:
+    #         raise AttributeError("Wrong type of Blocks")
+    #     self.execution_time = time() - start_time
+    #     self._progress_bar.close()
+
+    #     return self.pairs
 
     def evaluate(self,
                  prediction,
@@ -275,20 +388,17 @@ class ProgressiveMatching(EntityMatching):
     
     def set_prediction_data(self, prediction_data : PredictionData):
         self._prediction_data : PredictionData = prediction_data
-        
 
-class HashBasedProgressiveMatching(ProgressiveMatching):
-    """Applies hash based candidate graph prunning, sorts retained comparisons and applies Progressive Matching
+class BlockIndependentPM(ProgressiveMatching):
+    """Applies the matching process to a subset of available pairs progressively 
     """
 
-    _method_name: str = "Hash Based Progressive Matching"
-    _method_info: str = "Applies hash based candidate graph prunning, sorts retained comparisons and applies Progressive Matching"
+    _method_name: str = "Progressive Matching"
+    _method_info: str = "Applies the matching process to a subset of available pairs progressively "
 
     def __init__(
             self,
-            budget: int = 0,
-            w_scheme: str = 'X2',
-            metric: str = 'dice',
+            similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
             qgram: int = 2, # for jaccard
@@ -300,8 +410,104 @@ class HashBasedProgressiveMatching(ProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(budget, metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
-        self._w_scheme : str = w_scheme
+        super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)  
+
+    def predict(self,
+            blocks: dict,
+            budget: int = 0,
+            indexing : str = 'inorder',
+            comparison_cleaner: AbstractMetablocking = None,
+            tqdm_disable: bool = False,
+            algorithm : str = 'HB',
+            emit_all_tps_stop : bool = False) -> List[Tuple[float, int, int]]:
+        """Main method of  progressive entity matching. Inputs a set of blocks and outputs a list \
+           that contains duplets of ids corresponding to candidate pairs to emit.
+            Args:
+                blocks (dict): blocks of entities
+                data (Data): dataset module
+                tqdm_disable (bool, optional): Disables progress bar. Defaults to False.
+                method (str) : DFS/BFS/Hybrid approach for specified algorithm
+                emit_all_tps_stop (bool) : Stop emission once all true positives are found
+            Returns:
+                networkx.Graph: entity ids (nodes) and similarity scores between them (edges)
+        """
+        start_time = time()
+        self.tqdm_disable = tqdm_disable
+        self._budget : int = budget
+        self._indexing : str = indexing
+        self._comparison_cleaner: AbstractMetablocking = comparison_cleaner
+        self._algorithm = algorithm
+        self._emit_all_tps_stop = emit_all_tps_stop
+        self.true_pair_checked = None 
+        self._prediction_data : PredictionData = None
+        
+        self._pairs_top_score : dict = defaultdict(lambda: -1)
+        all_blocks = list(blocks.values())
+        self._progress_bar = tqdm(total=len(blocks),
+                        desc=self._method_name+" ("+self.similarity_function+")",
+                        disable=self.tqdm_disable)
+        
+        if(indexing == 'bilateral') self._indexing = 'inorder'
+        if(self._indexing == 'inorder'):
+            if 'Block' in str(type(all_blocks[0])):
+                self._predict_raw_blocks(blocks)
+            elif isinstance(all_blocks[0], set):
+                if(self._comparison_cleaner == None):
+                    raise AttributeError("No precalculated weights were given from the CC step") 
+                self._predict_prunned_blocks(blocks)
+            else:
+                raise AttributeError("Wrong type of Blocks")
+            self.update_top_scores()
+            
+            
+        if(indexing == 'bilateral') self._indexing = 'reverse'
+        if(self._indexing == 'reverse'):
+            self.data = reverse_data_indexing(self.data)
+            if 'Block' in str(type(all_blocks[0])):
+                self._predict_raw_blocks(blocks)
+            elif isinstance(all_blocks[0], set):
+                if(self._comparison_cleaner == None):
+                    raise AttributeError("No precalculated weights were given from the CC step") 
+                self._predict_prunned_blocks(blocks)
+            else:
+                raise AttributeError("Wrong type of Blocks")
+            self.update_top_scores()
+            
+        self.update_top_pairs()
+
+        self.pairs = []
+        while(not self._candidate_pairs.empty()):
+            self.pairs.append(self._candidate_pairs.get())
+            
+        self.execution_time = time() - start_time
+        self._progress_bar.close()           
+        return self.pairs   
+
+class HashBasedProgressiveMatching(ProgressiveMatching):
+    """Applies hash based candidate graph prunning, sorts retained comparisons and applies Progressive Matching
+    """
+
+    _method_name: str = "Hash Based Progressive Matching"
+    _method_info: str = "Applies hash based candidate graph prunning, sorts retained comparisons and applies Progressive Matching"
+
+    def __init__(
+            self,
+            budget: int = 0,
+            weighting_scheme: str = 'X2',
+            similarity_function: str = 'dice',
+            tokenizer: str = 'white_space_tokenizer',
+            similarity_threshold: float = 0.5,
+            qgram: int = 2, # for jaccard
+            tokenizer_return_set = True, # unique values or not
+            attributes: any = None,
+            delim_set: list = None, # DelimiterTokenizer
+            padding: bool = True, # QgramTokenizer
+            prefix_pad: str = '#', # QgramTokenizer (if padding=True)
+            suffix_pad: str = '$' # QgramTokenizer (if padding=True)
+        ) -> None:
+
+        super().__init__(budget, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        self._weighting_scheme : str = weighting_scheme
         
     def extract_tps_checked(self, **kwargs) -> dict:
         _tps_checked = dict()
@@ -326,8 +532,8 @@ class GlobalTopPM(HashBasedProgressiveMatching):
     def __init__(
             self,
             budget: int = 0,
-            w_scheme: str = 'X2',
-            metric: str = 'dice',
+            weighting_scheme: str = 'X2',
+            similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
             qgram: int = 2, # for jaccard
@@ -339,10 +545,11 @@ class GlobalTopPM(HashBasedProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(budget, w_scheme, metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(budget, weighting_scheme, metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
 
-    def _predict_raw_blocks(self, blocks: dict) -> None:
-        pcep : ProgressiveCardinalityEdgePruning = ProgressiveCardinalityEdgePruning(self._w_scheme, self._budget)
+    def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
+        self.pairs = Graph()
+        pcep : ProgressiveCardinalityEdgePruning = ProgressiveCardinalityEdgePruning(self._weighting_scheme, self._budget)
         candidates : dict = pcep.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, emit_all_tps_stop=self._emit_all_tps_stop)
         self.blocks = candidates
         if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked()
@@ -351,12 +558,14 @@ class GlobalTopPM(HashBasedProgressiveMatching):
             for candidate_id in candidate_ids:
                 self._insert_to_graph(entity_id, candidate_id, pcep.get_precalculated_weight(entity_id, candidate_id))
          
-        self.pairs.edges = sorted(self.pairs.edges(data=True), key=lambda x: x[2]['weight'], reverse=True) 
-        return self.pairs.edges
+        self.pairs.edges = sorted(self.pairs.edges(data=True), key=lambda x: x[2]['weight'], reverse=True)
+        self.pairs = [edge[:3] for edge in self.pairs.edges]
+        return self.pairs
 
 
-    def _predict_prunned_blocks(self, blocks: dict) -> None:
-        pcep : ProgressiveCardinalityEdgePruning = ProgressiveCardinalityEdgePruning(self._w_scheme, self._budget)
+    def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
+        self.pairs = Graph()
+        pcep : ProgressiveCardinalityEdgePruning = ProgressiveCardinalityEdgePruning(self._weighting_scheme, self._budget)
         candidates : dict = pcep.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=self._comparison_cleaner, emit_all_tps_stop=self._emit_all_tps_stop)
         self.blocks = candidates
         if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked()
@@ -366,7 +575,8 @@ class GlobalTopPM(HashBasedProgressiveMatching):
                 self._insert_to_graph(entity_id, candidate_id, self._comparison_cleaner.get_precalculated_weight(entity_id, candidate_id))
 
         self.pairs.edges = sorted(self.pairs.edges(data=True), key=lambda x: x[2]['weight'], reverse=True)
-        return self.pairs.edges
+        self.pairs = [edge[:3] for edge in self.pairs.edges]
+        return self.pairs
 
 class LocalTopPM(HashBasedProgressiveMatching):
     """Applies Progressive CNP, sorts retained comparisons and applies Progressive Matching
@@ -378,8 +588,8 @@ class LocalTopPM(HashBasedProgressiveMatching):
     def __init__(
             self,
             budget: int = 0,
-            w_scheme: str = 'X2',
-            metric: str = 'dice',
+            weighting_scheme: str = 'X2',
+            similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
             qgram: int = 2, # for jaccard
@@ -391,11 +601,12 @@ class LocalTopPM(HashBasedProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(budget, w_scheme, metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(budget, weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
 
 
-    def _predict_raw_blocks(self, blocks: dict) -> None:
-        pcnp : ProgressiveCardinalityNodePruning = ProgressiveCardinalityNodePruning(self._w_scheme, self._budget)
+    def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
+        self.pairs = Graph()
+        pcnp : ProgressiveCardinalityNodePruning = ProgressiveCardinalityNodePruning(self._weighting_scheme, self._budget)
         candidates : dict = pcnp.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, emit_all_tps_stop=self._emit_all_tps_stop)
         self.blocks = candidates
         if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked()
@@ -404,12 +615,13 @@ class LocalTopPM(HashBasedProgressiveMatching):
             for candidate_id in candidate_ids:
                 self._insert_to_graph(entity_id, candidate_id, pcnp.get_precalculated_weight(entity_id, candidate_id))
 
-        self.pairs.edges = sorted(self.pairs.edges(data=True), key=lambda x: x[2]['weight'], reverse=True) 
-        return self.pairs.edges
+        self.pairs.edges = sorted(self.pairs.edges(data=True), key=lambda x: x[2]['weight'], reverse=True)
+        self.pairs = [edge[:3] for edge in self.pairs.edges]
+        return self.pairs
 
-    def _predict_prunned_blocks(self, blocks: dict) -> None:
-
-        pcnp : ProgressiveCardinalityNodePruning = ProgressiveCardinalityNodePruning(self._w_scheme, self._budget)
+    def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
+        self.pairs = Graph()
+        pcnp : ProgressiveCardinalityNodePruning = ProgressiveCardinalityNodePruning(self._weighting_scheme, self._budget)
         candidates : dict = pcnp.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=self._comparison_cleaner, emit_all_tps_stop=self._emit_all_tps_stop)
         self.blocks = candidates
         if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked()
@@ -419,10 +631,11 @@ class LocalTopPM(HashBasedProgressiveMatching):
                 self._insert_to_graph(entity_id, candidate_id, self._comparison_cleaner.get_precalculated_weight(entity_id, candidate_id))
 
         self.pairs.edges = sorted(self.pairs.edges(data=True), key=lambda x: x[2]['weight'], reverse=True) 
-        return self.pairs.edges
+        self.pairs = [edge[:3] for edge in self.pairs.edges]
+        return self.pairs
 
 
-class EmbeddingsNNBPM(ProgressiveMatching):
+class EmbeddingsNNBPM(BlockIndependentPM):
     """Utilizes/Creates entity embeddings, constructs neighborhoods via NN Approach and applies Progressive Matching
     """
 
@@ -432,11 +645,11 @@ class EmbeddingsNNBPM(ProgressiveMatching):
     def __init__(
             self,
             budget: int = 0,
-            vectorizer: str = 'bert',
+            language_model: str = 'bert',
             similarity_search: str = 'faiss',
             vector_size: int = 200,
             num_of_clusters: int = 5,
-            metric: str = 'dice',
+            similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
             qgram: int = 2, # for jaccard
@@ -448,61 +661,11 @@ class EmbeddingsNNBPM(ProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(budget, metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
-        self._vectorizer = vectorizer
+        super().__init__(budget, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        self._language_model = language_model
         self._similarity_search = similarity_search
         self._vector_size = vector_size
         self._num_of_clusters = num_of_clusters
-        
-        
-    def predict(self,
-        data: Data,
-        blocks: dict = None,
-        comparison_cleaner: AbstractMetablocking = None,
-        tqdm_disable: bool = False,
-        method : str = 'HB',
-        emit_all_tps_stop : bool = False) -> Graph:
-        """Main method of  progressive entity matching. Inputs a set of blocks and outputs a graph \
-            that contains of the entity ids (nodes) and the similarity scores between them (edges).
-            Args:
-                blocks (dict): blocks of entities
-                data (Data): dataset module
-                tqdm_disable (bool, optional): Disables progress bar. Defaults to False.
-                method (str) : DFS/BFS/Hybrid approach for specified algorithm
-                emit_all_tps_stop (bool) : Stop emission once all true positives are found
-            Returns:
-                networkx.Graph: entity ids (nodes) and similarity scores between them (edges)
-        """
-        start_time = time()
-        self.tqdm_disable = tqdm_disable
-        self._comparison_cleaner: AbstractMetablocking = comparison_cleaner
-        self._method = method
-        self._emit_all_tps_stop = emit_all_tps_stop
-        self.true_pair_checked = None 
-        self._prediction_data : PredictionData = None
-        self.data = data
-        self.pairs = Graph()
-        
-        if blocks is None:
-        # applying the process to the whole dataset
-            self._predict_raw_blocks(blocks)
-        else:
-            all_blocks = list(blocks.values())
-            self._progress_bar = tqdm(total=len(blocks),
-                                    desc=self._method_name+" ("+self.metric+")",
-                                    disable=self.tqdm_disable)
-            if 'Block' in str(type(all_blocks[0])):
-                self._predict_raw_blocks(blocks)
-            elif isinstance(all_blocks[0], set):
-                if(self._comparison_cleaner == None):
-                    raise AttributeError("No precalculated weights were given from the CC step") 
-                self._predict_prunned_blocks(blocks)
-            else:
-                raise AttributeError("Wrong type of Blocks")
-            self._progress_bar.close()
-            
-        self.execution_time = time() - start_time
-        return self.pairs
 
     def _top_pair_emission(self) -> None:
         """Applies global sorting to all entity pairs produced by NN,
@@ -596,19 +759,19 @@ class EmbeddingsNNBPM(ProgressiveMatching):
         Raises:
             AttributeError: Given emission technique hasn't been defined
         """
-        if(self._method == 'DFS'):
+        if(self._algorithm == 'DFS'):
             self._dfs_pair_emission()
-        elif(self._method == 'HB'):
+        elif(self._algorithm == 'HB'):
             self._hb_pair_emission()
-        elif(self._method == 'BFS'):
+        elif(self._algorithm == 'BFS'):
             self._bfs_pair_emission()
-        elif(self._method == 'TOP'):
+        elif(self._algorithm == 'TOP'):
             self._top_pair_emission()
         else:
-            raise AttributeError(self._method + ' emission technique is undefined!')
+            raise AttributeError(self._algorithm + ' emission technique is undefined!')
 
-    def _predict_raw_blocks(self, blocks: dict = None) -> None:
-        self.ennbb : EmbeddingsNNBlockBuilding = EmbeddingsNNBlockBuilding(self._vectorizer, self._similarity_search)
+    def _predict_raw_blocks(self, blocks: dict = None) -> List[Tuple[int, int]]:
+        self.ennbb : EmbeddingsNNBlockBuilding = EmbeddingsNNBlockBuilding(self._language_model, self._similarity_search)
         self.final_blocks = self.ennbb.build_blocks(data = self.data,
                      num_of_clusters = self._num_of_clusters,
                      top_k = int(max(1, int(self._budget / self.data.num_of_entities) + (self._budget % self.data.num_of_entities > 0)))
@@ -629,7 +792,7 @@ class EmbeddingsNNBPM(ProgressiveMatching):
             self.true_pair_checked = self.extract_tps_checked()
         return self.pairs
 
-    def _predict_prunned_blocks(self, blocks: dict = None) -> None:
+    def _predict_prunned_blocks(self, blocks: dict = None) -> List[Tuple[int, int]]:
         return self._predict_raw_blocks(blocks)
     
     def extract_tps_checked(self, **kwargs) -> dict:
@@ -661,8 +824,8 @@ class SimilarityBasedProgressiveMatching(ProgressiveMatching):
     def __init__(
             self,
             budget: int = 0,
-            pwScheme: str = 'ACF',
-            metric: str = 'dice',
+            weighting_scheme: str = 'ACF',
+            similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
             qgram: int = 2, # for jaccard
@@ -674,8 +837,8 @@ class SimilarityBasedProgressiveMatching(ProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(budget, metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
-        self._pwScheme : str = pwScheme
+        super().__init__(budget, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        self._weighting_scheme : str = weighting_scheme
         
     def extract_tps_checked(self, **kwargs) -> dict:
         pass
@@ -692,8 +855,8 @@ class GlobalPSNM(SimilarityBasedProgressiveMatching):
     def __init__(
             self,
             budget: int = 0,
-            pwScheme: str = 'ACF',
-            metric: str = 'dice',
+            weighting_scheme: str = 'ACF',
+            similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
             qgram: int = 2, # for jaccard
@@ -705,10 +868,10 @@ class GlobalPSNM(SimilarityBasedProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(budget, pwScheme, metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(budget, weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
 
-    def _predict_raw_blocks(self, blocks: dict):
-        gpsn : GlobalProgressiveSortedNeighborhood = GlobalProgressiveSortedNeighborhood(self._pwScheme, self._budget)
+    def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
+        gpsn : GlobalProgressiveSortedNeighborhood = GlobalProgressiveSortedNeighborhood(self._weighting_scheme, self._budget)
         candidates :  PriorityQueue = gpsn.process(blocks=blocks, data=self.data, tqdm_disable=True, emit_all_tps_stop=self._emit_all_tps_stop)
         self.pairs = []
         while(not candidates.empty()):
@@ -718,7 +881,7 @@ class GlobalPSNM(SimilarityBasedProgressiveMatching):
           
         return self.pairs
 
-    def _predict_prunned_blocks(self, blocks: dict):
+    def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         raise NotImplementedError("Sorter Neighborhood Algorithms don't support prunned blocks")
     
     def extract_tps_checked(self, **kwargs) -> dict:
@@ -746,8 +909,8 @@ class LocalPSNM(SimilarityBasedProgressiveMatching):
     def __init__(
             self,
             budget: int = 0,
-            pwScheme: str = 'ACF',
-            metric: str = 'dice',
+            weighting_scheme: str = 'ACF',
+            similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
             qgram: int = 2, # for jaccard
@@ -759,16 +922,16 @@ class LocalPSNM(SimilarityBasedProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(budget, pwScheme, metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(budget, weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
 
-    def _predict_raw_blocks(self, blocks: dict):
-        lpsn : LocalProgressiveSortedNeighborhood = LocalProgressiveSortedNeighborhood(self._pwScheme, self._budget)
+    def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
+        lpsn : LocalProgressiveSortedNeighborhood = LocalProgressiveSortedNeighborhood(self._weighting_scheme, self._budget)
         candidates : list = lpsn.process(blocks=blocks, data=self.data, tqdm_disable=True, emit_all_tps_stop=self._emit_all_tps_stop)
         self.pairs = candidates
         if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked(candidates=candidates) 
         return self.pairs
 
-    def _predict_prunned_blocks(self, blocks: dict):
+    def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         raise NotImplementedError("Sorter Neighborhood Algorithms don't support prunned blocks " + \
                                 "(pre comparison-cleaning entities per block distribution required")
         
@@ -793,7 +956,7 @@ class RandomPM(ProgressiveMatching):
     def __init__(
             self,
             budget: int = 0,
-            metric: str = 'dice',
+            similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
             qgram: int = 2, # for jaccard
@@ -805,14 +968,14 @@ class RandomPM(ProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(budget, metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(budget, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
 
-    def _predict_raw_blocks(self, blocks: dict) -> None:
+    def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         cp : ComparisonPropagation = ComparisonPropagation()
         cleaned_blocks = cp.process(blocks=blocks, data=self.data, tqdm_disable=True)
         self._predict_prunned_blocks(cleaned_blocks)
 
-    def _predict_prunned_blocks(self, blocks: dict) -> None:
+    def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         _all_pairs = [(id1, id2) for id1 in blocks for id2 in blocks[id1]]
         _total_pairs = len(_all_pairs)
         random_pairs = sample(_all_pairs, self._budget) if self._budget <= _total_pairs and not self._emit_all_tps_stop else _all_pairs
@@ -843,8 +1006,8 @@ class PESM(HashBasedProgressiveMatching):
     def __init__(
             self,
             budget: int = 0,
-            w_scheme: str = 'X2',
-            metric: str = 'dice',
+            weighting_scheme: str = 'CBS',
+            similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
             qgram: int = 2, # for jaccard
@@ -856,17 +1019,17 @@ class PESM(HashBasedProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
         
-        super().__init__(budget, w_scheme, metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(budget, weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
 
 
-    def _predict_raw_blocks(self, blocks: dict) -> None:
+    def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         
-        pes : ProgressiveEntityScheduling = ProgressiveEntityScheduling(self._w_scheme, self._budget)
-        pes.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, method=self._method, emit_all_tps_stop=self._emit_all_tps_stop)
+        pes : ProgressiveEntityScheduling = ProgressiveEntityScheduling(self._weighting_scheme, self._budget)
+        pes.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, method=self._algorithm, emit_all_tps_stop=self._emit_all_tps_stop)
         self.pairs = pes.produce_pairs()
         if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked(candidates=self.pairs)
 
-    def _predict_prunned_blocks(self, blocks: dict):
+    def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         return self._predict_raw_blocks(blocks)
         # raise NotImplementedError("Sorter Neighborhood Algorithms doesn't support prunned blocks (lack of precalculated weights)")
         
@@ -883,7 +1046,7 @@ class PESM(HashBasedProgressiveMatching):
         return _tps_checked
     
     
-class WhooshPM(ProgressiveMatching):
+class WhooshPM(BlockIndependentPM):
     """Applies progressive index based matching using whoosh library 
     """
 
@@ -896,7 +1059,7 @@ class WhooshPM(ProgressiveMatching):
     def __init__(
             self,
             budget: int = 0,
-            metric: str = 'TF-IDF',
+            similarity_function: str = 'TF-IDF',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
             qgram: int = 2, # for jaccard
@@ -908,7 +1071,7 @@ class WhooshPM(ProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
         # budget set to float('inf') implies unlimited budget
-        super().__init__(budget, metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(budget, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
      
     def _set_whoosh_datasets(self) -> None:
         """Saves the rows of both datasets corresponding to the indices of the entities that have been retained after comparison cleaning
@@ -968,11 +1131,11 @@ class WhooshPM(ProgressiveMatching):
         # None value for budget implies unlimited budget in whoosh 
         _query_budget = None if is_infinite(self._budget) else max(1, 2 * self._budget / len(self._whoosh_d1))
         
-        if(self.metric not in whoosh_similarity_function):
-            print(f'{self.metric} Similarity Function is Undefined')
-            self.metric = 'Frequency'
-        print(f'Applying {self.metric} Similarity Function')
-        _scorer = whoosh_similarity_function[self.metric]
+        if(self.similarity_function not in whoosh_similarity_function):
+            print(f'{self.similarity_function} Similarity Function is Undefined')
+            self.similarity_function = 'Frequency'
+        print(f'Applying {self.similarity_function} Similarity Function')
+        _scorer = whoosh_similarity_function[self.similarity_function]
         
         with self._index.searcher(weighting=_scorer) as searcher:
             self._parser = qparser.QueryParser('content', schema=self._index.schema, group=qparser.OrGroup)
@@ -992,9 +1155,9 @@ class WhooshPM(ProgressiveMatching):
         
     def _emit_pairs(self) -> None:
         """Returns a list of candidate pairs that have been emitted following the requested method"""       
-        self.pairs = self._sorted_dataset._emit_pairs(method=self._method, data=self.data)
+        self.pairs = self._sorted_dataset._emit_pairs(method=self._algorithm, data=self.data)
                        
-    def _predict_raw_blocks(self, blocks: dict) -> None:
+    def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         self._start_time = time()
         self._si = SubsetIndexer(blocks=blocks, data=self.data, subset=False)
         self._set_retained_entries()
@@ -1009,7 +1172,7 @@ class WhooshPM(ProgressiveMatching):
         self.execution_time = time() - self._start_time
         if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked(candidates=self.pairs)
         
-    def _predict_prunned_blocks(self, blocks: dict) -> None:
+    def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         self._predict_raw_blocks(blocks)    
         
     def extract_tps_checked(self, **kwargs) -> dict:
