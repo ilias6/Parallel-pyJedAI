@@ -5,8 +5,12 @@ Contains all the files of pyjedai. This repo is for experiments. Commit only her
 - __PyPI__: [https://pypi.org/project/pyjedai/](https://pypi.org/project/pyjedai/)
 - __TestPyPI__: [https://test.pypi.org/project/pyjedai/](https://test.pypi.org/project/pyjedai/)
 - __Anaconda__: future work
-- __PyPI stats__: [https://pypistats.org/packages/pyjedai](https://pypistats.org/packages/pyjedai)
 
+#### Stats
+- __PyPI stats__: [https://pypistats.org/packages/pyjedai](https://pypistats.org/packages/pyjedai)
+- __GitHub stats__: [https://github.com/AI-team-UoA/pyJedAI/graphs/traffic](https://github.com/AI-team-UoA/pyJedAI/graphs/traffic)
+
+ 
 ## Useful info
 
 <details>
