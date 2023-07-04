@@ -162,14 +162,16 @@ class ProgressiveMatching(EntityMatching):
         ) -> None:
 
         super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
-
+        self.similarity_function : str = similarity_function
+        
     def predict(self,
+            data: Data,
             blocks: dict,
             budget: int = 0,
+            algorithm : str = 'HB',
             indexing : str = 'inorder',
             comparison_cleaner: AbstractMetablocking = None,
             tqdm_disable: bool = False,
-            algorithm : str = 'HB',
             emit_all_tps_stop : bool = False) -> List[Tuple[float, int, int]]:
         """Main method of  progressive entity matching. Inputs a set of blocks and outputs a list \
            that contains duplets of ids corresponding to candidate pairs to emit.
@@ -191,9 +193,14 @@ class ProgressiveMatching(EntityMatching):
         self._emit_all_tps_stop = emit_all_tps_stop
         self.true_pair_checked = None 
         self._prediction_data : PredictionData = None
+        self.data = data
 
         if not blocks:
             raise ValueError("Empty blocks structure")
+        
+        if self.data.is_dirty_er and self._indexing == 'bilateral':
+            raise ValueError("Cannot apply bilateral indexing to dirty Entity Resolution (single dataset)")
+            
         
         self._pairs_top_score : dict = defaultdict(lambda: -1)
         all_blocks = list(blocks.values())
@@ -201,7 +208,7 @@ class ProgressiveMatching(EntityMatching):
                         desc=self._method_name+" ("+self.similarity_function+")",
                         disable=self.tqdm_disable)
         
-        if(indexing == 'bilateral') self._indexing = 'inorder'
+        if(indexing == 'bilateral'): self._indexing = 'inorder'
         if(self._indexing == 'inorder'):
             if 'Block' in str(type(all_blocks[0])):
                 self._predict_raw_blocks(blocks)
@@ -214,7 +221,7 @@ class ProgressiveMatching(EntityMatching):
             self.update_top_scores()
             
             
-        if(indexing == 'bilateral') self._indexing = 'reverse'
+        if(indexing == 'bilateral'): self._indexing = 'reverse'
         if(self._indexing == 'reverse'):
             self.data = reverse_data_indexing(self.data)
             if 'Block' in str(type(all_blocks[0])):
@@ -226,19 +233,15 @@ class ProgressiveMatching(EntityMatching):
             else:
                 raise AttributeError("Wrong type of Blocks")
             self.update_top_scores()
-            
+        
         self.update_top_pairs()
-
-        self.pairs = []
-        while(not self._candidate_pairs.empty()):
-            self.pairs.append(self._candidate_pairs.get())
-            
         self.execution_time = time() - start_time
-        self._progress_bar.close()           
+        self._progress_bar.close()
+        
+                
         return self.pairs
-    
-    
-    def update_top_scores() -> None:
+        
+    def update_top_scores(self) -> None:
         """Conducts the identifier translation from workflow to dataframe context and
            stores the top score for each pair candidate from all indexing phases
         """
@@ -254,8 +257,7 @@ class ProgressiveMatching(EntityMatching):
             if(abs(score) > _current_top_score):
                 self._pairs_top_score[(_d1_entity, _d2_entity)] = abs(score)
                 
-                
-    def update_top_pairs() -> None:
+    def update_top_pairs(self) -> None:
         """Extracts the top pairs in the global indexing context (after all the indexing phases have commenced)
         """
         _minimum_score: float = sys.float_info.min
@@ -263,7 +265,7 @@ class ProgressiveMatching(EntityMatching):
         
         for entity, candidate in self._pairs_top_score:
             _score = self._pairs_top_score[(entity, candidate)]
-            if _score >= self._minimum_score:
+            if _score >= _minimum_score:
                 _final_candidates.put(
                     (_score, entity, candidate)
                 )
@@ -410,15 +412,17 @@ class BlockIndependentPM(ProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)  
-
+        super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        self.similarity_function : str = similarity_function
+        
     def predict(self,
+            data: Data,
             blocks: dict,
             budget: int = 0,
+            algorithm : str = 'HB',
             indexing : str = 'inorder',
             comparison_cleaner: AbstractMetablocking = None,
             tqdm_disable: bool = False,
-            algorithm : str = 'HB',
             emit_all_tps_stop : bool = False) -> List[Tuple[float, int, int]]:
         """Main method of  progressive entity matching. Inputs a set of blocks and outputs a list \
            that contains duplets of ids corresponding to candidate pairs to emit.
@@ -440,6 +444,7 @@ class BlockIndependentPM(ProgressiveMatching):
         self._emit_all_tps_stop = emit_all_tps_stop
         self.true_pair_checked = None 
         self._prediction_data : PredictionData = None
+        self.data = data
         
         self._pairs_top_score : dict = defaultdict(lambda: -1)
         all_blocks = list(blocks.values())
@@ -447,7 +452,7 @@ class BlockIndependentPM(ProgressiveMatching):
                         desc=self._method_name+" ("+self.similarity_function+")",
                         disable=self.tqdm_disable)
         
-        if(indexing == 'bilateral') self._indexing = 'inorder'
+        if(indexing == 'bilateral'): self._indexing = 'inorder'
         if(self._indexing == 'inorder'):
             if 'Block' in str(type(all_blocks[0])):
                 self._predict_raw_blocks(blocks)
@@ -460,7 +465,7 @@ class BlockIndependentPM(ProgressiveMatching):
             self.update_top_scores()
             
             
-        if(indexing == 'bilateral') self._indexing = 'reverse'
+        if(indexing == 'bilateral'): self._indexing = 'reverse'
         if(self._indexing == 'reverse'):
             self.data = reverse_data_indexing(self.data)
             if 'Block' in str(type(all_blocks[0])):
@@ -472,16 +477,13 @@ class BlockIndependentPM(ProgressiveMatching):
             else:
                 raise AttributeError("Wrong type of Blocks")
             self.update_top_scores()
-            
+        
         self.update_top_pairs()
-
-        self.pairs = []
-        while(not self._candidate_pairs.empty()):
-            self.pairs.append(self._candidate_pairs.get())
-            
         self.execution_time = time() - start_time
-        self._progress_bar.close()           
-        return self.pairs   
+        self._progress_bar.close()
+        
+                
+        return self.pairs
 
 class HashBasedProgressiveMatching(ProgressiveMatching):
     """Applies hash based candidate graph prunning, sorts retained comparisons and applies Progressive Matching
@@ -492,7 +494,6 @@ class HashBasedProgressiveMatching(ProgressiveMatching):
 
     def __init__(
             self,
-            budget: int = 0,
             weighting_scheme: str = 'X2',
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
@@ -506,7 +507,8 @@ class HashBasedProgressiveMatching(ProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(budget, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        self.similarity_function : str = similarity_function
         self._weighting_scheme : str = weighting_scheme
         
     def extract_tps_checked(self, **kwargs) -> dict:
@@ -531,7 +533,6 @@ class GlobalTopPM(HashBasedProgressiveMatching):
 
     def __init__(
             self,
-            budget: int = 0,
             weighting_scheme: str = 'X2',
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
@@ -545,7 +546,7 @@ class GlobalTopPM(HashBasedProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(budget, weighting_scheme, metric, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
 
     def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         self.pairs = Graph()
@@ -559,7 +560,7 @@ class GlobalTopPM(HashBasedProgressiveMatching):
                 self._insert_to_graph(entity_id, candidate_id, pcep.get_precalculated_weight(entity_id, candidate_id))
          
         self.pairs.edges = sorted(self.pairs.edges(data=True), key=lambda x: x[2]['weight'], reverse=True)
-        self.pairs = [edge[:3] for edge in self.pairs.edges]
+        self.pairs = [(edge[2]['weight'], edge[0], edge[1]) for edge in self.pairs.edges]
         return self.pairs
 
 
@@ -575,7 +576,7 @@ class GlobalTopPM(HashBasedProgressiveMatching):
                 self._insert_to_graph(entity_id, candidate_id, self._comparison_cleaner.get_precalculated_weight(entity_id, candidate_id))
 
         self.pairs.edges = sorted(self.pairs.edges(data=True), key=lambda x: x[2]['weight'], reverse=True)
-        self.pairs = [edge[:3] for edge in self.pairs.edges]
+        self.pairs = [(edge[2]['weight'], edge[0], edge[1]) for edge in self.pairs.edges]
         return self.pairs
 
 class LocalTopPM(HashBasedProgressiveMatching):
@@ -587,7 +588,6 @@ class LocalTopPM(HashBasedProgressiveMatching):
 
     def __init__(
             self,
-            budget: int = 0,
             weighting_scheme: str = 'X2',
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
@@ -601,8 +601,7 @@ class LocalTopPM(HashBasedProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(budget, weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
-
+        super().__init__(weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
 
     def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         self.pairs = Graph()
@@ -616,7 +615,7 @@ class LocalTopPM(HashBasedProgressiveMatching):
                 self._insert_to_graph(entity_id, candidate_id, pcnp.get_precalculated_weight(entity_id, candidate_id))
 
         self.pairs.edges = sorted(self.pairs.edges(data=True), key=lambda x: x[2]['weight'], reverse=True)
-        self.pairs = [edge[:3] for edge in self.pairs.edges]
+        self.pairs = [(edge[2]['weight'], edge[0], edge[1]) for edge in self.pairs.edges]
         return self.pairs
 
     def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
@@ -631,7 +630,7 @@ class LocalTopPM(HashBasedProgressiveMatching):
                 self._insert_to_graph(entity_id, candidate_id, self._comparison_cleaner.get_precalculated_weight(entity_id, candidate_id))
 
         self.pairs.edges = sorted(self.pairs.edges(data=True), key=lambda x: x[2]['weight'], reverse=True) 
-        self.pairs = [edge[:3] for edge in self.pairs.edges]
+        self.pairs = [(edge[2]['weight'], edge[0], edge[1]) for edge in self.pairs.edges]
         return self.pairs
 
 
@@ -644,7 +643,6 @@ class EmbeddingsNNBPM(BlockIndependentPM):
 
     def __init__(
             self,
-            budget: int = 0,
             language_model: str = 'bert',
             similarity_search: str = 'faiss',
             vector_size: int = 200,
@@ -661,7 +659,7 @@ class EmbeddingsNNBPM(BlockIndependentPM):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(budget, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
         self._language_model = language_model
         self._similarity_search = similarity_search
         self._vector_size = vector_size
@@ -823,7 +821,6 @@ class SimilarityBasedProgressiveMatching(ProgressiveMatching):
 
     def __init__(
             self,
-            budget: int = 0,
             weighting_scheme: str = 'ACF',
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
@@ -837,7 +834,7 @@ class SimilarityBasedProgressiveMatching(ProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(budget, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
         self._weighting_scheme : str = weighting_scheme
         
     def extract_tps_checked(self, **kwargs) -> dict:
@@ -854,7 +851,6 @@ class GlobalPSNM(SimilarityBasedProgressiveMatching):
 
     def __init__(
             self,
-            budget: int = 0,
             weighting_scheme: str = 'ACF',
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
@@ -868,7 +864,7 @@ class GlobalPSNM(SimilarityBasedProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(budget, weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
 
     def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         gpsn : GlobalProgressiveSortedNeighborhood = GlobalProgressiveSortedNeighborhood(self._weighting_scheme, self._budget)
@@ -908,7 +904,6 @@ class LocalPSNM(SimilarityBasedProgressiveMatching):
 
     def __init__(
             self,
-            budget: int = 0,
             weighting_scheme: str = 'ACF',
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
@@ -922,7 +917,7 @@ class LocalPSNM(SimilarityBasedProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(budget, weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
 
     def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         lpsn : LocalProgressiveSortedNeighborhood = LocalProgressiveSortedNeighborhood(self._weighting_scheme, self._budget)
@@ -955,7 +950,6 @@ class RandomPM(ProgressiveMatching):
 
     def __init__(
             self,
-            budget: int = 0,
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
@@ -968,7 +962,7 @@ class RandomPM(ProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(budget, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
 
     def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         cp : ComparisonPropagation = ComparisonPropagation()
@@ -1005,7 +999,6 @@ class PESM(HashBasedProgressiveMatching):
                         "within specified budget."
     def __init__(
             self,
-            budget: int = 0,
             weighting_scheme: str = 'CBS',
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
@@ -1019,7 +1012,7 @@ class PESM(HashBasedProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
         
-        super().__init__(budget, weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
 
 
     def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
@@ -1058,7 +1051,6 @@ class WhooshPM(BlockIndependentPM):
 
     def __init__(
             self,
-            budget: int = 0,
             similarity_function: str = 'TF-IDF',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
@@ -1071,7 +1063,7 @@ class WhooshPM(BlockIndependentPM):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
         # budget set to float('inf') implies unlimited budget
-        super().__init__(budget, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
      
     def _set_whoosh_datasets(self) -> None:
         """Saves the rows of both datasets corresponding to the indices of the entities that have been retained after comparison cleaning

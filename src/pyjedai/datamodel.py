@@ -78,7 +78,6 @@ class Data:
                 id_column_name_2: str = None,
                 dataset_name_2: str = None,
                 ground_truth: DataFrame = None,
-                inorder_gt: bool = True
     ) -> None:
         # Original Datasets as pd.DataFrame
         if isinstance(dataset_1, pd.DataFrame):
@@ -104,7 +103,6 @@ class Data:
         self.entities: DataFrame
 
         # Datasets specs
-        self.inorder_gt = inorder_gt
         self.is_dirty_er = dataset_2 is None
         self.dataset_limit = self.num_of_entities_1 = len(dataset_1)
         self.num_of_entities_2: int = len(dataset_2) if dataset_2 is not None else 0
@@ -200,6 +198,11 @@ class Data:
             id1, id2 = (row[0], row[1])
             if id1 in self.pairs_of: self.pairs_of[id1].append(id2)
             else: self.pairs_of[id1] = [id2]  
+            
+            
+    def _true_positive_pairs(self, id1 : int, id2 : int):
+        "Checks whether the given ids correspond to a true positive pair in the dataset"
+        return (id2 in self.pairs_of[d1]) if (id1 in self.pairs_of) else ((id2 in self.pairs_of and id1 in self.pairs_of[id2]))
     
     def _create_gt_mapping(self) -> None:
         """Creates two mappings:

@@ -535,7 +535,7 @@ class PredictionData(ABC):
     def get_name(self) -> str:
         return self._name
     
-    def get_predictions(self) -> List[Tuple[int, int]]:
+    def get_predictions(self) -> List[Tuple[float, int, int]]:
         return self._predictions
     
     def get_tps_checked(self) -> dict:
@@ -556,8 +556,8 @@ class PredictionData(ABC):
     def set_name(self, name : str):
         self._name : str = name
     
-    def set_predictions(self, predictions : List[Tuple[int, int]]) -> None:
-        self._predictions : List[Tuple[int, int]] = predictions
+    def set_predictions(self, predictions : List[Tuple[float, int, int]]) -> None:
+        self._predictions : List[Tuple[float, int, int]] = predictions
     
     def set_tps_checked(self, tps_checked : dict) -> None:
         self._tps_checked : dict = tps_checked
@@ -571,7 +571,20 @@ class PredictionData(ABC):
     def set_cumulative_recall(self, cumulative_recall : float) -> None:
         self._cumulative_recall : float = cumulative_recall        
 
-            
+class CandidatePair(ABC):
+    """Auxiliarry module used to store information about the candidate pair used in Progressive ER
+    Args:
+        ABC (ABC): ABC Module
+    """
+    def __init__(self, entity : int, candidate : int, reverse : bool = False) -> None:
+        self.entity : int = entity
+        self.candidate : int = candidate
+        self.reverse : bool = reverse
+        
+    
+          
+     
+       
 def canonical_swap(id1: int, id2: int) -> Tuple[int, int]:
     """Returns the identifiers in canonical order
 
@@ -649,6 +662,16 @@ def new_dictionary_from_keys(dictionary : dict, keys : list) -> dict:
     new_dictionary : dict = {key: dictionary[key] for key in keys if key in dictionary}
     return new_dictionary
 
+
+def has_duplicate_pairs(pairs : List[Tuple[float, int, int]]):
+    seen_pairs = set()
+    for pair in pairs:
+        entity : int = pair[1]
+        candidate : int = pair[2]
+        if (entity, candidate) in seen_pairs:
+            return True
+        seen_pairs.add((entity, candidate))
+    return False
 
             
             

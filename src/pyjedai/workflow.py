@@ -359,7 +359,7 @@ class ProgressiveWorkFlow(Workflow):
             with_classification_report: bool = False,
             workflow_step_tqdm_disable: bool = True,
             workflow_tqdm_enable: bool = False,
-            matcher_arguments**
+            **matcher_arguments
         ) -> None:
         """Main function for creating an Progressive ER workflow.
 
