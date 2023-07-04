@@ -189,9 +189,9 @@ class ProgressiveMatching(EntityMatching):
         self._budget : int = budget
         self._indexing : str = indexing
         self._comparison_cleaner: AbstractMetablocking = comparison_cleaner
-        self._algorithm = algorithm
-        self._emit_all_tps_stop = emit_all_tps_stop
-        self.true_pair_checked = None 
+        self._algorithm : str= algorithm
+        self._emit_all_tps_stop : bool = emit_all_tps_stop
+        self.duplicate_emitted : dict = None 
         self._prediction_data : PredictionData = None
         self.data : Data = data
         self.duplicate_of = data.duplicate_of
@@ -241,71 +241,83 @@ class ProgressiveMatching(EntityMatching):
         self._progress_bar.close()
         
         return self.pairs
-        
+    
+    
+    def _store_id_mappings(self) -> None:
+        """Stores the mapping [Workflow ID -> Dataframe ID] for the current indexing phase
+        """
+        if(self._indexing == "inorder"):
+            self._inorder_d1_id = self.data._gt_to_ids_reversed_1
+            self._inorder_d2_id = self.data._gt_to_ids_reversed_2
+        if(self._indexing == "reverse"):
+            self._reverse_d1_id = self.data._gt_to_ids_reversed_1
+            self._reverse_d2_id = self.data._gt_to_ids_reversed_2        
+      
     def _schedule_candidates(self) -> None:
         """Translates the workflow identifiers back into dataframe identifiers
            Populates the dataset scheduler with the candidate pairs of the current indexing stage
         """
-        self.scheduler = DatasetScheduler(budget=self._budget, global_top=(self._algorithm=="Global")) if self.scheduler == None else self.scheduler
+        self.scheduler = DatasetScheduler(budget=float('inf') if self._emit_all_tps_stop else self._budget, global_top=(self._algorithm=="Global")) if self.scheduler == None else self.scheduler
+        self._store_id_mappings()
         
         for score, entity, candidate in self.pairs:
-            id1 = self.data._ids_mapping_2(entity) if(entity >= self.data.dataset_limit) else self.data._ids_mapping_1(entity)
-            id2 = self.data._ids_mapping_2(candidate) if(candidate >= self.data.dataset_limit) else self.data._ids_mapping_1(candidate)
-            dataset_1_entity, dataset_2_entity = (id1, id2) if self._indexing == 'inorder' else (id2, id1)
-            self.scheduler._insert_entity_neighbor(dataset_1_entity, dataset_2_entity, score)        
-                
+            
+            d1_entity, d2_entity = (entity, candidate) if(entity >= self.data.dataset_limit) else (candidate, entity)
+            d1_map, d2_map = (self._inorder_d1_id, self._inorder_d2_id) if (self._indexing == 'inorder') else (self._reverse_d1_id, self._reverse_d2_id)
+            d1_entity_df_id, d2_entity_df_id = (d1_map[d1_entity], d2_map[d2_entity])
+            
+            
+            d1_entity_df_id, d2_entity_df_id = (d1_entity_df_id, d2_entity_df_id) if(self._indexing == 'inorder') else (d2_entity_df_id, d1_entity_df_id)
+            d1_entity, d2_entity = (d1_entity, d2_entity) if(self._indexing == 'inorder') else (d2_entity, d1_entity)
+            # identifier incremented by the total number of entities in both datasets
+            # allows for retaining the information of indexing stage at which the pair is proposed for emission
+            id1 = d1_entity if self._indexing == 'inorder' else (d1_entity + self.data.num_of_entities)
+            id2 = d2_entity if self._indexing == 'inorder' else (d2_entity + self.data.num_of_entities)
+            self.scheduler._insert_entity_neighbor(id1, id2, score)
+            
+            if(self._emit_all_tps_stop): self.duplicate_emitted[(d1_entity, d2_entity)] = False
+            
+    def _inorder_phase_entity(self, id : int) -> bool:
+        """Given identifier corresponds to an entity proposed in the inorder indexing phase
+
+        Args:
+            id (int): Identifier
+
+        Returns:
+            bool: Identifier proposed in the inorder phase
+        """
+        return id < self.data.num_of_entities
+    
+    def _retrieve_entity_df_id(self, id : int) -> int:
+        """Returns the corresponding id in the dataframe of the given workflow id
+
+        Args:
+            id (int): Workflow Identifier
+
+        Returns:
+            int: Dataframe Identifier
+        """
+        _workflow_id : int
+        _df_id_of : dict
+        if(self._inorder_phase_entity(id)):
+            _workflow_id = id
+            _df_id_of = self._inorder_d1_id if (id < len(self._inorder_d1_id)) else self._inorder_d2_id
+        else:
+            _workflow_id = id - self.data.num_of_entities
+            _df_id_of = self._reverse_d1_id if (id < self.data.dataset_limit) else self._reverse_d2_id
+            
+        return _df_id_of[_workflow_id]    
+    
     def _gather_top_pairs(self) -> None:
         """Emits the pairs from the scheduler based on the defined algorithm
         """
         self.pairs = self.scheduler._emit_pairs(method=self._algorithm)
         
-    
-    # def predict(self,
-    #     blocks: dict,
-    #     d1: 
-    #     tqdm_disable: bool = False,
-    #     method : str = 'HB',
-    #     emit_all_tps_stop : bool = False) -> List[Tuple[int, int]]:
-    #     """Main method of  progressive entity matching applied on raw blocks.
-    #         Allows for simple and reverse unilateral, as well as bilateral candidate pairs emission.
-    #         Returns a list of tuples contains the duplets of ids of candidate pair items.
-    #         Args:
-    #             blocks (dict): raw blocks of entities
-    #             tqdm_disable (bool, optional): Disables progress bar. Defaults to False.
-    #             method (str) : DFS/BFS/Hybrid approach for specified algorithm
-    #             emit_all_tps_stop (bool) : Stop emission once all true positives are found
-    #         Returns:
-    #             networkx.Graph: entity ids (nodes) and similarity scores between them (edges)
-    #     """
-    #     start_time = time()
-    #     self.tqdm_disable = tqdm_disable
-    #     self._comparison_cleaner: AbstractMetablocking = comparison_cleaner
-    #     self._method = method
-    #     self._emit_all_tps_stop = emit_all_tps_stop
-    #     self.true_pair_checked = None 
-    #     self._prediction_data : PredictionData = None
-
-
-
-    #     if not blocks:
-    #         raise ValueError("Empty blocks structure")
-    #     self.data = data
-    #     all_blocks = list(blocks.values())
-    #     self._progress_bar = tqdm(total=len(blocks),
-    #                             desc=self._method_name+" ("+self.similarity_function+")",
-    #                             disable=self.tqdm_disable)
-    #     if 'Block' in str(type(all_blocks[0])):
-    #         self._predict_raw_blocks(blocks)
-    #     elif isinstance(all_blocks[0], set):
-    #         if(self._comparison_cleaner == None):
-    #             raise AttributeError("No precalculated weights were given from the CC step") 
-    #         self._predict_prunned_blocks(blocks)
-    #     else:
-    #         raise AttributeError("Wrong type of Blocks")
-    #     self.execution_time = time() - start_time
-    #     self._progress_bar.close()
-
-    #     return self.pairs
+        _identified_pairs = []
+        for score, entity, candidate in self.pairs:
+            _identified_pairs.append(score, self._retrieve_entity_df_id(entity), self._retrieve_entity_df_id(candidate))
+            
+        self.pairs = _identified_pairs
 
     def evaluate(self,
                  prediction,
@@ -339,22 +351,6 @@ class ProgressiveMatching(EntityMatching):
                                 export_to_dict,
                                 with_classification_report,
                                 verbose)
-        
-    def get_true_pair_checked(self):
-        if(self.true_pair_checked is None):
-            raise AttributeError("True positive pairs not defined in specified workflow.")
-        else: return self.true_pair_checked   
-        
-        
-    @abstractmethod
-    def extract_tps_checked(self, **kwargs) -> dict:
-        """Constructs a dictionary of the form [true positive pair] -> emitted status,
-           containing all the true positive pairs that are emittable from the current subset of the dataset
-
-        Returns:
-            dict: Dictionary that shows whether a TP pair (key) has been emitted (value)
-        """
-        pass
     
     def get_prediction_data(self) -> PredictionData:
         if(self._prediction_data is None):
@@ -492,19 +488,6 @@ class HashBasedProgressiveMatching(ProgressiveMatching):
         super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
         self.similarity_function : str = similarity_function
         self._weighting_scheme : str = weighting_scheme
-        
-    def extract_tps_checked(self, **kwargs) -> dict:
-        _tps_checked = dict()
-        for entity, neighbors in self.blocks.items():
-            for neighbor in neighbors:
-                entity_id = self.data._gt_to_ids_reversed_1[entity] if entity < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[entity]
-                neighbor_id = self.data._gt_to_ids_reversed_1[neighbor] if neighbor < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[neighbor]
-                _d1_entity, _d2_entity = (entity_id, neighbor_id) if entity < self.data.dataset_limit else (neighbor_id, entity_id)
-            
-                if _d2_entity in self.data.pairs_of[_d1_entity]:
-                    _tps_checked[canonical_swap(_d1_entity, _d2_entity)] = False
-        return _tps_checked
-        
 
 class GlobalTopPM(HashBasedProgressiveMatching):
     """Applies Progressive CEP, sorts retained comparisons and applies Progressive Matching
@@ -535,7 +518,6 @@ class GlobalTopPM(HashBasedProgressiveMatching):
         pcep : ProgressiveCardinalityEdgePruning = ProgressiveCardinalityEdgePruning(self._weighting_scheme, self._budget)
         candidates : dict = pcep.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, emit_all_tps_stop=self._emit_all_tps_stop)
         self.blocks = candidates
-        if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked()
 
         for entity_id, candidate_ids in candidates.items():
             for candidate_id in candidate_ids:
@@ -551,7 +533,6 @@ class GlobalTopPM(HashBasedProgressiveMatching):
         pcep : ProgressiveCardinalityEdgePruning = ProgressiveCardinalityEdgePruning(self._weighting_scheme, self._budget)
         candidates : dict = pcep.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=self._comparison_cleaner, emit_all_tps_stop=self._emit_all_tps_stop)
         self.blocks = candidates
-        if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked()
 
         for entity_id, candidate_ids in candidates.items():
             for candidate_id in candidate_ids:
@@ -590,7 +571,6 @@ class LocalTopPM(HashBasedProgressiveMatching):
         pcnp : ProgressiveCardinalityNodePruning = ProgressiveCardinalityNodePruning(self._weighting_scheme, self._budget)
         candidates : dict = pcnp.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, emit_all_tps_stop=self._emit_all_tps_stop)
         self.blocks = candidates
-        if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked()
         
         for entity_id, candidate_ids in candidates.items():
             for candidate_id in candidate_ids:
@@ -605,7 +585,6 @@ class LocalTopPM(HashBasedProgressiveMatching):
         pcnp : ProgressiveCardinalityNodePruning = ProgressiveCardinalityNodePruning(self._weighting_scheme, self._budget)
         candidates : dict = pcnp.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=self._comparison_cleaner, emit_all_tps_stop=self._emit_all_tps_stop)
         self.blocks = candidates
-        if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked()
 
         for entity_id, candidate_ids in candidates.items():
             for candidate_id in candidate_ids:
@@ -768,31 +747,10 @@ class EmbeddingsNNBPM(BlockIndependentPM):
         self.final_vectors = (self.ennbb.vectors_1, self.ennbb.vectors_2)
 
         self._produce_pairs()
-        if(self._emit_all_tps_stop):
-            self.true_pair_checked = self.extract_tps_checked()
         return self.pairs
 
     def _predict_prunned_blocks(self, blocks: dict = None) -> List[Tuple[int, int]]:
         return self._predict_raw_blocks(blocks)
-    
-    def extract_tps_checked(self, **kwargs) -> dict:
-        _tps_checked = dict()
-        _neighbors = self.neighbors
-        
-        for row in range(_neighbors.shape[0]):
-            entity = self.ennbb._si.d1_retained_ids[row] \
-                    if self.data.is_dirty_er \
-                    else self.ennbb._si.d2_retained_ids[row]
-            entity_id = self.data._gt_to_ids_reversed_1[entity] if entity < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[entity]
-            for column in range(_neighbors.shape[1]):
-                if(_neighbors[row][column] != -1):
-                    neighbor = self.ennbb._si.d1_retained_ids[_neighbors[row][column]]
-                    neighbor_id = self.data._gt_to_ids_reversed_1[neighbor] if neighbor < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[neighbor]
-                    _d1_entity, _d2_entity = (entity_id, neighbor_id) if entity < self.data.dataset_limit else (neighbor_id, entity_id)
-                if _d2_entity in self.data.pairs_of[_d1_entity]:
-                    _tps_checked[canonical_swap(_d1_entity, _d2_entity)] = False
-        
-        return _tps_checked
     
 class SimilarityBasedProgressiveMatching(ProgressiveMatching):
     """Applies similarity based candidate graph prunning, sorts retained comparisons and applies Progressive Matching
@@ -818,9 +776,6 @@ class SimilarityBasedProgressiveMatching(ProgressiveMatching):
 
         super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
         self._weighting_scheme : str = weighting_scheme
-        
-    def extract_tps_checked(self, **kwargs) -> dict:
-        pass
         
 class GlobalPSNM(SimilarityBasedProgressiveMatching):
     """Applies Global Progressive Sorted Neighborhood Matching
@@ -855,25 +810,11 @@ class GlobalPSNM(SimilarityBasedProgressiveMatching):
         while(not candidates.empty()):
             _, entity_id, candidate_id = candidates.get()
             self.pairs.append((entity_id, candidate_id))
-            if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked(entity=entity_id, neighbor=candidate_id)
           
         return self.pairs
 
     def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         raise NotImplementedError("Sorter Neighborhood Algorithms don't support prunned blocks")
-    
-    def extract_tps_checked(self, **kwargs) -> dict:
-        self.true_pair_checked = dict() if self.true_pair_checked is None else self.true_pair_checked
-        entity = kwargs['entity']
-        neighbor = kwargs['neighbor']
-        
-        entity_id = self.data._gt_to_ids_reversed_1[entity] if entity < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[entity]
-        neighbor_id = self.data._gt_to_ids_reversed_1[neighbor] if neighbor < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[neighbor]
-        _d1_entity, _d2_entity = (entity_id, neighbor_id) if entity < self.data.dataset_limit else (neighbor_id, entity_id)
-        if _d2_entity in self.data.pairs_of[_d1_entity]:
-            self.true_pair_checked[canonical_swap(_d1_entity, _d2_entity)] = False
-            
-        return self.true_pair_checked
     
 class LocalPSNM(SimilarityBasedProgressiveMatching):
     """Applies Local Progressive Sorted Neighborhood Matching
@@ -905,24 +846,11 @@ class LocalPSNM(SimilarityBasedProgressiveMatching):
         lpsn : LocalProgressiveSortedNeighborhood = LocalProgressiveSortedNeighborhood(self._weighting_scheme, self._budget)
         candidates : list = lpsn.process(blocks=blocks, data=self.data, tqdm_disable=True, emit_all_tps_stop=self._emit_all_tps_stop)
         self.pairs = candidates
-        if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked(candidates=candidates) 
         return self.pairs
 
     def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         raise NotImplementedError("Sorter Neighborhood Algorithms don't support prunned blocks " + \
                                 "(pre comparison-cleaning entities per block distribution required")
-        
-    def extract_tps_checked(self, **kwargs) -> dict:
-        _tps_checked = dict()
-        _candidates = kwargs['candidates']
-        
-        for entity, neighbor in _candidates:
-            entity_id = self.data._gt_to_ids_reversed_1[entity] if entity < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[entity]
-            neighbor_id = self.data._gt_to_ids_reversed_1[neighbor] if neighbor < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[neighbor]
-            _d1_entity, _d2_entity = (entity_id, neighbor_id) if entity < self.data.dataset_limit else (neighbor_id, entity_id)
-            if _d2_entity in self.data.pairs_of[_d1_entity]:
-                _tps_checked[canonical_swap(_d1_entity, _d2_entity)] = False  
-        return _tps_checked
 class RandomPM(ProgressiveMatching):
     """Picks a number of random comparisons equal to the available budget
     """
@@ -955,20 +883,7 @@ class RandomPM(ProgressiveMatching):
         _all_pairs = [(id1, id2) for id1 in blocks for id2 in blocks[id1]]
         _total_pairs = len(_all_pairs)
         random_pairs = sample(_all_pairs, self._budget) if self._budget <= _total_pairs and not self._emit_all_tps_stop else _all_pairs
-        if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked(candidates=random_pairs)
         self.pairs.add_edges_from(random_pairs)
-        
-    def extract_tps_checked(self, **kwargs) -> dict:
-        _tps_checked = dict()
-        _candidates = kwargs['candidates']
-        
-        for entity, neighbor in _candidates:
-            entity_id = self.data._gt_to_ids_reversed_1[entity] if entity < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[entity]
-            neighbor_id = self.data._gt_to_ids_reversed_1[neighbor] if neighbor < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[neighbor]
-            _d1_entity, _d2_entity = (entity_id, neighbor_id) if entity < self.data.dataset_limit else (neighbor_id, entity_id)
-            if _d2_entity in self.data.pairs_of[_d1_entity]:
-                _tps_checked[canonical_swap(_d1_entity, _d2_entity)] = False  
-        return _tps_checked
         
 class PESM(HashBasedProgressiveMatching):
     """Applies Progressive Entity Scheduling Matching
@@ -1002,24 +917,10 @@ class PESM(HashBasedProgressiveMatching):
         pes : ProgressiveEntityScheduling = ProgressiveEntityScheduling(self._weighting_scheme, self._budget)
         pes.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, method=self._algorithm, emit_all_tps_stop=self._emit_all_tps_stop)
         self.pairs = pes.produce_pairs()
-        if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked(candidates=self.pairs)
 
     def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         return self._predict_raw_blocks(blocks)
         # raise NotImplementedError("Sorter Neighborhood Algorithms doesn't support prunned blocks (lack of precalculated weights)")
-        
-    def extract_tps_checked(self, **kwargs) -> dict:
-        _tps_checked = dict()
-        _candidates = kwargs['candidates']
-        
-        for entity, neighbor in _candidates:
-            entity_id = self.data._gt_to_ids_reversed_1[entity] if entity < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[entity]
-            neighbor_id = self.data._gt_to_ids_reversed_1[neighbor] if neighbor < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[neighbor]
-            _d1_entity, _d2_entity = (entity_id, neighbor_id) if entity < self.data.dataset_limit else (neighbor_id, entity_id)
-            if _d2_entity in self.data.pairs_of[_d1_entity]:
-                _tps_checked[canonical_swap(_d1_entity, _d2_entity)] = False  
-        return _tps_checked
-    
     
 class WhooshPM(BlockIndependentPM):
     """Applies progressive index based matching using whoosh library 
@@ -1144,22 +1045,8 @@ class WhooshPM(BlockIndependentPM):
         self._populate_whoosh_dataset()
         self._emit_pairs()
         self.execution_time = time() - self._start_time
-        if(self._emit_all_tps_stop): self.true_pair_checked = self.extract_tps_checked(candidates=self.pairs)
         
     def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         self._predict_raw_blocks(blocks)    
-        
-    def extract_tps_checked(self, **kwargs) -> dict:
-        _tps_checked = dict()
-        _candidates = kwargs['candidates']
-        
-        for entity, neighbor in _candidates:
-            entity_id = self.data._gt_to_ids_reversed_1[entity] if entity < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[entity]
-            neighbor_id = self.data._gt_to_ids_reversed_1[neighbor] if neighbor < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[neighbor]
-            _d1_entity, _d2_entity = (entity_id, neighbor_id) if entity < self.data.dataset_limit else (neighbor_id, entity_id)
-            if _d2_entity in self.data.pairs_of[_d1_entity]:
-                _tps_checked[canonical_swap(_d1_entity, _d2_entity)] = False  
-        return _tps_checked 
-        
         
 

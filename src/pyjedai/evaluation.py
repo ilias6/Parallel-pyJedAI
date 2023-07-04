@@ -393,7 +393,7 @@ class Evaluation:
         for matcher_data in matchers_data:
             
             matcher_name, progressive_matcher = matcher_data
-            matcher_prediction_data : PredictionData = PredictionData(matcher_name, progressive_matcher.pairs, progressive_matcher.true_pair_checked)
+            matcher_prediction_data : PredictionData = PredictionData(matcher_name, progressive_matcher.pairs, progressive_matcher.duplicate_emitted)
             
             matcher_predictions = matcher_prediction_data.get_predictions()
             matcher_tps_checked = matcher_prediction_data.get_tps_checked()
