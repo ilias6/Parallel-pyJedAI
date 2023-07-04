@@ -315,7 +315,7 @@ class Evaluation:
                 return
     
 
-    def calculate_roc_auc_data(self, data: Data, pairs, batch_size : int  = 1, true_positive_checked : dict = None) -> List[Tuple[int, int]]:
+    def calculate_roc_auc_data(self, pairs, duplicate_of : dict = None, batch_size : int  = 1, true_positive_checked : dict = None) -> List[Tuple[int, int]]:
         """Progressively calculates total recall, AUC for each batch of candidate pairs
         Args:
             data (Data): Data Module
@@ -330,11 +330,12 @@ class Evaluation:
             for pair in true_positive_checked.keys():
                 true_positive_checked[pair] = False
 
-        if(data.ground_truth is None):
+        if(duplicate_of is None):
             raise AttributeError("Can calculate ROC AUC without a ground-truth file. \
                 Data object mush have initialized with the ground-truth file")
 
-        if(len(data.ground_truth) == 0):
+        self.num_of_true_duplicates = len(duplicate_of)
+        if(not self.num_of_true_duplicates):
             raise AttributeError("Cannot calculate AUC score, number of true duplicates is equal to 0.")
         
         _true_positives: int = 0
@@ -343,7 +344,6 @@ class Evaluation:
         _new_recall: int = 0
         self._tps_found : int = 0
         self._true_positive_checked : dict = true_positive_checked
-        self.num_of_true_duplicates = len(data.ground_truth)
         _recall_progress = [0]
 
         batches = batch_pairs(pairs, batch_size)
@@ -352,17 +352,10 @@ class Evaluation:
         for batch in batches:
             _current_batch_size : int = 0
             for score, entity, candidate in batch:
-                
-                print(score)
-                print(type(entity))
-                print(type(candidate))
                 if(self._all_tps_emitted()): break
-                entity_id = data._gt_to_ids_reversed_1[entity] if entity < data.dataset_limit else data._gt_to_ids_reversed_2[entity]
-                candidate_id = data._gt_to_ids_reversed_1[candidate] if candidate < data.dataset_limit else data._gt_to_ids_reversed_2[candidate]
-                _d1_entity, _d2_entity = (entity_id, candidate_id) if entity < data.dataset_limit else (candidate_id, entity_id)
                 
-                if _d2_entity in self.data.pairs_of[_d1_entity]:
-                    self._update_true_positive_entry(entity_id, candidate_id)
+                if candidate in duplicate_of[entity]:
+                    self._update_true_positive_entry(entity, candidate)
                     _true_positives += 1  
                 _current_batch_size += 1
             self._total_emissions += 1
@@ -372,7 +365,6 @@ class Evaluation:
             _recall_progress.append(_current_recall)
             if(self._all_tps_emitted()): break
             
-
         # _normalized_auc = 0 if(ideal_auc == 0) else _normalized_auc / ideal_auc
         _normalized_auc = sum(_recall_progress) / (len(pairs) + 1.0)
         return _recall_progress, _normalized_auc
@@ -406,7 +398,10 @@ class Evaluation:
             matcher_predictions = matcher_prediction_data.get_predictions()
             matcher_tps_checked = matcher_prediction_data.get_tps_checked()
             
-            cumulative_recall, normalized_auc = self.calculate_roc_auc_data(self.data, matcher_predictions, batch_size, matcher_tps_checked)
+            cumulative_recall, normalized_auc = self.calculate_roc_auc_data(pairs=matcher_predictions,
+                                                                            duplicate_of=progressive_matcher.duplicate_of,
+                                                                            batch_size=batch_size,
+                                                                            true_positive_checked=matcher_tps_checked)
                     
             self._matchers_auc_roc_data.append((matcher_name, normalized_auc, cumulative_recall))
             matcher_prediction_data.set_total_emissions(self._total_emissions)

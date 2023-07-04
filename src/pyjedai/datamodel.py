@@ -192,17 +192,25 @@ class Data:
         """Creates a mapping:
             - pairs_of : ids of first dataset to ids of true matches from second dataset"""
         
-        self.pairs_of = defaultdict(set)
+        self.duplicate_of = defaultdict(set)
         
         for _, row in self.ground_truth.iterrows():
             id1, id2 = (row[0], row[1])
-            if id1 in self.pairs_of: self.pairs_of[id1].append(id2)
-            else: self.pairs_of[id1] = [id2]  
+            if id1 in self.duplicate_of: self.duplicate_of[id1].append(id2)
+            else: self.duplicate_of[id1] = [id2]
             
-            
-    def _true_positive_pairs(self, id1 : int, id2 : int):
-        "Checks whether the given ids correspond to a true positive pair in the dataset"
-        return (id2 in self.pairs_of[d1]) if (id1 in self.pairs_of) else ((id2 in self.pairs_of and id1 in self.pairs_of[id2]))
+    def _are_true_positives(self, id1 : int, id2 : int):
+        """Checks if given pair of identifiers represents a duplicate.
+           Identifiers must be inorder, first one belonging to the first and the second to the second dataset
+
+        Args:
+            id1 (int, optional): Identifier from the first dataframe. 
+            id2 (int, optional): Identifier from the second dataframe.
+
+        Returns:
+            _type_: _description_
+        """
+        return id1 in self.duplicate_of and id2 in self.duplicate_of[id1]
     
     def _create_gt_mapping(self) -> None:
         """Creates two mappings:

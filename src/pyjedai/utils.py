@@ -292,7 +292,7 @@ class PositionIndex(ABC):
     def get_positions(self, entity: int):
         return self._entity_positions[entity]
 
-class WhooshNeighborhood(ABC):
+class EntityScheduler(ABC):
     """Stores information about the neighborhood of a given entity ID:
     - ID : The identifier of the entity as it is defined within the original dataframe
     - Total Weight : The total weight of entity's neighbors
@@ -304,50 +304,30 @@ class WhooshNeighborhood(ABC):
         ABC (ABC): ABC Module 
     """
     
-    def __init__(self, id : int, budget : float) -> None:
+    def __init__(self, id : int) -> None:
         self._id : int = id
-        self._budget : float = budget
-        self._neighbors : PriorityQueue = PriorityQueue(self._budget) if not is_infinite(self._budget) else PriorityQueue()
-        self._insert_stage : bool = True
-        self._minimum_weight : float = sys.float_info.min
+        self._neighbors : PriorityQueue = PriorityQueue()
         self._neighbors_num : int = 0
         self._total_weight : float = 0.0
         self._average_weight : float = None
         
     def _insert(self, neighbor_id: int, weight : float) -> None:
-        if(not self._insert_stage): self._change_state()
-        
-        if weight >= self._minimum_weight:
-            self._neighbors.put((weight, neighbor_id))
-        if self._neighbors.qsize() > self._budget:
-            self._minimum_weight = self._neighbors.get()[0]
-            
+        self._neighbors.put((-weight, neighbor_id))
         self._update_neighbors_counter_by(1)
         self._update_total_weight_by(weight)
             
-    def _pop(self) -> None:
-        if(self._insert_stage): self._change_state()
-        
+    def _pop(self) -> Tuple[float, int]:
         if(self._empty()):
             raise ValueError("No neighbors to pop!")
         
         _weight, _neighbor_id = self._neighbors.get()
+        self._update_neighbors_counter_by(-1)
+        self._update_total_weight_by(_weight)
+        
         return -_weight, _neighbor_id
     
     def _empty(self) -> bool:
         return self._neighbors.empty()
-    
-    def _change_state(self) -> None:
-        "Neighborhood can either be accepting or emitting neighbors" + \
-        "Accepting Stage - Neighbors stored in ascending weight order" + \
-        "Emitting Stage - Neighbors stored in descending weight order" 
-        _neighbors_resorted : PriorityQueue = PriorityQueue(int(self._budget)) if not is_infinite(self._budget) else PriorityQueue()
-        while(not self._neighbors.empty()):
-            _weight, _neighbor_id = self._neighbors.get()
-            _neighbors_resorted.put((-_weight, _neighbor_id))
-            
-        self._neighbors = _neighbors_resorted
-        self._insert_stage = not self._insert_stage
         
     def _update_total_weight_by(self, weight) -> None:
         self._total_weight = self._total_weight + weight
@@ -369,31 +349,31 @@ class WhooshNeighborhood(ABC):
             return self._average_weight
     
     def __eq__(self, other):
-        if isinstance(other, WhooshNeighborhood):
+        if isinstance(other, EntityScheduler):
             return self._get_average_weight() == other._get_average_weight()
         return NotImplemented
     
     def __lt__(self, other):
-        if isinstance(other, WhooshNeighborhood):
+        if isinstance(other, EntityScheduler):
             return self._get_average_weight() < other._get_average_weight()
         return NotImplemented
     
     def __gt__(self, other):
-        if isinstance(other, WhooshNeighborhood):
+        if isinstance(other, EntityScheduler):
             return self._get_average_weight() > other._get_average_weight()
         return NotImplemented
     
     def __le__(self, other):
-        if isinstance(other, WhooshNeighborhood):
+        if isinstance(other, EntityScheduler):
             return self._get_average_weight() <= other._get_average_weight()
         return NotImplemented
     
     def __ge__(self, other):
-        if isinstance(other, WhooshNeighborhood):
+        if isinstance(other, EntityScheduler):
             return self._get_average_weight() >= other._get_average_weight()
         return NotImplemented 
     
-class WhooshDataset(ABC):
+class DatasetScheduler(ABC):
     """Stores a dictionary [Entity -> Entity's Neighborhood Data (Whoosh Neighborhood)]
        Supplies auxiliarry functions for information retrieval from the sorted dataset
 
@@ -401,26 +381,32 @@ class WhooshDataset(ABC):
         ABC (ABC): ABC Module
     """
      
-    def __init__(self, entity_ids : List[int], budget : float) -> None:
+    def __init__(self, budget : float = float('inf'), entity_ids : List[int] = [], global_top : bool = False) -> None:
         self._budget : float = budget
         self._total_entities : int = len(entity_ids)
-        self._entity_budget : float = budget if is_infinite(self._budget) else max(1, 2 * self._budget / self._total_entities)
         self._neighborhoods : dict = {}
+        # global emission case
+        self._global_top : bool = global_top
+        self._all_candidates = PriorityQueue() if self._global_top else None
         for entity_id in entity_ids:  
-            self._neighborhoods[entity_id] = WhooshNeighborhood(id=entity_id, budget=self._entity_budget)
+            self._neighborhoods[entity_id] = EntityScheduler(id=entity_id)
         # used in defining proper emission strategy
         self._sorted_entities : List[int] = None
         self._current_neighborhood_index : int = 0
         self._current_entity : int = None
-        self._current_neighborhood : WhooshNeighborhood = None
+        self._current_neighborhood : EntityScheduler = None
             
     def _insert_entity_neighbor(self, entity : int, neighbor : int, weight : float) -> None:
-        self._neighborhoods[entity]._insert(neighbor, weight)
+        if(not self._global_top):
+            _neighborhood = EntityScheduler(entity) if entity in self._neighborhoods else self._neighborhoods[entity]
+            _neighborhood._insert(neighbor, weight)
+        else:
+            self._all_candidates.put((-weight, entity, neighbor))
         
     def _pop_entity_neighbor(self, entity : int) -> Tuple[float, int]:
         return self._neighborhoods[entity]._pop()
     
-    def _get_entity_neighborhood(self, entity : int) -> WhooshNeighborhood:
+    def _get_entity_neighborhood(self, entity : int) -> EntityScheduler:
         return self._neighborhoods[entity]
     
     def _entity_has_neighbors(self, entity : int) -> bool:
@@ -430,7 +416,7 @@ class WhooshDataset(ABC):
         """Store a list of entity ids sorted in descending order of the average weight of their corresponding neighborhood"""
         self._sorted_entities : List = sorted(self._neighborhoods, key=lambda entity: self._neighborhoods[entity]._get_average_weight(), reverse=True)
     
-    def _get_current_neighborhood(self) -> WhooshNeighborhood:
+    def _get_current_neighborhood(self) -> EntityScheduler:
         return self._neighborhoods[self._current_entity]
         
     def _enter_next_neighborhood(self) -> None:
@@ -441,20 +427,18 @@ class WhooshDataset(ABC):
         self._current_entity = self._sorted_entities[self._current_neighborhood_index]
         self._current_neighborhood = self._neighborhoods[self._current_entity]
         
-    def _successful_emission(self, pair : Tuple[int, int]) -> bool:
-        
-        _entity, _neighbor = pair
-        _entity_id = self._data._ids_mapping_1[_entity]
-        _neighbor_id = self._data._ids_mapping_1[_neighbor] if self._data.is_dirty_er else self._data._ids_mapping_2[_neighbor]
+    def _successful_emission(self, pair : Tuple[float, int, int]) -> bool:
+        _score, _entity, _neighbor = pair
                 
         if(self._emitted_comparisons < self._budget):
-            self._emitted_pairs.append((_entity_id, _neighbor_id))
+            self._emitted_pairs.append((_score, _entity, _neighbor))
+            self._checked_entities.add(canonical_swap(_entity, _neighbor))
             self._emitted_comparisons += 1
             return True
         else:
             return False
         
-    def _emit_pairs(self, method : str, data : Data) -> List[Tuple[int, int]]:
+    def _emit_pairs(self, method : str) -> List[Tuple[float, int, int]]:
         """Emits candidate pairs according to specified method
 
         Args:
@@ -466,41 +450,45 @@ class WhooshDataset(ABC):
         """
         
         self._method : str = method
-        self._data : Data = data
-        
         self._emitted_pairs = []
         self._emitted_comparisons = 0    
+        self._checked_entities = set()
+        
+        if(self._method == 'Global'):
+            while(not self._all_candidates.empty()):
+                score, sorted_entity, neighbor = self._all_candidates.get()
+                if(canonical_swap(sorted_entity, neighbor) not in self._checked_entities):
+                    if(not self._successful_emission(pair=(-score, sorted_entity, neighbor))):
+                        return self._emitted_pairs
+                
+                return self._emitted_pairs
+            
         
         if(self._method == 'HB'):
             for sorted_entity in self._sorted_entities:
                 if(self._entity_has_neighbors(sorted_entity)):
-                    _, neighbor = self._pop_entity_neighbor(sorted_entity)
-                    if(not self._successful_emission(pair=(sorted_entity, neighbor))):
-                        return self._emitted_pairs
+                    score, neighbor = self._pop_entity_neighbor(sorted_entity)
+                    if(canonical_swap(sorted_entity, neighbor) not in self._checked_entities):
+                        if(not self._successful_emission(pair=(score, sorted_entity, neighbor))):
+                            return self._emitted_pairs
                    
-        if(self._method == 'HB' or self._method == 'DFS'):
-            _checked_entity = np.zeros(self._total_entities, dtype=bool)
-            _sorted_entity_to_index = dict(zip(self._sorted_entities, range(0, self._total_entities)))
-            
-            for index, sorted_entity in enumerate(self._sorted_entities):
-                _checked_entity[index] = True
+        if(self._method == 'HB' or self._method == 'DFS'):            
+            for sorted_entity in self._sorted_entities:
                 while(self._entity_has_neighbors(sorted_entity)):
-                    _, neighbor = self._pop_entity_neighbor(sorted_entity)
-                    if(neighbor not in _sorted_entity_to_index or _checked_entity[_sorted_entity_to_index[neighbor]]):
-                        if(not self._successful_emission(pair=(sorted_entity, neighbor))):
+                    score, neighbor = self._pop_entity_neighbor(sorted_entity)
+                    if(canonical_swap(sorted_entity, neighbor) not in self._checked_entities):
+                        if(not self._successful_emission(pair=(score, sorted_entity, neighbor))):
                             return self._emitted_pairs
         else:
             _emissions_left = True
-            _checked_entities = set()
             while(_emissions_left):
                 _emissions_left = False
                 for sorted_entity in self._sorted_entities:
                     if(self._entity_has_neighbors(sorted_entity)):
-                        _, neighbor = self._pop_entity_neighbor(sorted_entity)
-                        if(canonical_swap(sorted_entity, neighbor) not in _checked_entities):
-                            if(not self._successful_emission(pair=(sorted_entity, neighbor))):
+                        score, neighbor = self._pop_entity_neighbor(sorted_entity)
+                        if(canonical_swap(sorted_entity, neighbor) not in self._checked_entities):
+                            if(not self._successful_emission(pair=(score, sorted_entity, neighbor))):
                                 return self._emitted_pairs
-                            _checked_entities.add(canonical_swap(sorted_entity, neighbor))
                             _emissions_left = True
         return self._emitted_pairs
     
@@ -570,20 +558,6 @@ class PredictionData(ABC):
         
     def set_cumulative_recall(self, cumulative_recall : float) -> None:
         self._cumulative_recall : float = cumulative_recall        
-
-class CandidatePair(ABC):
-    """Auxiliarry module used to store information about the candidate pair used in Progressive ER
-    Args:
-        ABC (ABC): ABC Module
-    """
-    def __init__(self, entity : int, candidate : int, reverse : bool = False) -> None:
-        self.entity : int = entity
-        self.candidate : int = candidate
-        self.reverse : bool = reverse
-        
-    
-          
-     
        
 def canonical_swap(id1: int, id2: int) -> Tuple[int, int]:
     """Returns the identifiers in canonical order

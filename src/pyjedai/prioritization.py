@@ -62,7 +62,7 @@ from random import sample
 from .utils import sorted_enumerate, canonical_swap
 from abc import abstractmethod
 from typing import Tuple, List
-from .utils import SubsetIndexer, WhooshDataset, WhooshNeighborhood, is_infinite, PredictionData, reverse_data_indexing
+from .utils import SubsetIndexer, DatasetScheduler, EntityScheduler, is_infinite, PredictionData, reverse_data_indexing
 import pandas as pd
 import os
 from whoosh.fields import TEXT, Schema, ID
@@ -193,7 +193,9 @@ class ProgressiveMatching(EntityMatching):
         self._emit_all_tps_stop = emit_all_tps_stop
         self.true_pair_checked = None 
         self._prediction_data : PredictionData = None
-        self.data = data
+        self.data : Data = data
+        self.duplicate_of = data.duplicate_of
+        self.scheduler : DatasetScheduler = None
 
         if not blocks:
             raise ValueError("Empty blocks structure")
@@ -218,7 +220,7 @@ class ProgressiveMatching(EntityMatching):
                 self._predict_prunned_blocks(blocks)
             else:
                 raise AttributeError("Wrong type of Blocks")
-            self.update_top_scores()
+            self._schedule_candidates()
             
             
         if(indexing == 'bilateral'): self._indexing = 'reverse'
@@ -232,51 +234,31 @@ class ProgressiveMatching(EntityMatching):
                 self._predict_prunned_blocks(blocks)
             else:
                 raise AttributeError("Wrong type of Blocks")
-            self.update_top_scores()
+            self._schedule_candidates()
         
-        self.update_top_pairs()
+        self._gather_top_pairs()
         self.execution_time = time() - start_time
         self._progress_bar.close()
         
-                
         return self.pairs
         
-    def update_top_scores(self) -> None:
-        """Conducts the identifier translation from workflow to dataframe context and
-           stores the top score for each pair candidate from all indexing phases
+    def _schedule_candidates(self) -> None:
+        """Translates the workflow identifiers back into dataframe identifiers
+           Populates the dataset scheduler with the candidate pairs of the current indexing stage
         """
-        _smallest_score: float = sys.float_info.min
+        self.scheduler = DatasetScheduler(budget=self._budget, global_top=(self._algorithm=="Global")) if self.scheduler == None else self.scheduler
         
         for score, entity, candidate in self.pairs:
-            entity_id = self.data._gt_to_ids_reversed_1[entity] if entity < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[entity]
-            candidate_id = self.data._gt_to_ids_reversed_1[candidate] if candidate < self.data.dataset_limit else self.data._gt_to_ids_reversed_2[candidate]
-            _d1_entity, _d2_entity = (entity_id, candidate_id) if entity < self.data.dataset_limit else (candidate_id, entity_id)
-            _d1_entity, _d2_entity = (_d1_entity, _d2_entity) if(self._indexing == 'reverse') else (_d2_entity, _d1_entity) 
-            _current_top_score : float = self._pairs_top_score[(_d1_entity, _d2_entity)]
-            
-            if(abs(score) > _current_top_score):
-                self._pairs_top_score[(_d1_entity, _d2_entity)] = abs(score)
+            id1 = self.data._ids_mapping_2(entity) if(entity >= self.data.dataset_limit) else self.data._ids_mapping_1(entity)
+            id2 = self.data._ids_mapping_2(candidate) if(candidate >= self.data.dataset_limit) else self.data._ids_mapping_1(candidate)
+            dataset_1_entity, dataset_2_entity = (id1, id2) if self._indexing == 'inorder' else (id2, id1)
+            self.scheduler._insert_entity_neighbor(dataset_1_entity, dataset_2_entity, score)        
                 
-    def update_top_pairs(self) -> None:
-        """Extracts the top pairs in the global indexing context (after all the indexing phases have commenced)
+    def _gather_top_pairs(self) -> None:
+        """Emits the pairs from the scheduler based on the defined algorithm
         """
-        _minimum_score: float = sys.float_info.min
-        _final_candidates: PriorityQueue = PriorityQueue()
+        self.pairs = self.scheduler._emit_pairs(method=self._algorithm)
         
-        for entity, candidate in self._pairs_top_score:
-            _score = self._pairs_top_score[(entity, candidate)]
-            if _score >= _minimum_score:
-                _final_candidates.put(
-                    (_score, entity, candidate)
-                )
-                if self._budget < _final_candidates.qsize():
-                    _minimum_score = _final_candidates.get()[0]
-                    
-        self.pairs : List[float, int, int] = []
-        while(not _final_candidates.empty()):
-            self.pairs.append(_final_candidates.get())
-            
-        self.pairs = sorted(self.pairs, key=lambda x: x[0], reverse=True)
     
     # def predict(self,
     #     blocks: dict,
@@ -1147,7 +1129,7 @@ class WhooshPM(BlockIndependentPM):
         
     def _emit_pairs(self) -> None:
         """Returns a list of candidate pairs that have been emitted following the requested method"""       
-        self.pairs = self._sorted_dataset._emit_pairs(method=self._algorithm, data=self.data)
+        self.pairs = self._sorted_dataset._emit_pairs(method=self._algorithm)
                        
     def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         self._start_time = time()
@@ -1158,7 +1140,7 @@ class WhooshPM(BlockIndependentPM):
         self._create_index()
         self._to_emit_pairs : List[Tuple[int, int]] = []
         self._budget = float('inf') if self._emit_all_tps_stop else self._budget
-        self._sorted_dataset = WhooshDataset(list(self._whoosh_d1_retained_index), self._budget)
+        self._sorted_dataset = DatasetScheduler(list(self._whoosh_d1_retained_index), self._budget)
         self._populate_whoosh_dataset()
         self._emit_pairs()
         self.execution_time = time() - self._start_time
