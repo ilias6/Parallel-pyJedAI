@@ -262,20 +262,21 @@ class ProgressiveMatching(EntityMatching):
         
         for score, entity, candidate in self.pairs:
             
-            d1_entity, d2_entity = (entity, candidate) if(entity >= self.data.dataset_limit) else (candidate, entity)
+            # entities of first and second dataframe in the context of the current indexing
+            d1_entity, d2_entity = (entity, candidate) if(entity < self.data.dataset_limit) else (candidate, entity)
             d1_map, d2_map = (self._inorder_d1_id, self._inorder_d2_id) if (self._indexing == 'inorder') else (self._reverse_d1_id, self._reverse_d2_id)
+            
+            # the dataframe ids of the entities from first and second dataset in the context of indexing
             d1_entity_df_id, d2_entity_df_id = (d1_map[d1_entity], d2_map[d2_entity])
+            _inorder_d1_entity_df_id, _inorder_d2_entity_df_id = (d1_entity_df_id, d2_entity_df_id) if (self._indexing == 'inorder') else (d2_entity_df_id, d1_entity_df_id)
+            if(self._emit_all_tps_stop and _inorder_d2_entity_df_id in self.duplicate_of[_inorder_d1_entity_df_id]):
+                self.duplicate_emitted[(_inorder_d1_entity_df_id, _inorder_d2_entity_df_id)] = False
             
-            
-            d1_entity_df_id, d2_entity_df_id = (d1_entity_df_id, d2_entity_df_id) if(self._indexing == 'inorder') else (d2_entity_df_id, d1_entity_df_id)
-            d1_entity, d2_entity = (d1_entity, d2_entity) if(self._indexing == 'inorder') else (d2_entity, d1_entity)
-            # identifier incremented by the total number of entities in both datasets
-            # allows for retaining the information of indexing stage at which the pair is proposed for emission
-            id1 = d1_entity if self._indexing == 'inorder' else (d1_entity + self.data.num_of_entities)
-            id2 = d2_entity if self._indexing == 'inorder' else (d2_entity + self.data.num_of_entities)
-            self.scheduler._insert_entity_neighbor(id1, id2, score)
-            
-            if(self._emit_all_tps_stop): self.duplicate_emitted[(d1_entity, d2_entity)] = False
+            # in the case of reverse indexing stage, adjust the workflow identifiers of the entities so we can differ them from inorder entity ids
+            d1_entity = d1_entity if(self._indexing == 'inorder') else d1_entity + self.data.num_of_entities
+            d2_entity = d2_entity if(self._indexing == 'inorder') else d2_entity + self.data.num_of_entities
+            # we want entities to be inserted in D1 -> D2 order (current context e.x. reverse) which translates to D2 -> D1 order (reverse context e.x. inorder)
+            self.scheduler._insert_entity_neighbor(d1_entity, d2_entity, score)
             
     def _inorder_phase_entity(self, id : int) -> bool:
         """Given identifier corresponds to an entity proposed in the inorder indexing phase
@@ -311,10 +312,12 @@ class ProgressiveMatching(EntityMatching):
     def _gather_top_pairs(self) -> None:
         """Emits the pairs from the scheduler based on the defined algorithm
         """
+        self.scheduler._sort_neighborhoods_by_avg_weight()
         self.pairs = self.scheduler._emit_pairs(method=self._algorithm)
         
         _identified_pairs = []
         for score, entity, candidate in self.pairs:
+            entity, candidate = (entity, candidate) if self._inorder_phase_entity(entity) else (candidate, entity)
             _identified_pairs.append(score, self._retrieve_entity_df_id(entity), self._retrieve_entity_df_id(candidate))
             
         self.pairs = _identified_pairs
@@ -553,6 +556,7 @@ class LocalTopPM(HashBasedProgressiveMatching):
             self,
             weighting_scheme: str = 'X2',
             similarity_function: str = 'dice',
+            number_of_nearest_neighbors: int = 10,
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
             qgram: int = 2, # for jaccard
@@ -565,7 +569,8 @@ class LocalTopPM(HashBasedProgressiveMatching):
         ) -> None:
 
         super().__init__(weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
-
+        self._number_of_nearest_neighbors : int = number_of_nearest_neighbors
+        
     def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         self.pairs = Graph()
         pcnp : ProgressiveCardinalityNodePruning = ProgressiveCardinalityNodePruning(self._weighting_scheme, self._budget)
@@ -605,10 +610,11 @@ class EmbeddingsNNBPM(BlockIndependentPM):
     def __init__(
             self,
             language_model: str = 'bert',
+            number_of_nearest_neighbors: int = 10,
             similarity_search: str = 'faiss',
             vector_size: int = 200,
             num_of_clusters: int = 5,
-            similarity_function: str = 'dice',
+            similarity_function: str = 'cosine',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
             qgram: int = 2, # for jaccard
@@ -621,10 +627,11 @@ class EmbeddingsNNBPM(BlockIndependentPM):
         ) -> None:
 
         super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
-        self._language_model = language_model
-        self._similarity_search = similarity_search
-        self._vector_size = vector_size
-        self._num_of_clusters = num_of_clusters
+        self._language_model : str = language_model
+        self._number_of_nearest_neighbors : int = number_of_nearest_neighbors
+        self._similarity_search : str = similarity_search
+        self._vector_size : int = vector_size
+        self._num_of_clusters : int = num_of_clusters
 
     def _top_pair_emission(self) -> None:
         """Applies global sorting to all entity pairs produced by NN,
@@ -640,8 +647,7 @@ class EmbeddingsNNBPM(BlockIndependentPM):
                     candidate_id = self.ennbb._si.d1_retained_ids[self.neighbors[i][j]]
                     self.pairs.append((entity_id, candidate_id, self.scores[i][j]))
 
-        self.pairs = sorted(self.pairs, key=lambda x: x[2], reverse=True)
-        self.pairs = [(x[0], x[1]) for x in self.pairs]
+        self.pairs = [(x[2], x[0], x[1]) for x in self.pairs]
 
     def _dfs_pair_emission(self) -> None:
         """Sorts NN neighborhoods in ascending average distance from their query entity,
@@ -664,7 +670,7 @@ class EmbeddingsNNBPM(BlockIndependentPM):
                     neighbor_id = self.ennbb._si.d1_retained_ids[neighbor]
                     self.pairs.append((entity_id, neighbor_id, neighbor_scores[neighbor_index]))
 
-        self.pairs = [(x[0], x[1]) for x in self.pairs]
+        self.pairs = [(x[2], x[0], x[1]) for x in self.pairs]
         
     def _hb_pair_emission(self) -> None:
         """Sorts NN neighborhoods in ascending average distance from their query entity,
@@ -690,7 +696,7 @@ class EmbeddingsNNBPM(BlockIndependentPM):
                     _current_emissions = _remaining_emissions if neighbor_index else _first_emissions
                     _current_emissions.append((entity_id, neighbor_id, neighbor_scores[neighbor_index]))
 
-        self.pairs = [(x[0], x[1]) for x in _first_emissions] + [(x[0], x[1]) for x in _remaining_emissions]
+        self.pairs = [(x[2], x[0], x[1]) for x in _first_emissions] + [(x[2], x[0], x[1]) for x in _remaining_emissions]
         
     def _bfs_pair_emission(self) -> None:
         """Sorts NN neighborhoods in ascending average distance from their query entity,
@@ -711,41 +717,34 @@ class EmbeddingsNNBPM(BlockIndependentPM):
                     else self.ennbb._si.d2_retained_ids[sorted_neighborhood]
                     self.pairs.append((entity_id, neighbor_id, self.scores[sorted_neighborhood][current_emission_per_pair]))
                     
-        self.pairs = [(x[0], x[1]) for x in self.pairs]
+        self.pairs = [(x[2], x[0], x[1]) for x in self.pairs]
 
     def _produce_pairs(self):
         """Calls pairs emission based on the requested approach
         Raises:
             AttributeError: Given emission technique hasn't been defined
         """
-        if(self._algorithm == 'DFS'):
-            self._dfs_pair_emission()
-        elif(self._algorithm == 'HB'):
-            self._hb_pair_emission()
-        elif(self._algorithm == 'BFS'):
-            self._bfs_pair_emission()
-        elif(self._algorithm == 'TOP'):
-            self._top_pair_emission()
-        else:
-            raise AttributeError(self._algorithm + ' emission technique is undefined!')
+        # currently first phase algorithms are in charge of gathering the subset of the original dataset
+        # that will be used to initialize the scheduler, we simply retrieve all the pairs and their scores
+        self._top_pair_emission()
 
     def _predict_raw_blocks(self, blocks: dict = None) -> List[Tuple[int, int]]:
         self.ennbb : EmbeddingsNNBlockBuilding = EmbeddingsNNBlockBuilding(self._language_model, self._similarity_search)
-        self.final_blocks = self.ennbb.build_blocks(data = self.data,
-                     num_of_clusters = self._num_of_clusters,
-                     top_k = int(max(1, int(self._budget / self.data.num_of_entities) + (self._budget % self.data.num_of_entities > 0)))
-                     if not self._emit_all_tps_stop else self._budget,
-                     return_vectors = False,
-                     tqdm_disable = False,
-                     save_embeddings = True,
-                     load_embeddings_if_exist = True,
-                     with_entity_matching = False,
-                     input_cleaned_blocks = blocks)
-
+        
+        self.final_blocks = self.ennbb.build_blocks(data=self.data,
+                                                    vector_size=self._vector_size,
+                                                    num_of_clusters=self._num_of_clusters,
+                                                    top_k=self._number_of_nearest_neighbors,
+                                                    return_vectors=False,
+                                                    tqdm_disable=False,
+                                                    save_embeddings=True,
+                                                    load_embeddings_if_exist=True,
+                                                    with_entity_matching=False,
+                                                    input_cleaned_blocks=blocks,
+                                                    similarity_distance=self.similarity_function)
         self.scores = self.ennbb.distances
         self.neighbors = self.ennbb.neighbors
         self.final_vectors = (self.ennbb.vectors_1, self.ennbb.vectors_2)
-
         self._produce_pairs()
         return self.pairs
 
@@ -762,6 +761,7 @@ class SimilarityBasedProgressiveMatching(ProgressiveMatching):
     def __init__(
             self,
             weighting_scheme: str = 'ACF',
+            windows_size: int = 10,
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
@@ -776,6 +776,7 @@ class SimilarityBasedProgressiveMatching(ProgressiveMatching):
 
         super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
         self._weighting_scheme : str = weighting_scheme
+        self._window_size : int = windows_size
         
 class GlobalPSNM(SimilarityBasedProgressiveMatching):
     """Applies Global Progressive Sorted Neighborhood Matching
@@ -803,17 +804,12 @@ class GlobalPSNM(SimilarityBasedProgressiveMatching):
 
         super().__init__(weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
 
-    def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
+    def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[float, int, int]]:
         gpsn : GlobalProgressiveSortedNeighborhood = GlobalProgressiveSortedNeighborhood(self._weighting_scheme, self._budget)
-        candidates :  PriorityQueue = gpsn.process(blocks=blocks, data=self.data, tqdm_disable=True, emit_all_tps_stop=self._emit_all_tps_stop)
-        self.pairs = []
-        while(not candidates.empty()):
-            _, entity_id, candidate_id = candidates.get()
-            self.pairs.append((entity_id, candidate_id))
-          
+        self.pairs : List[Tuple[float, int, int]] = gpsn.process(blocks=blocks, data=self.data, window_size=self._window_size, tqdm_disable=True, emit_all_tps_stop=self._emit_all_tps_stop)
         return self.pairs
 
-    def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
+    def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[float, int, int]]:
         raise NotImplementedError("Sorter Neighborhood Algorithms don't support prunned blocks")
     
 class LocalPSNM(SimilarityBasedProgressiveMatching):
@@ -842,13 +838,12 @@ class LocalPSNM(SimilarityBasedProgressiveMatching):
 
         super().__init__(weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
 
-    def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
+    def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[float, int, int]]:
         lpsn : LocalProgressiveSortedNeighborhood = LocalProgressiveSortedNeighborhood(self._weighting_scheme, self._budget)
-        candidates : list = lpsn.process(blocks=blocks, data=self.data, tqdm_disable=True, emit_all_tps_stop=self._emit_all_tps_stop)
-        self.pairs = candidates
+        self.pairs : List[Tuple[float, int, int]] = lpsn.process(blocks=blocks, data=self.data, window_size=self._window_size, tqdm_disable=True, emit_all_tps_stop=self._emit_all_tps_stop)
         return self.pairs
 
-    def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
+    def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[float, int, int]]:
         raise NotImplementedError("Sorter Neighborhood Algorithms don't support prunned blocks " + \
                                 "(pre comparison-cleaning entities per block distribution required")
 class RandomPM(ProgressiveMatching):
@@ -915,9 +910,9 @@ class PESM(HashBasedProgressiveMatching):
     def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         
         pes : ProgressiveEntityScheduling = ProgressiveEntityScheduling(self._weighting_scheme, self._budget)
-        pes.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, method=self._algorithm, emit_all_tps_stop=self._emit_all_tps_stop)
-        self.pairs = pes.produce_pairs()
-
+        self.pairs = pes.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, method=self._algorithm, emit_all_tps_stop=self._emit_all_tps_stop)
+        return self.pairs
+    
     def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         return self._predict_raw_blocks(blocks)
         # raise NotImplementedError("Sorter Neighborhood Algorithms doesn't support prunned blocks (lack of precalculated weights)")
@@ -935,6 +930,7 @@ class WhooshPM(BlockIndependentPM):
     def __init__(
             self,
             similarity_function: str = 'TF-IDF',
+            number_of_nearest_neighbors: int = 10,
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
             qgram: int = 2, # for jaccard
@@ -947,7 +943,8 @@ class WhooshPM(BlockIndependentPM):
         ) -> None:
         # budget set to float('inf') implies unlimited budget
         super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
-     
+        self._number_of_nearest_neighbors : int = number_of_nearest_neighbors
+        
     def _set_whoosh_datasets(self) -> None:
         """Saves the rows of both datasets corresponding to the indices of the entities that have been retained after comparison cleaning
         """
@@ -1001,10 +998,10 @@ class WhooshPM(BlockIndependentPM):
     def _populate_whoosh_dataset(self) -> None:
         """For each retained entity in the first dataset, construct a query with its text content,
            parses it to the indexers, retrieves best candidates and stores them in entity's neighborhood.
-           Finally, neighborhoods are sorted in descending order of their average weight
+           Populates a list with all the retrieved pairs.
         """
         # None value for budget implies unlimited budget in whoosh 
-        _query_budget = None if is_infinite(self._budget) else max(1, 2 * self._budget / len(self._whoosh_d1))
+        _query_budget = self._number_of_nearest_neighbors
         
         if(self.similarity_function not in whoosh_similarity_function):
             print(f'{self.similarity_function} Similarity Function is Undefined')
@@ -1024,13 +1021,7 @@ class WhooshPM(BlockIndependentPM):
                 for neighbor in query_results:
                     _score = neighbor.score
                     _neighbor_id = neighbor['ID']
-                    self._sorted_dataset._insert_entity_neighbor(entity=entity_id, neighbor=_neighbor_id, weight=_score)
-        
-        self._sorted_dataset._sort_neighborhoods_by_avg_weight()
-        
-    def _emit_pairs(self) -> None:
-        """Returns a list of candidate pairs that have been emitted following the requested method"""       
-        self.pairs = self._sorted_dataset._emit_pairs(method=self._algorithm)
+                    self.pairs.append((_score, self.data._ids_mapping_1[entity], self.data._ids_mapping_2[_neighbor_id]))
                        
     def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         self._start_time = time()
@@ -1039,12 +1030,11 @@ class WhooshPM(BlockIndependentPM):
         self._set_whoosh_datasets()
         self._initialize_index_path()
         self._create_index()
-        self._to_emit_pairs : List[Tuple[int, int]] = []
+        self.pairs : List[Tuple[float, int, int]] = []
         self._budget = float('inf') if self._emit_all_tps_stop else self._budget
-        self._sorted_dataset = DatasetScheduler(list(self._whoosh_d1_retained_index), self._budget)
         self._populate_whoosh_dataset()
-        self._emit_pairs()
         self.execution_time = time() - self._start_time
+        return self.pairs
         
     def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         self._predict_raw_blocks(blocks)    

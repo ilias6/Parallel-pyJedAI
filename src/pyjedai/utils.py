@@ -432,18 +432,60 @@ class DatasetScheduler(ABC):
                 
         if(self._emitted_comparisons < self._budget):
             self._emitted_pairs.append((_score, _entity, _neighbor))
-            self._checked_entities.add(canonical_swap(_entity, _neighbor))
             self._emitted_comparisons += 1
             return True
         else:
             return False
+
+
+    def _checked_pair(self, entity : int, candidate : int) -> bool:
+        """Checks if the given pair has been checked previously in the scheduling process.
+           In the case the given pair has been constructed in the reverse indexing context,
+           proper translation to inorder indexing identification is done for correct checking.
+           Finally, if the pair has not been checked in the past, it is added to the checked pool.
+        Args:
+            entity (int): Entity ID
+            candidate (int): Candidate ID
+
+        Returns:
+            bool: Given pair has already been checked in the scheduling process
+        """
+        _d1_inorder_entity, _d2_inorder_entity = self._get_inorder_representation(entity, candidate)
         
-    def _emit_pairs(self, method : str) -> List[Tuple[float, int, int]]:
+        if((_d1_inorder_entity, _d2_inorder_entity) not in self._checked_entities):
+            self._checked_entities.add((_d1_inorder_entity, _d2_inorder_entity))
+            return False
+        else:
+            return True
+        
+    def _get_inorder_representation(self, entity : int, candidate : int) -> Tuple[int, int]:
+        """Takes as input the ID of the entity of the first and second dataset in its schedule indexing context (in that order!). 
+           Returns the ids of given entities in the inorder context,
+           in the following order (id of the entity of the first dataset in the inorder context, -//- second -//-)
+        Args:
+            entity (int): Entity ID
+            candidate (int): Candidate ID
+
+        Returns:
+            Tuple[int, int]: (id of entity of first dataframe, id of entity of second dataframe) in inorder context
+        """
+        if(entity < self._data.num_of_entities): return entity, candidate
+
+        # reverse context case
+        # - number of entities (to transfer the IDs from Scheduler -> Workflow ID representation)
+        # + / - dataset limit in order to express (D1 in reverse context == D2 in inorder context, and the reverse)
+        entity = entity - self._data.num_of_entities + self._data.dataset_limit
+        candidate = candidate - self._data.num_of_entities - self._data.dataset_limit
+        
+        return candidate, entity 
+            
+
+    def _emit_pairs(self, method : str, data : Data) -> List[Tuple[float, int, int]]:
         """Emits candidate pairs according to specified method
 
         Args:
             method (str): Emission Method
-            data (Data): Dataset Module
+            data (Data): Dataset Module of the 
 
         Returns:
             List[Tuple[int, int]]: List of candidate pairs
@@ -453,11 +495,12 @@ class DatasetScheduler(ABC):
         self._emitted_pairs = []
         self._emitted_comparisons = 0    
         self._checked_entities = set()
+        self._data : Data = data
         
-        if(self._method == 'Global'):
+        if(self._method == 'GLOBAL'):
             while(not self._all_candidates.empty()):
                 score, sorted_entity, neighbor = self._all_candidates.get()
-                if(canonical_swap(sorted_entity, neighbor) not in self._checked_entities):
+                if(self._checked_pair(sorted_entity, neighbor)):
                     if(not self._successful_emission(pair=(-score, sorted_entity, neighbor))):
                         return self._emitted_pairs
                 
@@ -468,7 +511,7 @@ class DatasetScheduler(ABC):
             for sorted_entity in self._sorted_entities:
                 if(self._entity_has_neighbors(sorted_entity)):
                     score, neighbor = self._pop_entity_neighbor(sorted_entity)
-                    if(canonical_swap(sorted_entity, neighbor) not in self._checked_entities):
+                    if(self._checked_pair(sorted_entity, neighbor)):
                         if(not self._successful_emission(pair=(score, sorted_entity, neighbor))):
                             return self._emitted_pairs
                    
@@ -476,7 +519,7 @@ class DatasetScheduler(ABC):
             for sorted_entity in self._sorted_entities:
                 while(self._entity_has_neighbors(sorted_entity)):
                     score, neighbor = self._pop_entity_neighbor(sorted_entity)
-                    if(canonical_swap(sorted_entity, neighbor) not in self._checked_entities):
+                    if(self._checked_pair(sorted_entity, neighbor)):
                         if(not self._successful_emission(pair=(score, sorted_entity, neighbor))):
                             return self._emitted_pairs
         else:
@@ -486,7 +529,7 @@ class DatasetScheduler(ABC):
                 for sorted_entity in self._sorted_entities:
                     if(self._entity_has_neighbors(sorted_entity)):
                         score, neighbor = self._pop_entity_neighbor(sorted_entity)
-                        if(canonical_swap(sorted_entity, neighbor) not in self._checked_entities):
+                        if(self._checked_pair(sorted_entity, neighbor)):
                             if(not self._successful_emission(pair=(score, sorted_entity, neighbor))):
                                 return self._emitted_pairs
                             _emissions_left = True
