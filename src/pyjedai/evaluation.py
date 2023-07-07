@@ -352,7 +352,7 @@ class Evaluation:
         for batch in batches:
             _current_batch_size : int = 0
             for score, entity, candidate in batch:
-                if(self._all_tps_emitted()): break
+                if(self._all_tps_emitted()): break                
                 
                 if candidate in duplicate_of[entity]:
                     self._update_true_positive_entry(entity, candidate)
@@ -397,6 +397,10 @@ class Evaluation:
             
             matcher_predictions = matcher_prediction_data.get_predictions()
             matcher_tps_checked = matcher_prediction_data.get_tps_checked()
+            
+            # print(f"Predictions: {matcher_predictions}")
+            print(f"TPS checked: {matcher_tps_checked}")
+            # print(f"Diplicates of: {progressive_matcher.duplicate_of}")
             
             cumulative_recall, normalized_auc = self.calculate_roc_auc_data(pairs=matcher_predictions,
                                                                             duplicate_of=progressive_matcher.duplicate_of,

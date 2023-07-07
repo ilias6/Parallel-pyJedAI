@@ -13,6 +13,7 @@ import sys
 from time import time
 from networkx import Graph
 import inspect
+from ordered_set import OrderedSet
 
 # ----------------------- #
 # Constants
@@ -31,12 +32,12 @@ def create_entity_index(blocks: dict, is_dirty_er: bool) -> dict:
     entity_index = {}
     for key, block in blocks.items():
         for entity_id in block.entities_D1:
-            entity_index.setdefault(entity_id, set())
+            entity_index.setdefault(entity_id, OrderedSet())
             entity_index[entity_id].add(key)
 
         if not is_dirty_er:
             for entity_id in block.entities_D2:
-                entity_index.setdefault(entity_id, set())
+                entity_index.setdefault(entity_id, OrderedSet())
                 entity_index[entity_id].add(key)
 
     return entity_index
@@ -398,8 +399,12 @@ class DatasetScheduler(ABC):
             
     def _insert_entity_neighbor(self, entity : int, neighbor : int, weight : float) -> None:
         if(not self._global_top):
-            _neighborhood = EntityScheduler(entity) if entity in self._neighborhoods else self._neighborhoods[entity]
-            _neighborhood._insert(neighbor, weight)
+            if(entity not in self._neighborhoods):
+                _new_neighborhood : EntityScheduler = EntityScheduler(entity)
+                _new_neighborhood._insert(neighbor, weight)
+                self._neighborhoods[entity] = _new_neighborhood
+            else:
+                self._neighborhoods[entity]._insert(neighbor, weight)
         else:
             self._all_candidates.put((-weight, entity, neighbor))
         
@@ -436,7 +441,21 @@ class DatasetScheduler(ABC):
             return True
         else:
             return False
-
+        
+    def _print_info(self):
+        _n_ids : int
+        if(self._sorted_entities is None):
+            print("Neighborhood Status - Sorted by average weight")
+            _n_ids = self._neighborhoods.keys()
+        else:
+            print("Neighborhood Status - Not sorted by average weight")
+            _n_ids = self._sorted_entities
+        for _n_id in _n_ids:
+            _current_neighborhood = self._neighborhoods[_n_id]
+            print("#############################")
+            print(f"Neighborhood[{_n_id}]")
+            print(f"Total Neighbords[{_current_neighborhood._get_neighbors_num()}]")
+            print(f"Average Weight[{_current_neighborhood._get_average_weight()}]")
 
     def _checked_pair(self, entity : int, candidate : int) -> bool:
         """Checks if the given pair has been checked previously in the scheduling process.
@@ -500,7 +519,7 @@ class DatasetScheduler(ABC):
         if(self._method == 'GLOBAL'):
             while(not self._all_candidates.empty()):
                 score, sorted_entity, neighbor = self._all_candidates.get()
-                if(self._checked_pair(sorted_entity, neighbor)):
+                if(not self._checked_pair(sorted_entity, neighbor)):
                     if(not self._successful_emission(pair=(-score, sorted_entity, neighbor))):
                         return self._emitted_pairs
                 
@@ -511,7 +530,7 @@ class DatasetScheduler(ABC):
             for sorted_entity in self._sorted_entities:
                 if(self._entity_has_neighbors(sorted_entity)):
                     score, neighbor = self._pop_entity_neighbor(sorted_entity)
-                    if(self._checked_pair(sorted_entity, neighbor)):
+                    if(not self._checked_pair(sorted_entity, neighbor)):
                         if(not self._successful_emission(pair=(score, sorted_entity, neighbor))):
                             return self._emitted_pairs
                    
@@ -519,7 +538,7 @@ class DatasetScheduler(ABC):
             for sorted_entity in self._sorted_entities:
                 while(self._entity_has_neighbors(sorted_entity)):
                     score, neighbor = self._pop_entity_neighbor(sorted_entity)
-                    if(self._checked_pair(sorted_entity, neighbor)):
+                    if(not self._checked_pair(sorted_entity, neighbor)):
                         if(not self._successful_emission(pair=(score, sorted_entity, neighbor))):
                             return self._emitted_pairs
         else:
@@ -529,7 +548,7 @@ class DatasetScheduler(ABC):
                 for sorted_entity in self._sorted_entities:
                     if(self._entity_has_neighbors(sorted_entity)):
                         score, neighbor = self._pop_entity_neighbor(sorted_entity)
-                        if(self._checked_pair(sorted_entity, neighbor)):
+                        if(not self._checked_pair(sorted_entity, neighbor)):
                             if(not self._successful_emission(pair=(score, sorted_entity, neighbor))):
                                 return self._emitted_pairs
                             _emissions_left = True
@@ -690,6 +709,63 @@ def has_duplicate_pairs(pairs : List[Tuple[float, int, int]]):
         seen_pairs.add((entity, candidate))
     return False
 
+def reverse_blocks_entity_indexing(blocks : dict, old_data_limit : int) -> dict:
+    """Returns a new instance of blocks containing the entity IDs of the given blocks translated into the reverse indexing system
+    Args:
+        blocks (dict): blocks as defined in the previous indexing
+        old_data_limit (int): Limit defining whether an ID belongs to the first (<limit) or second (>=limit) dataset
+                              within the context of the previous indexing 
+
+    Returns:
+        dict : New block instance with identifiers defined in the context of the reverse indexing
+    """
+    all_blocks = list(blocks.values())
+    if 'Block' in str(type(all_blocks[0])):
+        return reverse_raw_blocks_entity_indexing(blocks, old_data_limit)
+    elif isinstance(all_blocks[0], set):
+        return reverse_prunned_blocks_entity_indexing(blocks, old_data_limit)
+ 
+def reverse_prunned_blocks_entity_indexing(blocks : dict, old_data_limit : int) -> dict:
+    _reversed_blocks : dict = dict()
+    _reversed_block : set
+     
+    for entity in blocks:
+        _updated_entity : int = get_reverse_indexing_id(entity)
+        _reversed_block = set()
+        block : set = blocks[entity]
+        for candidate in block:
+            _reversed_block.add(get_reverse_indexing_id(candidate))
+        _reversed_blocks[_updated_entity] = _reversed_block
+        
+    return _reversed_blocks
+        
+def reverse_raw_blocks_entity_indexing(blocks : dict, old_data_limit : int) -> dict:
+    _reversed_blocks : dict = dict()
+    _reversed_block : Block 
+    
+    for token in blocks:
+        _current_block : Block = blocks[token]
+        _updated_D1_entities = OrderedSet()
+        _updated_D2_entities = OrderedSet()
+        
+        for d1_entity in _current_block.entities_D1:
+            _updated_D2_entities.add(get_reverse_indexing_id(d1_entity, old_data_limit))
+            
+        for d2_entity in _current_block.entities_D2:
+            _updated_D1_entities.add(get_reverse_indexing_id(d2_entity, old_data_limit))
+         
+        _reversed_block = Block()   
+        _reversed_block.entities_D1 = _updated_D1_entities
+        _reversed_block.entities_D2 = _updated_D2_entities
+        
+        _reversed_blocks[token] = _reversed_block
+    
+    return _reversed_blocks
+        
+    
+def get_reverse_indexing_id(id : int, old_data_limit : int) -> int:
+    return (id + old_data_limit) if (id < old_data_limit) else (id - old_data_limit)
+    
             
             
         

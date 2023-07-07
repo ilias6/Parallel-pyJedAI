@@ -739,7 +739,7 @@ class ProgressiveSortedNeighborhood(AbstractMetablocking):
             window_size : int = 10,
             tqdm_disable: bool = False,
             emit_all_tps_stop : bool = False
-    ) -> List[float, int, int]:
+    ) -> List[Tuple[float, int, int]]:
         """Calculates top comparisons for Progressive Matching
 
         Args:

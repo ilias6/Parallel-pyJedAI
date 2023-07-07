@@ -9,6 +9,7 @@ from nltk.corpus import stopwords
 
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from ordered_set import OrderedSet
 
 class PYJEDAIFeature(ABC):
 
@@ -196,8 +197,8 @@ class Data:
         
         for _, row in self.ground_truth.iterrows():
             id1, id2 = (row[0], row[1])
-            if id1 in self.duplicate_of: self.duplicate_of[id1].append(id2)
-            else: self.duplicate_of[id1] = [id2]
+            if id1 in self.duplicate_of: self.duplicate_of[id1].add(id2)
+            else: self.duplicate_of[id1] = {id2}
             
     def _are_true_positives(self, id1 : int, id2 : int):
         """Checks if given pair of identifiers represents a duplicate.
@@ -340,8 +341,8 @@ class Block:
         Consists of 2 sets of profile entities 1 for Dirty ER and 2 for Clean-Clean ER.
     """
     def __init__(self) -> None:
-        self.entities_D1: set = set()
-        self.entities_D2: set = set()
+        self.entities_D1: set = OrderedSet()
+        self.entities_D2: set = OrderedSet()
 
     def get_cardinality(self, is_dirty_er) -> int:
         """Returns block cardinality.

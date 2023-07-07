@@ -464,23 +464,13 @@ class ProgressiveWorkFlow(Workflow):
         constructor_arguments = new_dictionary_from_keys(dictionary=matcher_arguments, keys=get_class_function_arguments(class_reference=matcher, function_name='__init__'))
         predictor_arguments = new_dictionary_from_keys(dictionary=matcher_arguments, keys=get_class_function_arguments(class_reference=matcher, function_name='predict'))
         
+        print(constructor_arguments)
+        print(predictor_arguments)
+        
         progressive_matcher : ProgressiveMatching = matcher(**constructor_arguments)
         candidates : List[Tuple[float, int, int]] = progressive_matcher.predict(budget=float('inf'), **predictor_arguments)
         
-        # entity_matching_method = self.entity_matching['method'](**self.entity_matching["params"]) \
-        #                                 if "params" in self.entity_matching \
-        #                                 else self.entity_matching['method']()
-        # self.final_pairs = em_graph = entity_matching_method.predict(
-        #     comparison_cleaning_blocks if comparison_cleaning_blocks is not None \
-        #         else block_building_blocks,
-        #     data,
-        #     tqdm_disable=workflow_step_tqdm_disable
-        # )
-        # res = entity_matching_method.evaluate(em_graph,
-        #                                         export_to_dict=True,
-        #                                         with_classification_report=with_classification_report,
-        #                                         verbose=verbose)
-        # self._save_step(res, entity_matching_method.method_configuration())
+        self._progressive_matcher : ProgressiveMatching = progressive_matcher
         self._workflow_bar.update(1)
         self.workflow_exec_time = time() - start_time
 

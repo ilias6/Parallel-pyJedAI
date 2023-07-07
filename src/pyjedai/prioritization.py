@@ -62,7 +62,7 @@ from random import sample
 from .utils import sorted_enumerate, canonical_swap
 from abc import abstractmethod
 from typing import Tuple, List
-from .utils import SubsetIndexer, DatasetScheduler, EntityScheduler, is_infinite, PredictionData, reverse_data_indexing
+from .utils import SubsetIndexer, DatasetScheduler, EntityScheduler, is_infinite, PredictionData, reverse_data_indexing, reverse_blocks_entity_indexing
 import pandas as pd
 import os
 from whoosh.fields import TEXT, Schema, ID
@@ -195,6 +195,7 @@ class ProgressiveMatching(EntityMatching):
         self._prediction_data : PredictionData = None
         self.data : Data = data
         self.duplicate_of = data.duplicate_of
+        _pipi = self.duplicate_of
         self.scheduler : DatasetScheduler = None
 
         if not blocks:
@@ -203,7 +204,7 @@ class ProgressiveMatching(EntityMatching):
         if self.data.is_dirty_er and self._indexing == 'bilateral':
             raise ValueError("Cannot apply bilateral indexing to dirty Entity Resolution (single dataset)")
             
-        
+        _inorder_blocks = blocks  
         self._pairs_top_score : dict = defaultdict(lambda: -1)
         all_blocks = list(blocks.values())
         self._progress_bar = tqdm(total=len(blocks),
@@ -225,13 +226,14 @@ class ProgressiveMatching(EntityMatching):
             
         if(indexing == 'bilateral'): self._indexing = 'reverse'
         if(self._indexing == 'reverse'):
+            _reverse_blocks = reverse_blocks_entity_indexing(_inorder_blocks, self.data.dataset_limit)
             self.data = reverse_data_indexing(self.data)
             if 'Block' in str(type(all_blocks[0])):
-                self._predict_raw_blocks(blocks)
+                self._predict_raw_blocks(_reverse_blocks)
             elif isinstance(all_blocks[0], set):
                 if(self._comparison_cleaner == None):
                     raise AttributeError("No precalculated weights were given from the CC step") 
-                self._predict_prunned_blocks(blocks)
+                self._predict_prunned_blocks(_reverse_blocks)
             else:
                 raise AttributeError("Wrong type of Blocks")
             self._schedule_candidates()
@@ -248,10 +250,10 @@ class ProgressiveMatching(EntityMatching):
         """
         if(self._indexing == "inorder"):
             self._inorder_d1_id = self.data._gt_to_ids_reversed_1
-            self._inorder_d2_id = self.data._gt_to_ids_reversed_2
+            self._inorder_d2_id = self.data._gt_to_ids_reversed_2  
         if(self._indexing == "reverse"):
             self._reverse_d1_id = self.data._gt_to_ids_reversed_1
-            self._reverse_d2_id = self.data._gt_to_ids_reversed_2        
+            self._reverse_d2_id = self.data._gt_to_ids_reversed_2 
       
     def _schedule_candidates(self) -> None:
         """Translates the workflow identifiers back into dataframe identifiers
@@ -259,22 +261,43 @@ class ProgressiveMatching(EntityMatching):
         """
         self.scheduler = DatasetScheduler(budget=float('inf') if self._emit_all_tps_stop else self._budget, global_top=(self._algorithm=="Global")) if self.scheduler == None else self.scheduler
         self._store_id_mappings()
-        
-        for score, entity, candidate in self.pairs:
-            
+        for score, entity, candidate in self.pairs:            
             # entities of first and second dataframe in the context of the current indexing
-            d1_entity, d2_entity = (entity, candidate) if(entity < self.data.dataset_limit) else (candidate, entity)
+            d1_entity, d2_entity = (entity, candidate) if(entity < candidate) else (candidate, entity)
             d1_map, d2_map = (self._inorder_d1_id, self._inorder_d2_id) if (self._indexing == 'inorder') else (self._reverse_d1_id, self._reverse_d2_id)
+            
+            # print(f"#############################################################")
+            # print(f"Score: {score}")
+            # print(f"---------------Workflow IDs [{self._indexing}]---------------")
+            # print(f"Entity: {entity}")
+            # print(f"Candidate: {candidate}")
+            # print(f"---------------Workflow IDs [D1 context Ent First]---------------")
+            # print(f"D1 Entity: {d1_entity}")
+            # print(f"D2 Entity: {d2_entity}")
+            
+            
             
             # the dataframe ids of the entities from first and second dataset in the context of indexing
             d1_entity_df_id, d2_entity_df_id = (d1_map[d1_entity], d2_map[d2_entity])
             _inorder_d1_entity_df_id, _inorder_d2_entity_df_id = (d1_entity_df_id, d2_entity_df_id) if (self._indexing == 'inorder') else (d2_entity_df_id, d1_entity_df_id)
             if(self._emit_all_tps_stop and _inorder_d2_entity_df_id in self.duplicate_of[_inorder_d1_entity_df_id]):
-                self.duplicate_emitted[(_inorder_d1_entity_df_id, _inorder_d2_entity_df_id)] = False
+                self.duplicate_emitted[(_inorder_d1_entity_df_id, _inorder_d2_entity_df_id)] = False          
             
             # in the case of reverse indexing stage, adjust the workflow identifiers of the entities so we can differ them from inorder entity ids
             d1_entity = d1_entity if(self._indexing == 'inorder') else d1_entity + self.data.num_of_entities
             d2_entity = d2_entity if(self._indexing == 'inorder') else d2_entity + self.data.num_of_entities
+            
+            # print(f"---------------Dataframe IDs [{self._indexing}]---------------")
+            # print(f"D1 Entity DF ID: {d1_entity_df_id}")
+            # print(f"D2 Entity DF ID: {d2_entity_df_id}")
+            # print(f"---------------Inorder Dataframe IDs [{self._indexing}]---------------")
+            # print(f"Inorder D1 Entity DF ID: {_inorder_d1_entity_df_id}")
+            # print(f"Inorder D2 Entity DF ID: {_inorder_d2_entity_df_id}")
+            # print(f"---------------Scheduler IDs [D1 context Ent First]---------------")
+            # print(f"D1 Entity: {d1_entity}")
+            # print(f"D2 Entity: {d2_entity}")
+            # if(_inorder_d2_entity_df_id in self.duplicate_of[_inorder_d1_entity_df_id]):
+            #     print("^ THIS IS A TRUE POSITIVE ^") 
             # we want entities to be inserted in D1 -> D2 order (current context e.x. reverse) which translates to D2 -> D1 order (reverse context e.x. inorder)
             self.scheduler._insert_entity_neighbor(d1_entity, d2_entity, score)
             
@@ -290,7 +313,7 @@ class ProgressiveMatching(EntityMatching):
         return id < self.data.num_of_entities
     
     def _retrieve_entity_df_id(self, id : int) -> int:
-        """Returns the corresponding id in the dataframe of the given workflow id
+        """Returns the corresponding id in the dataframe of the given entity id in the context of its indexing phase 
 
         Args:
             id (int): Workflow Identifier
@@ -302,10 +325,10 @@ class ProgressiveMatching(EntityMatching):
         _df_id_of : dict
         if(self._inorder_phase_entity(id)):
             _workflow_id = id
-            _df_id_of = self._inorder_d1_id if (id < len(self._inorder_d1_id)) else self._inorder_d2_id
+            _df_id_of = self._inorder_d1_id if (_workflow_id < len(self._inorder_d1_id)) else self._inorder_d2_id
         else:
             _workflow_id = id - self.data.num_of_entities
-            _df_id_of = self._reverse_d1_id if (id < self.data.dataset_limit) else self._reverse_d2_id
+            _df_id_of = self._reverse_d1_id if (_workflow_id < len(self._reverse_d1_id)) else self._reverse_d2_id
             
         return _df_id_of[_workflow_id]    
     
@@ -313,12 +336,15 @@ class ProgressiveMatching(EntityMatching):
         """Emits the pairs from the scheduler based on the defined algorithm
         """
         self.scheduler._sort_neighborhoods_by_avg_weight()
-        self.pairs = self.scheduler._emit_pairs(method=self._algorithm)
+        self.pairs = self.scheduler._emit_pairs(method=self._algorithm, data=self.data)
         
         _identified_pairs = []
         for score, entity, candidate in self.pairs:
-            entity, candidate = (entity, candidate) if self._inorder_phase_entity(entity) else (candidate, entity)
-            _identified_pairs.append(score, self._retrieve_entity_df_id(entity), self._retrieve_entity_df_id(candidate))
+            _inorder_entities : bool = self._inorder_phase_entity(entity)
+            entity, candidate = (self._retrieve_entity_df_id(entity), self._retrieve_entity_df_id(candidate))
+            print
+            entity, candidate = (entity, candidate) if _inorder_entities else (candidate, entity)
+            _identified_pairs.append((score, entity, candidate))
             
         self.pairs = _identified_pairs
 
@@ -421,12 +447,19 @@ class BlockIndependentPM(ProgressiveMatching):
         self._budget : int = budget
         self._indexing : str = indexing
         self._comparison_cleaner: AbstractMetablocking = comparison_cleaner
-        self._algorithm = algorithm
-        self._emit_all_tps_stop = emit_all_tps_stop
-        self.true_pair_checked = None 
+        self._algorithm : str= algorithm
+        self._emit_all_tps_stop : bool = emit_all_tps_stop
+        self.duplicate_emitted : dict = None 
         self._prediction_data : PredictionData = None
-        self.data = data
+        self.data : Data = data
+        self.duplicate_of = data.duplicate_of
+        _pipi = self.duplicate_of
+        self.scheduler : DatasetScheduler = None
         
+        if self.data.is_dirty_er and self._indexing == 'bilateral':
+            raise ValueError("Cannot apply bilateral indexing to dirty Entity Resolution (single dataset)")
+            
+        _inorder_blocks = blocks  
         self._pairs_top_score : dict = defaultdict(lambda: -1)
         all_blocks = list(blocks.values())
         self._progress_bar = tqdm(total=len(blocks),
@@ -443,27 +476,27 @@ class BlockIndependentPM(ProgressiveMatching):
                 self._predict_prunned_blocks(blocks)
             else:
                 raise AttributeError("Wrong type of Blocks")
-            self.update_top_scores()
+            self._schedule_candidates()
             
             
         if(indexing == 'bilateral'): self._indexing = 'reverse'
         if(self._indexing == 'reverse'):
+            _reverse_blocks = reverse_blocks_entity_indexing(_inorder_blocks, self.data.dataset_limit)
             self.data = reverse_data_indexing(self.data)
             if 'Block' in str(type(all_blocks[0])):
-                self._predict_raw_blocks(blocks)
+                self._predict_raw_blocks(_reverse_blocks)
             elif isinstance(all_blocks[0], set):
                 if(self._comparison_cleaner == None):
                     raise AttributeError("No precalculated weights were given from the CC step") 
-                self._predict_prunned_blocks(blocks)
+                self._predict_prunned_blocks(_reverse_blocks)
             else:
                 raise AttributeError("Wrong type of Blocks")
-            self.update_top_scores()
+            self._schedule_candidates()
         
-        self.update_top_pairs()
+        self._gather_top_pairs()
         self.execution_time = time() - start_time
         self._progress_bar.close()
         
-                
         return self.pairs
 
 class HashBasedProgressiveMatching(ProgressiveMatching):
