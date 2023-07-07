@@ -33,6 +33,10 @@ class AbstractSchemaMatching(PYJEDAIFeature):
         pass
 
     @abstractmethod
+    def stats(self) -> None:
+        pass
+
+    @abstractmethod
     def process(self,
                 data: Data,
                 ) -> list:
@@ -93,8 +97,6 @@ class ValentineMethodBuilder(PYJEDAIFeature):
                                     formula: str = "formula_c") -> SimilarityFlooding:
         return SimilarityFlooding(coeff_policy, formula)
 
-
-
 class ValentineSchemaMatching(AbstractSchemaMatching):
     """Class for schema matching methods provided by Valentine
     """
@@ -141,4 +143,6 @@ class ValentineSchemaMatching(AbstractSchemaMatching):
     def _configuration(self) -> dict:
         pass
 
+    def stats(self) -> None:
+        pass
 
