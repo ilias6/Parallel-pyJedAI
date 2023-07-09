@@ -1,6 +1,7 @@
 """Entity Matching Module
 """
 import statistics
+import pandas as pd
 from time import time
 
 import matplotlib.pyplot as plt
@@ -293,7 +294,7 @@ class AbstractEntityMatching(PYJEDAIFeature):
     def stats(self) -> None:
         pass
     
-    def export_pairs(self, filename: str, with_similarity: bool = True) -> None:
+    def export_pairs_to_csv(self, filename: str, with_similarity: bool = True) -> None:
         if self.pairs is None:
             raise AttributeError("Pairs have not been initialized yet. " +
                                  "Please run the method `run` first.")
@@ -307,6 +308,28 @@ class AbstractEntityMatching(PYJEDAIFeature):
                 else:
                     f.write(f"{e1}, {e2}\n")
             f.close()
+
+    def export_to_df(self, prediction: Graph) -> pd.DataFrame:
+        """creates a dataframe with the predicted pairs
+
+        Args:
+            prediction (any): Predicted graph
+
+        Returns:
+            pd.DataFrame: Dataframe with the predicted pairs
+        """
+        if self.data.ground_truth is None:
+            raise AttributeError("Can not proceed to evaluation without a ground-truth file. \
+                Data object mush have initialized with the ground-truth file")
+        pairs_df = pd.DataFrame(columns=['id1', 'id2'])
+        for edge in prediction.edges:
+            id1 = self.data._gt_to_ids_reversed_1[edge[0]]
+            id2 = self.data._gt_to_ids_reversed_1[edge[1]] if self.data.is_dirty_er \
+                        else self.data._gt_to_ids_reversed_2[edge[1]]
+            pairs_df = pd.concat([pairs_df, pd.DataFrame([{'id1':id1, 'id2':id2}], index=[0])], ignore_index=True)
+
+        return pairs_df
+
 
 class EntityMatching(AbstractEntityMatching):
     """Calculates similarity from 0.0 to 1.0 for all blocks

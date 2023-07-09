@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import optuna
 import pandas as pd
 from networkx import Graph
-# import plotly.express as px
 from tqdm.autonotebook import tqdm
 
 from .datamodel import Data
