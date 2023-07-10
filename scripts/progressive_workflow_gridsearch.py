@@ -38,7 +38,7 @@ from pyjedai.evaluation import Evaluation
 
 # parameters native to the pyjedai progressive workflow
 # don't edit, unless new parameters were added to the workflow
-valid_workflow_parameters = ['matcher',
+VALID_WORKFLOW_PARAMETERS = ['matcher',
                             'algorithm',
                             'number_of_nearest_neighbors',
                             'indexing',
@@ -69,7 +69,7 @@ with open(CONFIG_FILE_PATH) as file:
     config = json.load(file)
     
 config = config[EXPERIMENT_NAME]
-workflow_config = {k: v for k, v in config.items() if(values_given(v) and v in valid_workflow_parameters)}
+workflow_config = {k: v for k, v in config.items() if(values_given(v) and v in VALID_WORKFLOW_PARAMETERS)}
 workflow_parameters = list(workflow_config.keys())
 workflow_values = list(workflow_config.values())
 workflow_combinations = list(product(*workflow_values))
@@ -105,7 +105,6 @@ for id, dataset_info in enumerate(datasets_info):
         ground_truth=gt,
     )
     
-    results = {}
     true_positives_number = len(gt)
     budgets = config['budget'] if values_given(config, 'budget') else get_multiples(true_positives_number, 10)
         
