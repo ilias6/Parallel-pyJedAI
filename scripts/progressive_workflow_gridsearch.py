@@ -6,34 +6,33 @@ import numpy as np
 import json
 from itertools import product
 
-from .datamodel import Data
-from .workflow import ProgressiveWorkFlow
-from .utils import get_class, values_given, get_multiples, necessary_dfs_supplied
-from .block_building import StandardBlocking,
-                                   QGramsBlocking,
-                                   ExtendedQGramsBlocking,
-                                   SuffixArraysBlocking,
-                                   ExtendedSuffixArraysBlocking
+from pyjedai.datamodel import Data
+from pyjedai.workflow import ProgressiveWorkFlow
+from pyjedai.utils import get_class, values_given, get_multiples, necessary_dfs_supplied, store_workflow_results
+from pyjedai.block_building import (StandardBlocking,
+                                    QGramsBlocking,
+                                    ExtendedQGramsBlocking,
+                                    SuffixArraysBlocking,
+                                    ExtendedSuffixArraysBlocking)
                                    
-from .block_cleaning import BlockFiltering,
-                                   BlockPurging
-                                   
-from .comparison_cleaning import WeightedEdgePruning,
-                                        WeightedNodePruning,
-                                        CardinalityEdgePruning,
-                                        CardinalityNodePruning,
-                                        BLAST,
-                                        ReciprocalCardinalityNodePruning,
-                                        ReciprocalWeightedNodePruning,
-                                        ComparisonPropagation
-                                        
-from .prioritization import GlobalTopPM,
-                                   LocalTopPM,
-                                   EmbeddingsNNBPM,
-                                   GlobalPSNM,
-                                   LocalPSNM,
-                                   PESM,
-                                   WhooshPM
+from pyjedai.block_cleaning import (BlockFiltering,
+                                    BlockPurging)                         
+from pyjedai.comparison_cleaning import (WeightedEdgePruning, 
+                                         WeightedNodePruning,
+                                         CardinalityEdgePruning,
+                                         CardinalityNodePruning, 
+                                         BLAST,
+                                         ReciprocalCardinalityNodePruning,
+                                         ReciprocalWeightedNodePruning,
+                                         ComparisonPropagation)                                   
+from pyjedai.prioritization import (GlobalTopPM, 
+                                    LocalTopPM, 
+                                    EmbeddingsNNBPM, 
+                                    GlobalPSNM, 
+                                    LocalPSNM, 
+                                    PESM, 
+                                    WhooshPM)
+from pyjedai.evaluation import Evaluation
 
 #-EDIT-THOSE-#
 
@@ -52,6 +51,14 @@ valid_workflow_parameters = ['matcher',
 CONFIG_FILE_PATH = '~/home/jm/pyJedAI/pyJedAI-Dev/script-configs/per_experiments.json'
 # which configuration from the json file should be used in current experiment  
 EXPERIMENT_NAME = 'vector-based-debug-test'
+# path at which the results will be stored within a json file
+RESULTS_STORE_PATH = '~/home/jm/pyJedAI/pyJedAI-Dev/scirpts-results/' + EXPERIMENT_NAME + '.json'
+# results should be stored in the predefined path
+STORE_RESULTS = True
+# AUC calculation and ROC visualization after execution
+VISUALIZE_RESULTS = True
+# workflow arguments and execution info should be printed in terminal once executed
+PRINT_WORKFLOWS = True
 # identifier column names for source and target datasets
 D1_ID = 'id'
 D2_ID = 'id'
@@ -71,11 +78,10 @@ if(not necessary_dfs_supplied(config)):
     raise ValueError("Different number of source, target dataset and ground truth paths!")
 
 datasets_info = list(zip(config['source_dataset_path'], config['target_dataset_path'], config['ground_truth_path']))
-true_positives_number = len(gt)
-budgets = config['budget'] if values_given(config, 'budget') else get_multiples(true_positives_number, 10)
 
 
 results = dict()
+execution_count : int = 0
 
 for id, dataset_info in enumerate(datasets_info):
     dataset_id = id + 1
@@ -99,9 +105,10 @@ for id, dataset_info in enumerate(datasets_info):
         ground_truth=gt,
     )
     
-    dataset_results = {}
-    matcher_results = {}
-    
+    results = {}
+    true_positives_number = len(gt)
+    budgets = config['budget'] if values_given(config, 'budget') else get_multiples(true_positives_number, 10)
+        
     for budget in budgets:
         for workflow_combination in workflow_combinations:
             workflow_arguments = dict(zip(workflow_parameters, workflow_combination))
@@ -109,37 +116,22 @@ for id, dataset_info in enumerate(datasets_info):
             workflow_arguments['dataset'] = dataset_name
             
             current_workflow = ProgressiveWorkFlow()
-            current_workflow.run(data=data, **workflow_arguments)
-            store_workflow_results(results, current_workflow, workflow_arguments)
+            current_workflow.run(data=data, **workflow_arguments)            
+            current_workflow_info : dict =  store_workflow_results(results=results,current_workflow=current_workflow,workflow_arguments=workflow_arguments)
+            execution_count += 1
             
+            if(PRINT_WORKFLOWS):
+                print(f"#### WORKFLOW {execution_count} ####")
+                print(current_workflow_info)
             
-            matcher_name = workflow_arguments['matcher']
-            dataset_results[dataset_name] = dataset_results[dataset_name] if dataset_name in dataset_results else dict()
-            
-            matcher_results = dataset_results[dataset_name]
-            matcher_results[matcher_name] = matcher_results[matcher_name] if matcher_name in matcher_results else []
-            
-            matcher_info = matcher_results[matcher_name]
-            workflows_info = matcher_info
-            if(language_model in workflow_arguments):
-                lm_name = workflow_arguments['language_model']
-                matcher_info[lm_name] = matcher_info[lm_name] if lm_name in matcher_info else []
-                workflows_info = matcher_info[lm_name]
-                
-            workflow_info = {argument: value for argument, value in workflow_arguments.items() if(argument is not 'matcher' and argument is not 'language_model')} 
-                
-            
-                   
-            
-            
-            info = {argument: value for argument, value in workflow_arguments.items() if(argument is not 'matcher' and argument is not 'language_model')}
-            info['candidates'] = current_workflow.progressive_matcher.pairs
-            info['recall'] = 
-            
-            
-            
-            
-            results[dataset_name][workflow_arguments['matcher']][]
+    
+evaluator = Evaluation()
+if(VISUALIZE_RESULTS):
+    evaluator.visualize_results_roc(results=results)        
+                     
+if(STORE_RESULTS):
+    with open(RESULTS_STORE_PATH, 'w') as file:
+        json.dump(results, file, indent=4)  
             
             
     

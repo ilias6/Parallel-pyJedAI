@@ -397,7 +397,6 @@ class ProgressiveMatching(EntityMatching):
     
     def set_prediction_data(self, prediction_data : PredictionData):
         self._prediction_data : PredictionData = prediction_data
-
 class BlockIndependentPM(ProgressiveMatching):
     """Applies the matching process to a subset of available pairs progressively 
     """

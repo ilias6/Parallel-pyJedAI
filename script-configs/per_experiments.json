@@ -1,6 +1,6 @@
 {
     "vector-based-grid-search": {
-        "matcher": ["EmbeddingsNNBPM", "GlobalPSNM"],
+        "matcher": ["EmbeddingsNNBPM"],
         "algorithm": ["HB", "DFS"],
         "budget" : [1000, 5000, 10000],
         "dataset_name" : ["D2", "D3", "D8"],
@@ -36,15 +36,18 @@
         "window_size": []
     },
     "vector-based-debug-test": {
-        "algorithm": ["EmbeddingsNNBPM"],
+        "matcher": ["EmbeddingsNNBPM"],
+        "algorithm": ["HB", "DFS"],
         "budget" : [],
+        "dataset_name" : ["D2"],
         "source_dataset_path": ["~/home/jm/pyJedAI/pyJedAI-Dev/data/ccer/D2/abt.csv"],
         "target_dataset_path": ["~/home/jm/pyJedAI/pyJedAI-Dev/data/ccer/D2/buy.csv"],
         "ground_truth_path": ["~/home/jm/pyJedAI/pyJedAI-Dev/data/ccer/D2/gt.csv"],
         "number_of_nearest_neighbors": [10],
-        "indexing": ["inorder", "reverse", "bilateral"],
+        "indexing": ["inorder"],
         "similarity_function": ["cosine", "euclidean"],
         "language_model": ["sminilm"],
+        "tokenizer": [],
         "weighting_scheme": [],
         "window_size": []
     }

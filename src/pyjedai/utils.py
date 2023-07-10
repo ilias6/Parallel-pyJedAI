@@ -5,6 +5,7 @@ import numpy as np
 from nltk import ngrams
 from nltk.tokenize import word_tokenize
 from pyjedai.datamodel import Block, Data
+from pyjedai.workflow import ProgressiveWorkFlow
 from typing import List, Tuple
 import random
 from queue import PriorityQueue
@@ -14,6 +15,8 @@ from time import time
 from networkx import Graph
 import inspect
 from ordered_set import OrderedSet
+import uuid
+
 
 # ----------------------- #
 # Constants
@@ -775,26 +778,76 @@ def get_class_from_name(class_name : str):
     return getattr(module, class_name)
 
 def values_given(configuration: dict, parameter: str) -> bool:
+    """Values for requested parameters have been supplied by the user in the configuration file
+
+    Args:
+        configuration (dict): Configuration File
+        parameter (str): Requested parameter name
+
+    Returns:
+        bool: Values for requested parameter supplied
+    """
     return parameter in configuration and isinstance(configuration[parameter], list) and len(configuration[parameter]) > 0
 
-def get_multiples(num, n) -> list:
+def get_multiples(num : int, n : int) -> list:
+    """Returns a list of multiples of the requested number up to n * number
+
+    Args:
+        num (int): Number
+        n (int): Multiplier
+
+    Returns:
+        list: Multiplies of num up to n * num 
+    """
     multiples = []
     for i in range(1, n+1):
         multiples.append(num * i)
     return 
 
 def necessary_dfs_supplied(configuration : dict) -> bool:
+    """Configuration file contains values for source, target and ground truth dataframes
+
+    Args:
+        configuration (dict): Configuration file
+
+    Raises:
+        ValueError: Zero values supplied for one or more paths
+
+    Returns:
+        bool: _description_
+    """
     for path in ['source_dataset_path', 'target_dataset_path', 'ground_truth_path']:
-        if(not values_given(configuration, _current_key)):
-            raise ValueError(f"{_current_key}: No values given")
+        if(not values_given(configuration, path)):
+            raise ValueError(f"{path}: No values given")
         
     return len(configuration['source_dataset_path']) == len(configuration['target_dataset_path']) == len(configuration['ground_truth_path'])
 
-def store_workflow_results(results : dict, current_workflow, workflow_arguments : dict) -> None:
+def store_workflow_results(results : dict, current_workflow : ProgressiveWorkFlow, workflow_arguments : dict) -> dict:
+    """Stores argument / execution information for current workflow within a workflows dictionary.
+    
+    Args:
+        results (dict): Dictionary of script's executed workflows' information
+        current_workflow (ProgressiveWorkFlow): Current PER Workflow
+        workflow_arguments (dict): Arguments that have been supplied for current workflow execution
+        
+    Returns:
+        dict : Dictionary with argument / execution information about current workflow
+    """
     workflows = retrieve_matcher_workflows(results, workflow_arguments)
-    workflows.append(save_workflow(current_workflow, workflow_arguments))
+    _workflow_info : dict = save_workflow(current_workflow, workflow_arguments) 
+    workflows.append(_workflow_info)
+    return _workflow_info
 
 def retrieve_matcher_workflows(results : dict, workflow_arguments : dict) -> list:
+    """Retrieves the list of already executed workflows for the matcher/model of current workflow 
+
+    Args:
+        results (dict): Dictionary of script's executed workflows' information
+        workflow_arguments (dict): Arguments that have been supplied for current workflow execution
+
+    Returns:
+        list: List of already executed workflows for given workflow's arguments' matcher/model
+    """
     dataset : str = workflow_arguments['dataset']
     matcher : str = workflow_arguments['matcher']
     
@@ -804,17 +857,40 @@ def retrieve_matcher_workflows(results : dict, workflow_arguments : dict) -> lis
             
     matcher_info = matcher_results[matcher]
     workflows_info = matcher_info
-    if(language_model in workflow_arguments):
+    if('language_model' in workflow_arguments):
         lm_name = workflow_arguments['language_model']
         matcher_info[lm_name] = matcher_info[lm_name] if lm_name in matcher_info else []
         workflows_info = matcher_info[lm_name]  
         
     return workflows_info
 
-def save_workflow(current_workflow, workflow_arguments : dict):
+def generate_unique_identifier() -> str:
+    """Returns unique identifier which is used to cross reference workflows stored in json file and their performance graphs
+
+    Returns:
+        str: Unique identifier
+    """
+    return str(uuid.uuid4())
+
+def save_workflow(current_workflow : ProgressiveWorkFlow, workflow_arguments : dict) -> dict:
+    """Stores current workflow argument values and execution related data (like execution time and total emissions)
+
+    Args:
+        current_workflow (ProgressiveWorkFlow): Progressive Workflow instance
+        workflow_arguments (dict): Arguments that were passed to progressive workflow at hand
+
+    Returns:
+        dict : Dictionary with argument / execution information about current workflow
+    """
     
-    
-    
+    workflow_info : dict = {k: v for k, v in workflow_arguments.items()}
+    workflow_info['total_emissions'] = current_workflow.total_emissions
+    workflow_info['tp_idx'] = current_workflow.tp_indices
+    workflow_info['time'] = current_workflow.workflow_exec_time
+    workflow_info['name'] = generate_unique_identifier()
+
+    return workflow_info    
+
 #####################################################
     
             
