@@ -52,34 +52,6 @@ class Evaluation:
     def _set_total_matching_pairs(self, total_matching_pairs) -> None:
         self.total_matching_pairs = total_matching_pairs
 
-    
-    # if isinstance(prediction, dict) and isinstance(list(prediction.values())[0], set):
-    #     # case of candidate pairs, entity-id -> {entity-id, ..}
-    #     self.total_matching_pairs = sum([len(block) for block in prediction.values()])
-    #     for _, (id1, id2) in gt.iterrows():
-    #         id1 = self.data._ids_mapping_1[id1]
-    #         id2 = self.data._ids_mapping_1[id2] if self.data.is_dirty_er else self.data._ids_mapping_2[id2]
-    #         if (id1 in prediction and id2 in prediction[id1]) or   \
-    #             (id2 in prediction and id1 in prediction[id2]):
-    #             self.true_positives += 1
-    # elif isinstance(prediction, nx.Graph):
-    #     self.total_matching_pairs = prediction.number_of_edges()
-    #     for _, (id1, id2) in gt.iterrows():
-    #         id1 = self.data._ids_mapping_1[id1]
-    #         id2 = self.data._ids_mapping_1[id2] if self.data.is_dirty_er else self.data._ids_mapping_2[id2]
-    #         if (id1 in prediction and id2 in prediction[id1]) or   \
-    #              (id2 in prediction and id1 in prediction[id2]):
-    #             self.true_positives += 1
-    # else: # blocks, clusters evaluation
-    #     entity_index: dict = self._create_entity_index(prediction, all_gt_ids)
-    #     for _, (id1, id2) in gt.iterrows():
-    #         id1 = self.data._ids_mapping_1[id1]
-    #         id2 = self.data._ids_mapping_1[id2] if self.data.is_dirty_er else self.data._ids_mapping_2[id2]
-    #         if id1 in entity_index and    \
-    #             id2 in entity_index and     \
-    #                 are_matching(entity_index, id1, id2):
-    #             self.true_positives += 1
-
     def calculate_scores(self, true_positives=None, total_matching_pairs=None) -> None:
         if true_positives is not None:
             self.true_positives = true_positives
@@ -315,8 +287,8 @@ class Evaluation:
                 return
     
 
-    def calculate_roc_auc_data(self, pairs, duplicate_of : dict = None, batch_size : int  = 1, true_positive_checked : dict = None) -> List[Tuple[int, int]]:
-        """Progressively calculates total recall, AUC for each batch of candidate pairs
+    def calculate_auc_data(self, pairs : List[float, int, int], duplicate_of : dict = None, duplicate_emitted : dict = None, batch_size : int  = 1) -> [List[int]:
+        """Calculates the 
         Args:
             data (Data): Data Module
             pairs: List containing pairs in form (entity1 id, entity2 id, score)

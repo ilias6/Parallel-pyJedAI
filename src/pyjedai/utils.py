@@ -765,6 +765,57 @@ def reverse_raw_blocks_entity_indexing(blocks : dict, old_data_limit : int) -> d
     
 def get_reverse_indexing_id(id : int, old_data_limit : int) -> int:
     return (id + old_data_limit) if (id < old_data_limit) else (id - old_data_limit)
+
+
+# Progressive Workflow Grid Search Utility Functions
+
+def get_class_from_name(class_name : str):
+    module_name, class_name = class_name.rsplit('.', 1)
+    module = __import__(module_name, fromlist=[class_name])
+    return getattr(module, class_name)
+
+def values_given(configuration: dict, parameter: str) -> bool:
+    return parameter in configuration and isinstance(configuration[parameter], list) and len(configuration[parameter]) > 0
+
+def get_multiples(num, n) -> list:
+    multiples = []
+    for i in range(1, n+1):
+        multiples.append(num * i)
+    return 
+
+def necessary_dfs_supplied(configuration : dict) -> bool:
+    for path in ['source_dataset_path', 'target_dataset_path', 'ground_truth_path']:
+        if(not values_given(configuration, _current_key)):
+            raise ValueError(f"{_current_key}: No values given")
+        
+    return len(configuration['source_dataset_path']) == len(configuration['target_dataset_path']) == len(configuration['ground_truth_path'])
+
+def store_workflow_results(results : dict, current_workflow, workflow_arguments : dict) -> None:
+    workflows = retrieve_matcher_workflows(results, workflow_arguments)
+    workflows.append(save_workflow(current_workflow, workflow_arguments))
+
+def retrieve_matcher_workflows(results : dict, workflow_arguments : dict) -> list:
+    dataset : str = workflow_arguments['dataset']
+    matcher : str = workflow_arguments['matcher']
+    
+    results[dataset] = results[dataset] if dataset in results else dict()
+    matcher_results = results[dataset]
+    matcher_results[matcher] = matcher_results[matcher] if matcher in matcher_results else []
+            
+    matcher_info = matcher_results[matcher]
+    workflows_info = matcher_info
+    if(language_model in workflow_arguments):
+        lm_name = workflow_arguments['language_model']
+        matcher_info[lm_name] = matcher_info[lm_name] if lm_name in matcher_info else []
+        workflows_info = matcher_info[lm_name]  
+        
+    return workflows_info
+
+def save_workflow(current_workflow, workflow_arguments : dict):
+    
+    
+    
+#####################################################
     
             
             

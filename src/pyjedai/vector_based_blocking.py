@@ -141,7 +141,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         self.with_entity_matching = with_entity_matching
         self.save_embeddings, self.load_embeddings_if_exist = save_embeddings, load_embeddings_if_exist
         self.max_word_embeddings_size = max_word_embeddings_size
-        self.simiarity_distance = similarity_distance
+        self.similarity_distance = similarity_distance
         self.data, self.attributes_1, self.attributes_2, self.vector_size, self.num_of_clusters, self.top_k, self.input_cleaned_blocks \
             = data, attributes_1, attributes_2, vector_size, num_of_clusters, top_k, input_cleaned_blocks
         self._progress_bar = tqdm(total=data.num_of_entities,
@@ -369,28 +369,28 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
     def _similarity_search_with_FAISS(self):
         index = faiss.IndexFlatL2(self.vectors_1.shape[1])
         
-        if self.simiarity_distance == 'cosine' or self.simiarity_distance == 'cosine_without_normalization':
+        if self.similarity_distance == 'cosine' or self.similarity_distance == 'cosine_without_normalization':
             index.metric_type = faiss.METRIC_INNER_PRODUCT
-        elif self.simiarity_distance == 'euclidean':
+        elif self.similarity_distance == 'euclidean':
             index.metric_type = faiss.METRIC_L2
         else:
-            raise ValueError("Invalid similarity distance: ", self.simiarity_distance)
+            raise ValueError("Invalid similarity distance: ", self.similarity_distance)
 
-        if self.simiarity_distance == 'cosine':
+        if self.similarity_distance == 'cosine':
             faiss.normalize_L2(self.vectors_1)
             faiss.normalize_L2(self.vectors_2)
             print("NORMALIZED")
             
         index.train(self.vectors_1)  # train on the vectors of dataset 1
 
-        if self.simiarity_distance == 'cosine':
+        if self.similarity_distance == 'cosine':
             faiss.normalize_L2(self.vectors_1)
             faiss.normalize_L2(self.vectors_2)
             print("NORMALIZED")
 
         index.add(self.vectors_1)   # add the vectors and update the index
 
-        if self.simiarity_distance == 'cosine':
+        if self.similarity_distance == 'cosine':
             faiss.normalize_L2(self.vectors_1)
             faiss.normalize_L2(self.vectors_2)
             print("NORMALIZED")

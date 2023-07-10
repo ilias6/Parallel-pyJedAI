@@ -771,7 +771,7 @@ class EmbeddingsNNBPM(BlockIndependentPM):
                                                     return_vectors=False,
                                                     tqdm_disable=False,
                                                     save_embeddings=True,
-                                                    load_embeddings_if_exist=True,
+                                                    load_embeddings_if_exist=False,
                                                     with_entity_matching=False,
                                                     input_cleaned_blocks=blocks,
                                                     similarity_distance=self.similarity_function)

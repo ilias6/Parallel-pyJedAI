@@ -18,8 +18,8 @@ from .comparison_cleaning import CardinalityNodePruning
 from .matching import EntityMatching
 from .clustering import ConnectedComponentsClustering, UniqueMappingClustering
 
-from .prioritization import ProgressiveMatching
-from .utils import new_dictionary_from_keys, get_class_function_arguments
+from .prioritization import ProgressiveMatching, BlockIndependentPM
+from .utils import new_dictionary_from_keys, get_class_function_arguments, get_class_from_name
 
 
 plt.style.use('seaborn-whitegrid')
@@ -332,7 +332,7 @@ class WorkFlow(ABC):
         return self.f1[-1], self.precision[-1], self.recall[-1]
 
 
-class ProgressiveWorkFlow(Workflow):
+class ProgressiveWorkFlow(WorkFlow):
     """Main module of the pyjedAI and the simplest way to create an end-to-end PER workflow.
     """
 
@@ -352,20 +352,19 @@ class ProgressiveWorkFlow(Workflow):
         self.final_pairs = None
 
     def run(self,
-            matcher: ProgressiveMatching,
-            algorithm: str,
             data: Data,
             verbose: bool = False,
             with_classification_report: bool = False,
             workflow_step_tqdm_disable: bool = True,
             workflow_tqdm_enable: bool = False,
+            block_building : dict = None,
+            block_purging : dict = None,
+            block_filtering : dict = None,
             **matcher_arguments
         ) -> None:
         """Main function for creating an Progressive ER workflow.
 
         Args:
-            matcher (ProgressiveMatching): Progressive ER Algorithm used to propose candidate pairs
-            algorithm (str): Candidate pairs emission technique
             data (Data): Dataset Module, used to derive schema-awereness status
             verbose (bool, optional): Print detailed report for each step. Defaults to False.
             with_classification_report (bool, optional): Print pairs counts. Defaults to False.
@@ -383,17 +382,26 @@ class ProgressiveWorkFlow(Workflow):
             window_size (dict, optional): Window size in the Sorted Neighborhood Progressive ER workflows. Defaults to None.
         """
         self.block_building, self.block_purging, self.block_filtering, self.algorithm = \
-        block_building, block_purging, block_filtering, algorithm
+        block_building, block_purging, block_filtering, matcher_arguments['algorithm']
         steps = [self.block_building, self.block_purging, self.block_filtering, self.algorithm]
         num_of_steps = sum(x is not None for x in steps)
         self._workflow_bar = tqdm(total=num_of_steps,
                                   desc=self.name,
+                                  disable=not workflow_tqdm_enable)
          
-        self.matcher : ProgressiveMatching = matcher                         disable=not workflow_tqdm_enable)
         self.data : Data = data
-        self.algorithm : str = algorithm
         self._init_experiment()
         start_time = time()
+        
+        matcher = get_class_from_name(matcher_arguments['matcher'])
+        constructor_arguments = new_dictionary_from_keys(dictionary=matcher_arguments, keys=get_class_function_arguments(class_reference=matcher, function_name='__init__'))
+        predictor_arguments = new_dictionary_from_keys(dictionary=matcher_arguments, keys=get_class_function_arguments(class_reference=matcher, function_name='predict'))
+        
+        print(constructor_arguments)
+        print(predictor_arguments)
+        
+        progressive_matcher : ProgressiveMatching = matcher(**constructor_arguments)
+        self.progressive_matcher : ProgressiveMatching = progressive_matcher
         #
         # Block Building step: Only one algorithm can be performed
         #
@@ -407,11 +415,11 @@ class ProgressiveWorkFlow(Workflow):
             block_building_blocks = \
                 block_building_method.build_blocks(data,
                                                 attributes_1=self.block_building["attributes_1"] \
-                                                                    if "attributes_1" in self.block_building else None,
+                                                                    if(self.block_building is not None and "attributes_1" in self.block_building) else None,
                                                     attributes_2=self.block_building["attributes_2"] \
-                                                                    if "attributes_2" in self.block_building else None,
+                                                                    if(self.block_building is not None and "attributes_2" in self.block_building) else None,
                                                     tqdm_disable=workflow_step_tqdm_disable)
-            self.final_pairs = block_building_blocks
+            self.final_pairs = bblocks = block_building_blocks
             res = block_building_method.evaluate(block_building_blocks,
                                                 export_to_dict=True,
                                                 with_classification_report=with_classification_report,
@@ -427,7 +435,7 @@ class ProgressiveWorkFlow(Workflow):
             block_purging_blocks = None
             if(self.block_purging is not None):
                 block_purging_method = self.block_purging['method'](**self.block_purging["params"]) \
-                                                if "params" in self.block_purging
+                                                if "params" in self.block_purging \
                                                 else self.block_purging['method']()
                 block_purging_blocks = block_purging_method(bblocks,
                                                             data,
@@ -445,7 +453,7 @@ class ProgressiveWorkFlow(Workflow):
             block_filtering_blocks = None
             if(self.block_filtering is not None):
                 block_filtering_method = self.block_filtering['method'](**self.block_filtering["params"]) \
-                                                if "params" in self.block_filtering
+                                                if "params" in self.block_filtering \
                                                 else self.block_filtering['method']()
                 block_filtering_blocks = block_filtering_method(bblocks,
                                                             data,
@@ -461,21 +469,12 @@ class ProgressiveWorkFlow(Workflow):
         #
         # Progressive Matching step
         #
-        constructor_arguments = new_dictionary_from_keys(dictionary=matcher_arguments, keys=get_class_function_arguments(class_reference=matcher, function_name='__init__'))
-        predictor_arguments = new_dictionary_from_keys(dictionary=matcher_arguments, keys=get_class_function_arguments(class_reference=matcher, function_name='predict'))
-        
-        print(constructor_arguments)
-        print(predictor_arguments)
-        
-        progressive_matcher : ProgressiveMatching = matcher(**constructor_arguments)
-        candidates : List[Tuple[float, int, int]] = progressive_matcher.predict(budget=float('inf'), **predictor_arguments)
-        
-        self._progressive_matcher : ProgressiveMatching = progressive_matcher
+        candidates : List[Tuple[float, int, int]] = progressive_matcher.predict(data=data, blocks=bblocks, **predictor_arguments)
         self._workflow_bar.update(1)
         self.workflow_exec_time = time() - start_time
 
-
-    def _blocks_required(self) -> None
+    def _blocks_required(self):
+        return not isinstance(self.progressive_matcher, BlockIndependentPM)
 
     def _init_experiment(self) -> None:
         self.f1: list = []
