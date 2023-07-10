@@ -47,11 +47,11 @@ from sklearn.metrics.pairwise import cosine_similarity, pairwise_distances
 from tqdm.autonotebook import tqdm
 from sklearn.metrics import jaccard_score
 from scipy.spatial.distance import dice, jaccard
-
 from .datamodel import Data, PYJEDAIFeature
 from .evaluation import Evaluation
 from .utils import WordQgrammsTokenizer
 from whoosh.scoring import TF_IDF, Frequency, PL2, BM25F
+from faiss import METRIC_INNER_PRODUCT, METRIC_L2
 
 # Package import from https://anhaidgroup.github.io/py_stringmatching/v0.4.2/index.html
 
@@ -86,10 +86,12 @@ metrics_mapping = {
     'overlap_coefficient' : OverlapCoefficient(),
     'token_sort': TokenSort(),
     'cosine_vector_similarity': cosine,
-    'TF-IDF' : TF_IDF(),
-    'Frequency' : Frequency(),
-    'PL2' : PL2(),
-    'BM25F' : BM25F()
+    'WH-TF-IDF' : TF_IDF(),
+    'WH-Frequency' : Frequency(),
+    'WH-PL2' : PL2(),
+    'WH-BM25F' : BM25F(),
+    'faiss-euclidean' : METRIC_L2,
+    'faiss-cosine': METRIC_INNER_PRODUCT
 }
 
 string_metrics = [
@@ -109,11 +111,15 @@ vector_metrics = [
     'cosine_vector_similarity'
 ]
 
+faiss_metrics = [
+    'faiss-euclidean', 'faiss-cosine'
+]
+
 index_metrics = [
-    'TF-IDF', 'Frequency', 'PL2', 'BM25F'
+    'WH-TF-IDF', 'WH-Frequency', 'WH-PL2', 'WH-BM25F'
 ] 
 
-available_metrics = string_metrics + set_metrics + bag_metrics + vector_metrics + index_metrics
+available_metrics = string_metrics + set_metrics + bag_metrics + vector_metrics + index_metrics + faiss_metrics
 
 
 class EntityMatching(PYJEDAIFeature):

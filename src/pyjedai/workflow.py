@@ -18,8 +18,8 @@ from .comparison_cleaning import CardinalityNodePruning
 from .matching import EntityMatching
 from .clustering import ConnectedComponentsClustering, UniqueMappingClustering
 
-from .prioritization import ProgressiveMatching, BlockIndependentPM
-from .utils import new_dictionary_from_keys, get_class_function_arguments, get_class_from_name
+from .prioritization import ProgressiveMatching, BlockIndependentPM, class_references
+from .utils import new_dictionary_from_keys, get_class_function_arguments
 
 
 plt.style.use('seaborn-whitegrid')
@@ -393,7 +393,7 @@ class ProgressiveWorkFlow(WorkFlow):
         self._init_experiment()
         start_time = time()
         
-        matcher = get_class_from_name(matcher_arguments['matcher'])
+        matcher = class_references[matcher_arguments['matcher']]
         constructor_arguments = new_dictionary_from_keys(dictionary=matcher_arguments, keys=get_class_function_arguments(class_reference=matcher, function_name='__init__'))
         predictor_arguments = new_dictionary_from_keys(dictionary=matcher_arguments, keys=get_class_function_arguments(class_reference=matcher, function_name='predict'))
         
@@ -407,6 +407,7 @@ class ProgressiveWorkFlow(WorkFlow):
                                                     else self.block_building['method']()) if self.block_building \
                                                     else (None if not self._blocks_required() else StandardBlocking())
 
+        bblocks = None
         block_building_blocks = None
         if block_building_method:
             block_building_blocks = \

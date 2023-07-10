@@ -71,6 +71,7 @@ from whoosh import qparser
 from whoosh.scoring import TF_IDF, Frequency, PL2, BM25F
 from collections import defaultdict
 import sys
+from faiss import METRIC_INNER_PRODUCT, METRIC_L2
 
 
 # Directory where the whoosh index is stored
@@ -104,10 +105,12 @@ metrics_mapping = {
     'overlap_coefficient' : OverlapCoefficient(),
     'token_sort': TokenSort(),
     'cosine_vector_similarity': cosine_similarity,
-    'TF-IDF' : TF_IDF(),
-    'Frequency' : Frequency(),
-    'PL2' : PL2(),
-    'BM25F' : BM25F()
+    'WH-TF-IDF' : TF_IDF(),
+    'WH-Frequency' : Frequency(),
+    'WH-PL2' : PL2(),
+    'WH-BM25F' : BM25F(),
+    'faiss-euclidean' : METRIC_L2,
+    'faiss-cosine': METRIC_INNER_PRODUCT
 }
 
 whoosh_similarity_function = {
@@ -131,14 +134,22 @@ bag_metrics = [
 ]
 
 index_metrics = [
-    'TF-IDF', 'Frequency', 'PL2', 'BM25F'
+    'WH-TF-IDF', 'WH-Frequency', 'WH-PL2', 'WH-BM25F'
 ] 
 
 vector_metrics = [
     'cosine_vector_similarity'
 ]
 
-available_metrics = string_metrics + set_metrics + bag_metrics + vector_metrics + index_metrics
+faiss_metrics = [
+    'faiss-euclidean', 'faiss-cosine'
+]
+
+index_metrics = [
+    'WH-TF-IDF', 'WH-Frequency', 'WH-PL2', 'WH-BM25F'
+] 
+
+available_metrics = string_metrics + set_metrics + bag_metrics + vector_metrics + index_metrics + faiss_metrics
 
 class ProgressiveMatching(EntityMatching):
     """Applies the matching process to a subset of available pairs progressively 
@@ -460,14 +471,14 @@ class BlockIndependentPM(ProgressiveMatching):
             
         _inorder_blocks = blocks  
         self._pairs_top_score : dict = defaultdict(lambda: -1)
-        all_blocks = list(blocks.values())
-        self._progress_bar = tqdm(total=len(blocks),
+        all_blocks = list(blocks.values()) if blocks is not None else None
+        self._progress_bar = tqdm(total=len(blocks) if blocks is not None else 0,
                         desc=self._method_name+" ("+self.similarity_function+")",
                         disable=self.tqdm_disable)
         
         if(indexing == 'bilateral'): self._indexing = 'inorder'
         if(self._indexing == 'inorder'):
-            if 'Block' in str(type(all_blocks[0])):
+            if all_blocks is None or 'Block' in str(type(all_blocks[0])):
                 self._predict_raw_blocks(blocks)
             elif isinstance(all_blocks[0], set):
                 if(self._comparison_cleaner == None):
@@ -482,7 +493,7 @@ class BlockIndependentPM(ProgressiveMatching):
         if(self._indexing == 'reverse'):
             _reverse_blocks = reverse_blocks_entity_indexing(_inorder_blocks, self.data.dataset_limit)
             self.data = reverse_data_indexing(self.data)
-            if 'Block' in str(type(all_blocks[0])):
+            if all_blocks is None or 'Block' in str(type(all_blocks[0])):
                 self._predict_raw_blocks(_reverse_blocks)
             elif isinstance(all_blocks[0], set):
                 if(self._comparison_cleaner == None):
@@ -961,7 +972,7 @@ class WhooshPM(BlockIndependentPM):
 
     def __init__(
             self,
-            similarity_function: str = 'TF-IDF',
+            similarity_function: str = 'WH-TF-IDF',
             number_of_nearest_neighbors: int = 10,
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
@@ -1069,6 +1080,19 @@ class WhooshPM(BlockIndependentPM):
         return self.pairs
         
     def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
-        self._predict_raw_blocks(blocks)    
+        self._predict_raw_blocks(blocks)  
+        
+
+
+
+class_references = {
+    'GlobalTopPM' : GlobalTopPM,
+    'LocalTopPM' : LocalTopPM,
+    'GlobalPSNM' : GlobalPSNM,
+    'LocalPSNM' : LocalPSNM,
+    'PESM' : PESM,
+    'EmbeddingsNNBPM' : EmbeddingsNNBPM,
+    'WhooshPM' : WhooshPM    
+}  
         
 

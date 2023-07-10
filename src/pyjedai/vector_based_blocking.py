@@ -106,7 +106,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                      load_embeddings_if_exist: bool = False,
                      with_entity_matching: bool = False,
                      input_cleaned_blocks: dict = None,
-                     similarity_distance: str = 'cosine'
+                     similarity_distance: str = 'faiss-cosine'
     ) -> any:
         """Main method of the vector based approach. Contains two steps. First an embedding method. \
             And afterwards a similarity search upon the vectors created in the previous step.
@@ -369,36 +369,33 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
     def _similarity_search_with_FAISS(self):
         index = faiss.IndexFlatL2(self.vectors_1.shape[1])
         
-        if self.similarity_distance == 'cosine' or self.similarity_distance == 'cosine_without_normalization':
+        if self.similarity_distance == 'faiss-cosine' or self.similarity_distance == 'cosine_without_normalization':
             index.metric_type = faiss.METRIC_INNER_PRODUCT
-        elif self.similarity_distance == 'euclidean':
+        elif self.similarity_distance == 'faiss-euclidean':
             index.metric_type = faiss.METRIC_L2
         else:
             raise ValueError("Invalid similarity distance: ", self.similarity_distance)
 
-        if self.similarity_distance == 'cosine':
+        if self.similarity_distance == 'faiss-cosine':
             faiss.normalize_L2(self.vectors_1)
             faiss.normalize_L2(self.vectors_2)
-            print("NORMALIZED")
             
         index.train(self.vectors_1)  # train on the vectors of dataset 1
 
-        if self.similarity_distance == 'cosine':
+        if self.similarity_distance == 'faiss-cosine':
             faiss.normalize_L2(self.vectors_1)
             faiss.normalize_L2(self.vectors_2)
-            print("NORMALIZED")
 
         index.add(self.vectors_1)   # add the vectors and update the index
 
-        if self.similarity_distance == 'cosine':
+        if self.similarity_distance == 'faiss-cosine':
             faiss.normalize_L2(self.vectors_1)
             faiss.normalize_L2(self.vectors_2)
-            print("NORMALIZED")
         
         self.distances, self.neighbors = index.search(self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
                                     self.top_k)
         
-        if self.simiarity_distance == 'euclidean':
+        if self.similarity_distance == 'faiss-euclidean':
             self.distances = 1/(1 + self.distances)
         
         self.blocks = dict()

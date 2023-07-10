@@ -5,33 +5,38 @@ import pandas as pd
 import numpy as np
 import json
 from itertools import product
-
+from pyjedai.utils import to_path
 from pyjedai.datamodel import Data
 from pyjedai.workflow import ProgressiveWorkFlow
-from pyjedai.utils import get_class, values_given, get_multiples, necessary_dfs_supplied, store_workflow_results
-from pyjedai.block_building import (StandardBlocking,
-                                    QGramsBlocking,
-                                    ExtendedQGramsBlocking,
-                                    SuffixArraysBlocking,
-                                    ExtendedSuffixArraysBlocking)
+from pyjedai.utils import values_given, get_multiples, necessary_dfs_supplied, store_workflow_results, pretty_print_workflow
+from pyjedai.block_building import (
+    StandardBlocking,
+    QGramsBlocking,
+    ExtendedQGramsBlocking,
+    SuffixArraysBlocking,
+    ExtendedSuffixArraysBlocking)
                                    
-from pyjedai.block_cleaning import (BlockFiltering,
-                                    BlockPurging)                         
-from pyjedai.comparison_cleaning import (WeightedEdgePruning, 
-                                         WeightedNodePruning,
-                                         CardinalityEdgePruning,
-                                         CardinalityNodePruning, 
-                                         BLAST,
-                                         ReciprocalCardinalityNodePruning,
-                                         ReciprocalWeightedNodePruning,
-                                         ComparisonPropagation)                                   
-from pyjedai.prioritization import (GlobalTopPM, 
-                                    LocalTopPM, 
-                                    EmbeddingsNNBPM, 
-                                    GlobalPSNM, 
-                                    LocalPSNM, 
-                                    PESM, 
-                                    WhooshPM)
+from pyjedai.block_cleaning import (
+    BlockFiltering,
+    BlockPurging)                         
+from pyjedai.comparison_cleaning import (
+    WeightedEdgePruning, 
+    WeightedNodePruning,
+    CardinalityEdgePruning,
+    CardinalityNodePruning, 
+    BLAST,
+    ReciprocalCardinalityNodePruning,
+    ReciprocalWeightedNodePruning,
+    ComparisonPropagation)                                   
+from pyjedai.prioritization import (
+    GlobalTopPM, 
+    LocalTopPM, 
+    EmbeddingsNNBPM, 
+    GlobalPSNM, 
+    LocalPSNM, 
+    PESM, 
+    WhooshPM,
+    class_references)
 from pyjedai.evaluation import Evaluation
 
 #-EDIT-THOSE-#
@@ -48,11 +53,11 @@ VALID_WORKFLOW_PARAMETERS = ['matcher',
                             'weighting_scheme',
                             'window_size']
 # path of the configuration file
-CONFIG_FILE_PATH = '~/home/jm/pyJedAI/pyJedAI-Dev/script-configs/per_experiments.json'
+CONFIG_FILE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-configs/per_experiments.json')
 # which configuration from the json file should be used in current experiment  
 EXPERIMENT_NAME = 'vector-based-debug-test'
 # path at which the results will be stored within a json file
-RESULTS_STORE_PATH = '~/home/jm/pyJedAI/pyJedAI-Dev/scirpts-results/' + EXPERIMENT_NAME + '.json'
+RESULTS_STORE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-results/' + EXPERIMENT_NAME + '.json')
 # results should be stored in the predefined path
 STORE_RESULTS = True
 # AUC calculation and ROC visualization after execution
@@ -69,7 +74,7 @@ with open(CONFIG_FILE_PATH) as file:
     config = json.load(file)
     
 config = config[EXPERIMENT_NAME]
-workflow_config = {k: v for k, v in config.items() if(values_given(v) and v in VALID_WORKFLOW_PARAMETERS)}
+workflow_config = {k: v for k, v in config.items() if(values_given(config, k) and k in VALID_WORKFLOW_PARAMETERS)}
 workflow_parameters = list(workflow_config.keys())
 workflow_values = list(workflow_config.values())
 workflow_combinations = list(product(*workflow_values))
@@ -88,9 +93,9 @@ for id, dataset_info in enumerate(datasets_info):
     d1_path, d2_path, gt_path = dataset_info
     dataset_name = config['dataset_name'][id] if(values_given(config, 'dataset_name') and len(config['dataset_name']) > id) else ("D" + str(dataset_id))
     
-    d1 = pd.read_csv(d1_path, sep='|', engine='python', na_filter=False).astype(str)
-    d2 = pd.read_csv(d2_path, sep='|', engine='python', na_filter=False).astype(str)
-    gt = pd.read_csv(gt_path, sep='|', engine='python')
+    d1 = pd.read_csv(to_path(d1_path), sep='|', engine='python', na_filter=False).astype(str)
+    d2 = pd.read_csv(to_path(d2_path), sep='|', engine='python', na_filter=False).astype(str)
+    gt = pd.read_csv(to_path(gt_path), sep='|', engine='python')
 
     d1_attributes = config['d1_attributes'][id] if values_given(config, 'd1_attributes') else d1.columns.tolist()
     d2_attributes = config['d2_attributes'][id] if values_given(config, 'd2_attributes') else d2.columns.tolist()
@@ -114,17 +119,17 @@ for id, dataset_info in enumerate(datasets_info):
             workflow_arguments['budget'] = budget
             workflow_arguments['dataset'] = dataset_name
             
+
+            print(f"#### WORKFLOW {execution_count} ####")
             current_workflow = ProgressiveWorkFlow()
             current_workflow.run(data=data, **workflow_arguments)            
             current_workflow_info : dict =  store_workflow_results(results=results,current_workflow=current_workflow,workflow_arguments=workflow_arguments)
             execution_count += 1
             
             if(PRINT_WORKFLOWS):
-                print(f"#### WORKFLOW {execution_count} ####")
-                print(current_workflow_info)
+                pretty_print_workflow(current_workflow_info)
             
-    
-evaluator = Evaluation()
+evaluator = Evaluation(data)
 if(VISUALIZE_RESULTS):
     evaluator.visualize_results_roc(results=results)        
                      

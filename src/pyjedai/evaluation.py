@@ -293,7 +293,7 @@ class Evaluation:
                 return
     
 
-    def calculate_tps_indices(self, pairs : List[float, int, int], duplicate_of : dict = None, duplicate_emitted : dict = None, batch_size : int  = 1) -> List[int]:
+    def calculate_tps_indices(self, pairs : List[Tuple[float, int, int]], duplicate_of : dict = None, duplicate_emitted : dict = None, batch_size : int  = 1) -> List[int]:
         """
         Args:
             pairs (List[float, int, int]): Candidate pairs to emit in the form [similarity, first dataframe entity ID, second dataframe entity ID]

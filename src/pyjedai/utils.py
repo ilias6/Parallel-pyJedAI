@@ -5,7 +5,6 @@ import numpy as np
 from nltk import ngrams
 from nltk.tokenize import word_tokenize
 from pyjedai.datamodel import Block, Data
-from pyjedai.workflow import ProgressiveWorkFlow
 from typing import List, Tuple
 import random
 from queue import PriorityQueue
@@ -16,6 +15,7 @@ from networkx import Graph
 import inspect
 from ordered_set import OrderedSet
 import uuid
+import os
 
 
 # ----------------------- #
@@ -772,11 +772,6 @@ def get_reverse_indexing_id(id : int, old_data_limit : int) -> int:
 
 # Progressive Workflow Grid Search Utility Functions
 
-def get_class_from_name(class_name : str):
-    module_name, class_name = class_name.rsplit('.', 1)
-    module = __import__(module_name, fromlist=[class_name])
-    return getattr(module, class_name)
-
 def values_given(configuration: dict, parameter: str) -> bool:
     """Values for requested parameters have been supplied by the user in the configuration file
 
@@ -787,7 +782,7 @@ def values_given(configuration: dict, parameter: str) -> bool:
     Returns:
         bool: Values for requested parameter supplied
     """
-    return parameter in configuration and isinstance(configuration[parameter], list) and len(configuration[parameter]) > 0
+    return (parameter in configuration) and (isinstance(configuration[parameter], list)) and (len(configuration[parameter]) > 0)
 
 def get_multiples(num : int, n : int) -> list:
     """Returns a list of multiples of the requested number up to n * number
@@ -802,7 +797,7 @@ def get_multiples(num : int, n : int) -> list:
     multiples = []
     for i in range(1, n+1):
         multiples.append(num * i)
-    return 
+    return multiples
 
 def necessary_dfs_supplied(configuration : dict) -> bool:
     """Configuration file contains values for source, target and ground truth dataframes
@@ -822,7 +817,7 @@ def necessary_dfs_supplied(configuration : dict) -> bool:
         
     return len(configuration['source_dataset_path']) == len(configuration['target_dataset_path']) == len(configuration['ground_truth_path'])
 
-def store_workflow_results(results : dict, current_workflow : ProgressiveWorkFlow, workflow_arguments : dict) -> dict:
+def store_workflow_results(results : dict, current_workflow, workflow_arguments : dict) -> dict:
     """Stores argument / execution information for current workflow within a workflows dictionary.
     
     Args:
@@ -853,11 +848,12 @@ def retrieve_matcher_workflows(results : dict, workflow_arguments : dict) -> lis
     
     results[dataset] = results[dataset] if dataset in results else dict()
     matcher_results = results[dataset]
-    matcher_results[matcher] = matcher_results[matcher] if matcher in matcher_results else []
+    matcher_results[matcher] = matcher_results[matcher] if matcher in matcher_results \
+                               else ([] if('language_model' not in workflow_arguments) else {})
             
     matcher_info = matcher_results[matcher]
     workflows_info = matcher_info
-    if('language_model' in workflow_arguments):
+    if(isinstance(matcher_info, dict)):
         lm_name = workflow_arguments['language_model']
         matcher_info[lm_name] = matcher_info[lm_name] if lm_name in matcher_info else []
         workflows_info = matcher_info[lm_name]  
@@ -872,7 +868,7 @@ def generate_unique_identifier() -> str:
     """
     return str(uuid.uuid4())
 
-def save_workflow(current_workflow : ProgressiveWorkFlow, workflow_arguments : dict) -> dict:
+def save_workflow(current_workflow, workflow_arguments : dict) -> dict:
     """Stores current workflow argument values and execution related data (like execution time and total emissions)
 
     Args:
@@ -890,6 +886,18 @@ def save_workflow(current_workflow : ProgressiveWorkFlow, workflow_arguments : d
     workflow_info['name'] = generate_unique_identifier()
 
     return workflow_info    
+
+
+def to_path(path : str):
+    return os.path.expanduser(path)
+
+def pretty_print_workflow(workflow : dict):
+    for attribute in workflow:
+        value = workflow[attribute]
+        if(attribute != 'tp_idx'):
+            print(f"{attribute} : {value}")
+        else:
+            print(f"true_positives : {len(value)}")
 
 #####################################################
     
