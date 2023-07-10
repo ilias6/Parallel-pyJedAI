@@ -7,6 +7,7 @@ import pickle
 import re
 import sys
 import warnings
+import pandas as pd
 from time import time
 from typing import List, Tuple
 
@@ -394,7 +395,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                                     self.top_k)
 
         if self.simiarity_distance == 'euclidean':
-            self.distances = 1 - self.distances
+            self.distances = 1/(1 + self.distances)
 
         self.blocks = dict()
         
