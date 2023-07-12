@@ -392,12 +392,12 @@ class ProgressiveWorkFlow(WorkFlow):
         self.data : Data = data
         self._init_experiment()
         start_time = time()
-        
         matcher = class_references[matcher_arguments['matcher']]
-        constructor_arguments = new_dictionary_from_keys(dictionary=matcher_arguments, keys=get_class_function_arguments(class_reference=matcher, function_name='__init__'))
-        predictor_arguments = new_dictionary_from_keys(dictionary=matcher_arguments, keys=get_class_function_arguments(class_reference=matcher, function_name='predict'))
-        
-        progressive_matcher : ProgressiveMatching = matcher(**constructor_arguments)
+        self.constructor_arguments = new_dictionary_from_keys(dictionary=matcher_arguments, keys=get_class_function_arguments(class_reference=matcher, function_name='__init__'))
+        self.predictor_arguments = new_dictionary_from_keys(dictionary=matcher_arguments, keys=get_class_function_arguments(class_reference=matcher, function_name='predict'))
+        print(self.constructor_arguments)
+        print(self.predictor_arguments)
+        progressive_matcher : ProgressiveMatching = matcher(**self.constructor_arguments)
         self.progressive_matcher : ProgressiveMatching = progressive_matcher
         #
         # Block Building step: Only one algorithm can be performed
@@ -467,10 +467,10 @@ class ProgressiveWorkFlow(WorkFlow):
         #
         # Progressive Matching step
         #
-        self.final_pairs : List[Tuple[float, int, int]] = progressive_matcher.predict(data=data, blocks=bblocks, **predictor_arguments)
+        self.final_pairs : List[Tuple[float, int, int]] = progressive_matcher.predict(data=data, blocks=bblocks, **self.predictor_arguments)
         evaluator = Evaluation(self.data)
-        self.tp_indices = evaluator.calculate_tps_indices(pairs=self.final_pairs,duplicate_of=progressive_matcher.duplicate_of, duplicate_emitted=progressive_matcher.duplicate_emitted)
-        self.total_emissions = len(self.final_pairs)       
+        self.tp_indices, self.total_emissions = evaluator.calculate_tps_indices(pairs=self.final_pairs,duplicate_of=progressive_matcher.duplicate_of, duplicate_emitted=progressive_matcher.duplicate_emitted)
+        self.total_candidates = len(self.final_pairs)       
         self._workflow_bar.update(1)
         self.workflow_exec_time = time() - start_time
 

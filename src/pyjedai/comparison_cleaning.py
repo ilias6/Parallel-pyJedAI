@@ -645,7 +645,7 @@ class ProgressiveCardinalityEdgePruning(CardinalityEdgePruning):
     def process(self, blocks: dict, data: Data, tqdm_disable: bool = False, store_weights: bool = True, cc: AbstractMetablocking = None, emit_all_tps_stop : bool = False) -> dict:
         
         self._emit_all_tps_stop : bool = emit_all_tps_stop
-        self._budget = self._budget if not self.emit_all_tps_stop else float('inf')
+        self._budget = self._budget if not self._emit_all_tps_stop else float('inf')
         if(cc is None):
             return super().process(blocks, data, tqdm_disable, store_weights)
         else:
@@ -850,7 +850,7 @@ class GlobalProgressiveSortedNeighborhood(ProgressiveSortedNeighborhood):
                 
         for pair in self._pair_weight:
             id1, id2 = pair
-            self._top_pairs.append(self._pair_weight[(id1, id2)], id1, id2)
+            self._top_pairs.append((self._pair_weight[(id1, id2)], id1, id2))
                         
         return self._top_pairs
                                             
@@ -926,7 +926,7 @@ class LocalProgressiveSortedNeighborhood(ProgressiveSortedNeighborhood):
             
         for pair in self._pair_weight:
             id1, id2 = pair
-            self._top_pairs.append(self._pair_weight[(id1, id2)], id1, id2)
+            self._top_pairs.append((self._pair_weight[(id1, id2)], id1, id2))
            
         return self._top_pairs
                                             
@@ -985,7 +985,7 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
                 else:
                     self._counters[neighbor_id] += 1
                 self._valid_entities.add(neighbor_id)
-                        
+                       
         for valid_entity_id in self._valid_entities:  
             _current_neighbor_weight = self._get_weight(entity_id, valid_entity_id)
             if(self.store_weights):

@@ -112,19 +112,19 @@ for id, dataset_info in enumerate(datasets_info):
     
     true_positives_number = len(gt)
     budgets = config['budget'] if values_given(config, 'budget') else get_multiples(true_positives_number, 10)
-        
+    total_workflows = len(workflow_combinations) * len(datasets_info) * len(budgets)
+       
     for budget in budgets:
         for workflow_combination in workflow_combinations:
             workflow_arguments = dict(zip(workflow_parameters, workflow_combination))
             workflow_arguments['budget'] = budget
             workflow_arguments['dataset'] = dataset_name
             
-
-            print(f"#### WORKFLOW {execution_count} ####")
+            execution_count += 1
+            print(f"#### WORKFLOW {execution_count}/{total_workflows} ####")
             current_workflow = ProgressiveWorkFlow()
             current_workflow.run(data=data, **workflow_arguments)            
             current_workflow_info : dict =  store_workflow_results(results=results,current_workflow=current_workflow,workflow_arguments=workflow_arguments)
-            execution_count += 1
             
             if(PRINT_WORKFLOWS):
                 pretty_print_workflow(current_workflow_info)

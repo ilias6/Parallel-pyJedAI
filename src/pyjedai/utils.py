@@ -448,10 +448,10 @@ class DatasetScheduler(ABC):
     def _print_info(self):
         _n_ids : int
         if(self._sorted_entities is None):
-            print("Neighborhood Status - Sorted by average weight")
+            print("Neighborhood Status - Not Sorted by average weight")
             _n_ids = self._neighborhoods.keys()
         else:
-            print("Neighborhood Status - Not sorted by average weight")
+            print("Neighborhood Status - Sorted by average weight")
             _n_ids = self._sorted_entities
         for _n_id in _n_ids:
             _current_neighborhood = self._neighborhoods[_n_id]
@@ -518,15 +518,16 @@ class DatasetScheduler(ABC):
         self._emitted_comparisons = 0    
         self._checked_entities = set()
         self._data : Data = data
-        
-        if(self._method == 'GLOBAL'):
+
+        if(self._method == 'TOP'):
+            print(self._all_candidates.qsize())
             while(not self._all_candidates.empty()):
                 score, sorted_entity, neighbor = self._all_candidates.get()
                 if(not self._checked_pair(sorted_entity, neighbor)):
                     if(not self._successful_emission(pair=(-score, sorted_entity, neighbor))):
                         return self._emitted_pairs
                 
-                return self._emitted_pairs
+            return self._emitted_pairs
             
         
         if(self._method == 'HB'):
@@ -554,7 +555,7 @@ class DatasetScheduler(ABC):
                         if(not self._checked_pair(sorted_entity, neighbor)):
                             if(not self._successful_emission(pair=(score, sorted_entity, neighbor))):
                                 return self._emitted_pairs
-                            _emissions_left = True
+                        _emissions_left = True
         return self._emitted_pairs
     
 class PredictionData(ABC):
@@ -564,14 +565,10 @@ class PredictionData(ABC):
     Args:
         ABC (ABC): ABC Module
     """
-    def __init__(self, name : str, predictions, tps_checked = dict) -> None:
-        self.set_name(name)
-        self.set_tps_checked(tps_checked)
-        self.set_predictions(self._format_predictions(predictions))
-        # Pairs have not been emitted yet - Data Module has not been populated with performance data
-        self.set_total_emissions(None)
-        self.set_normalized_auc(None)
-        self.set_cumulative_recall(None)
+    def __init__(self, matcher, matcher_info : dict) -> None:
+        self.set_matcher_info(matcher_info)
+        self.set_duplicate_emitted(matcher.duplicate_emitted)
+        self.set_candidate_pairs(self._format_predictions(matcher.pairs))
     
     def _format_predictions(self, predictions) -> List[Tuple[int, int]]:
         """Transforms given predictions into a list of duplets (candidate pairs)
@@ -586,43 +583,61 @@ class PredictionData(ABC):
         return [edge[:3] for edge in predictions.edges] if isinstance(predictions, Graph) else predictions
         
     def get_name(self) -> str:
-        return self._name
+        _matcher_info : dict = self.get_matcher_info()
+        if('name' not in _matcher_info): raise ValueError("Matcher doesn't have a name - Make sure its execution data has been calculated")
+        return _matcher_info['name']
     
-    def get_predictions(self) -> List[Tuple[float, int, int]]:
-        return self._predictions
+    def get_candidate_pairs(self) -> List[Tuple[float, int, int]]:
+        if(self._candidate_pairs is None): raise ValueError("Pairs not scheduled yet - Cannot retrieve candidate pairs")
+        return self._candidate_pairs
     
-    def get_tps_checked(self) -> dict:
-        return self._tps_checked
+    def get_duplicate_emitted(self) -> dict:
+        if(self._duplicate_emitted is None): raise ValueError("No information about the status of true positives' emission")
+        return self._duplicate_emitted
     
     def get_total_emissions(self) -> int:
-        if(self._total_emissions is None): raise ValueError("Pairs not emitted yet - Total Emissions are undefined")
-        return self._total_emissions
+        _matcher_info : dict = self.get_matcher_info()
+        if('total_emissions' not in _matcher_info): raise ValueError("Pairs not emitted yet - Total Emissions are undefined")
+        return _matcher_info['total_emissions']
     
     def get_normalized_auc(self) -> float:
-        if(self._normalized_auc is None): raise ValueError("Pairs not emitted yet - Normalized AUC is undefined")
-        return self._normalized_auc
+        _matcher_info : dict = self.get_matcher_info()
+        if('auc' not in _matcher_info): raise ValueError("Pairs not emitted yet - Normalized AUC is undefined")
+        return _matcher_info['auc']
     
     def get_cumulative_recall(self) -> float:
-        if(self._cumulative_recall is None): raise ValueError("Pairs not emitted yet - Cumulative Recall is undefined")
-        return self._cumulative_recall
+        _matcher_info : dict = self.get_matcher_info()
+        if('recall' not in _matcher_info): raise ValueError("Pairs not emitted yet - Cumulative Recall is undefined")
+        return _matcher_info['recall']
+    
+    def get_matcher_info(self) -> dict:
+        if(self._matcher_info is None): raise ValueError("Pairs not emitted yet - Matcher Info is undefined")
+        return self._matcher_info
+    
+    def set_matcher_info(self, matcher_info : dict) -> None:
+        self._matcher_info : dict = matcher_info
     
     def set_name(self, name : str):
-        self._name : str = name
+        _matcher_info : dict = self.get_matcher_info()
+        _matcher_info['name'] = name  
     
-    def set_predictions(self, predictions : List[Tuple[float, int, int]]) -> None:
-        self._predictions : List[Tuple[float, int, int]] = predictions
+    def set_candidate_pairs(self, candidate_pairs : List[Tuple[float, int, int]]) -> None:
+        self._candidate_pairs : List[Tuple[float, int, int]] = candidate_pairs
     
-    def set_tps_checked(self, tps_checked : dict) -> None:
-        self._tps_checked : dict = tps_checked
+    def set_duplicate_emitted(self, duplicate_emitted : dict) -> None:
+        self._duplicate_emitted : dict = duplicate_emitted
     
     def set_total_emissions(self, total_emissions : int) -> None:
-        self._total_emissions : int = total_emissions
+        _matcher_info : dict = self.get_matcher_info()
+        _matcher_info['total_emissions'] = total_emissions
         
     def set_normalized_auc(self, normalized_auc : float) -> None:
-        self._normalized_auc : float = normalized_auc
+        _matcher_info : dict = self.get_matcher_info()
+        _matcher_info['auc'] = normalized_auc
         
     def set_cumulative_recall(self, cumulative_recall : float) -> None:
-        self._cumulative_recall : float = cumulative_recall        
+        _matcher_info : dict = self.get_matcher_info()
+        _matcher_info['recall'] = cumulative_recall        
        
 def canonical_swap(id1: int, id2: int) -> Tuple[int, int]:
     """Returns the identifiers in canonical order
@@ -722,6 +737,7 @@ def reverse_blocks_entity_indexing(blocks : dict, old_data_limit : int) -> dict:
     Returns:
         dict : New block instance with identifiers defined in the context of the reverse indexing
     """
+    if(blocks is None): return None
     all_blocks = list(blocks.values())
     if 'Block' in str(type(all_blocks[0])):
         return reverse_raw_blocks_entity_indexing(blocks, old_data_limit)
@@ -880,6 +896,7 @@ def save_workflow(current_workflow, workflow_arguments : dict) -> dict:
     """
     
     workflow_info : dict = {k: v for k, v in workflow_arguments.items()}
+    workflow_info['total_candidates'] = current_workflow.total_candidates
     workflow_info['total_emissions'] = current_workflow.total_emissions
     workflow_info['tp_idx'] = current_workflow.tp_indices
     workflow_info['time'] = current_workflow.workflow_exec_time

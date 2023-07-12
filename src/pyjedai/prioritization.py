@@ -147,7 +147,7 @@ faiss_metrics = [
 
 index_metrics = [
     'WH-TF-IDF', 'WH-Frequency', 'WH-PL2', 'WH-BM25F'
-] 
+]
 
 available_metrics = string_metrics + set_metrics + bag_metrics + vector_metrics + index_metrics + faiss_metrics
 
@@ -162,7 +162,7 @@ class ProgressiveMatching(EntityMatching):
             self,
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
-            similarity_threshold: float = 0.5,
+            similarity_threshold: float = 0.0,
             qgram: int = 2, # for jaccard
             tokenizer_return_set = True, # unique values or not
             attributes: any = None,
@@ -202,7 +202,7 @@ class ProgressiveMatching(EntityMatching):
         self._comparison_cleaner: AbstractMetablocking = comparison_cleaner
         self._algorithm : str= algorithm
         self._emit_all_tps_stop : bool = emit_all_tps_stop
-        self.duplicate_emitted : dict = None 
+        self.duplicate_emitted : dict = None if not self._emit_all_tps_stop else {}
         self._prediction_data : PredictionData = None
         self.data : Data = data
         self.duplicate_of = data.duplicate_of
@@ -270,7 +270,7 @@ class ProgressiveMatching(EntityMatching):
         """Translates the workflow identifiers back into dataframe identifiers
            Populates the dataset scheduler with the candidate pairs of the current indexing stage
         """
-        self.scheduler = DatasetScheduler(budget=float('inf') if self._emit_all_tps_stop else self._budget, global_top=(self._algorithm=="Global")) if self.scheduler == None else self.scheduler
+        self.scheduler = DatasetScheduler(budget=float('inf') if self._emit_all_tps_stop else self._budget, global_top=(self._algorithm=="TOP")) if self.scheduler == None else self.scheduler
         self._store_id_mappings()
         for score, entity, candidate in self.pairs:            
             # entities of first and second dataframe in the context of the current indexing
@@ -657,7 +657,7 @@ class EmbeddingsNNBPM(BlockIndependentPM):
             similarity_search: str = 'faiss',
             vector_size: int = 200,
             num_of_clusters: int = 5,
-            similarity_function: str = 'cosine',
+            similarity_function: str = 'faiss-cosine',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
             qgram: int = 2, # for jaccard
@@ -780,7 +780,7 @@ class EmbeddingsNNBPM(BlockIndependentPM):
                                                     top_k=self._number_of_nearest_neighbors,
                                                     return_vectors=False,
                                                     tqdm_disable=False,
-                                                    save_embeddings=True,
+                                                    save_embeddings=False,
                                                     load_embeddings_if_exist=False,
                                                     with_entity_matching=False,
                                                     input_cleaned_blocks=blocks,
@@ -804,7 +804,7 @@ class SimilarityBasedProgressiveMatching(ProgressiveMatching):
     def __init__(
             self,
             weighting_scheme: str = 'ACF',
-            windows_size: int = 10,
+            window_size: int = 10,
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
@@ -816,10 +816,10 @@ class SimilarityBasedProgressiveMatching(ProgressiveMatching):
             prefix_pad: str = '#', # QgramTokenizer (if padding=True)
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
-
+        print(similarity_function)
         super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
         self._weighting_scheme : str = weighting_scheme
-        self._window_size : int = windows_size
+        self._window_size : int = window_size
         
 class GlobalPSNM(SimilarityBasedProgressiveMatching):
     """Applies Global Progressive Sorted Neighborhood Matching
@@ -833,6 +833,7 @@ class GlobalPSNM(SimilarityBasedProgressiveMatching):
     def __init__(
             self,
             weighting_scheme: str = 'ACF',
+            window_size: int = 10,
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
@@ -845,7 +846,7 @@ class GlobalPSNM(SimilarityBasedProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(weighting_scheme, window_size, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
 
     def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[float, int, int]]:
         gpsn : GlobalProgressiveSortedNeighborhood = GlobalProgressiveSortedNeighborhood(self._weighting_scheme, self._budget)
@@ -867,6 +868,7 @@ class LocalPSNM(SimilarityBasedProgressiveMatching):
     def __init__(
             self,
             weighting_scheme: str = 'ACF',
+            window_size = 10,
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.5,
@@ -879,7 +881,7 @@ class LocalPSNM(SimilarityBasedProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(weighting_scheme, window_size, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
 
     def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[float, int, int]]:
         lpsn : LocalProgressiveSortedNeighborhood = LocalProgressiveSortedNeighborhood(self._weighting_scheme, self._budget)
