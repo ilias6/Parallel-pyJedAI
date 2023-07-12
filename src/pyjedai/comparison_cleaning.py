@@ -832,7 +832,7 @@ class GlobalProgressiveSortedNeighborhood(ProgressiveSortedNeighborhood):
         for entity in range(self.data.dataset_limit):
             entity_positions = self._position_index.get_positions(entity)
             self._neighbors.clear()
-            for current_window in range(1,self._max_window_size):
+            for current_window in range(1,self._max_window_size + 1):
                 for entity_position in entity_positions:
                     right_neighbor = entity_position + current_window
                     left_neighbor = entity_position - current_window
@@ -892,7 +892,7 @@ class LocalProgressiveSortedNeighborhood(ProgressiveSortedNeighborhood):
         Returns:
             bool: Another pair can be emitted
         """
-        return self._current_window < self._max_window_size
+        return self._current_window <= self._max_window_size
         
     def _apply_main_processing(self) -> List[Tuple[float, int, int]]:
         self._current_window = 1 

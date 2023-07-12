@@ -36,19 +36,21 @@
         "window_size": []
     },
     "vector-based-debug-test": {
-        "matcher": ["EmbeddingsNNBPM"],
-        "algorithm": ["HB"],
-        "budget" : [100],
+        "matcher": ["GlobalPSNM"],
+        "algorithm": ["BFS"],
+        "budget" : [],
         "dataset_name" : ["D2"],
-        "source_dataset_path": ["~/pyJedAI/pyJedAI-Dev/data/ccer/D2/abt.csv"],
-        "target_dataset_path": ["~/pyJedAI/pyJedAI-Dev/data/ccer/D2/buy.csv"],
-        "ground_truth_path": ["~/pyJedAI/pyJedAI-Dev/data/ccer/D2/gt.csv"],
-        "number_of_nearest_neighbors": [10],
-        "indexing": ["inorder"],
-        "similarity_function": ["faiss-cosine", "faiss-euclidean"],
-        "language_model": ["sminilm"],
+        "source_dataset_path": ["~/pyJedAI/pyJedAI-Dev/data/test/ccer/abt_100.csv"],
+        "target_dataset_path": ["~/pyJedAI/pyJedAI-Dev/data/test/ccer/buy_100.csv"],
+        "ground_truth_path": ["~/pyJedAI/pyJedAI-Dev/data/test/ccer/gt_100.csv"],
+        "d1_attributes" : [["id","name","description"]],
+        "d2_attributes" : [["id","name","description"]],
+        "number_of_nearest_neighbors": [],
+        "indexing": ["inorder", "reverse", "bilateral"],
+        "similarity_function": [],
+        "language_model": [],
         "tokenizer": [],
-        "weighting_scheme": [],
-        "window_size": []
+        "weighting_scheme": ["ACF", "NCF"],
+        "window_size": [1,2,3,4,5,6,7,8,9,10]
     }
 }
