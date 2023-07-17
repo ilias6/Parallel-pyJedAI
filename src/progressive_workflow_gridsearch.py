@@ -55,7 +55,7 @@ VALID_WORKFLOW_PARAMETERS = ['matcher',
 # path of the configuration file
 CONFIG_FILE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-configs/per_experiments.json')
 # which configuration from the json file should be used in current experiment  
-EXPERIMENT_NAME = 'vector-based-debug-test'
+EXPERIMENT_NAME = 'vector-based-test'
 # path at which the results will be stored within a json file
 RESULTS_STORE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-results/' + EXPERIMENT_NAME + '.json')
 # results should be stored in the predefined path
@@ -67,7 +67,17 @@ PRINT_WORKFLOWS = True
 # identifier column names for source and target datasets
 D1_ID = 'id'
 D2_ID = 'id'
+# methods and their corresponding parameters for MB-based workflows
+# if you don't want to apply filtering, purging or block building (or want to use the default methods when necessary)
+# set those values to None
+_block_building = dict(method=QGramsBlocking, 
+                        params=dict(qgrams=3))
 
+_block_filtering = dict(method=BlockFiltering, 
+                        params=dict(ratio=0.8))
+
+_block_purging = dict(method=BlockPurging, 
+                        params=dict(smoothing_factor=1.025))
 ##############                          
                                    
 with open(CONFIG_FILE_PATH) as file:
@@ -123,7 +133,11 @@ for id, dataset_info in enumerate(datasets_info):
             execution_count += 1
             print(f"#### WORKFLOW {execution_count}/{total_workflows} ####")
             current_workflow = ProgressiveWorkFlow()
-            current_workflow.run(data=data, **workflow_arguments)            
+            current_workflow.run(data=data,
+                                 block_building=_block_building,
+                                 block_purging=_block_purging,
+                                 block_filtering=_block_filtering,
+                                 **workflow_arguments)            
             current_workflow_info : dict =  store_workflow_results(results=results,current_workflow=current_workflow,workflow_arguments=workflow_arguments)
             
             if(PRINT_WORKFLOWS):
@@ -135,13 +149,7 @@ if(VISUALIZE_RESULTS):
                      
 if(STORE_RESULTS):
     with open(RESULTS_STORE_PATH, 'w') as file:
-        json.dump(results, file, indent=4)  
-            
-            
-    
-            
-            
-            
+        json.dump(results, file, indent=4)
     
     
     

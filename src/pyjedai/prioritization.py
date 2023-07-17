@@ -655,7 +655,7 @@ class EmbeddingsNNBPM(BlockIndependentPM):
             language_model: str = 'bert',
             number_of_nearest_neighbors: int = 10,
             similarity_search: str = 'faiss',
-            vector_size: int = 200,
+            vector_size: int = 300,
             num_of_clusters: int = 5,
             similarity_function: str = 'faiss-cosine',
             tokenizer: str = 'white_space_tokenizer',

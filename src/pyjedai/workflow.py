@@ -435,9 +435,9 @@ class ProgressiveWorkFlow(WorkFlow):
                 block_purging_method = self.block_purging['method'](**self.block_purging["params"]) \
                                                 if "params" in self.block_purging \
                                                 else self.block_purging['method']()
-                block_purging_blocks = block_purging_method(bblocks,
-                                                            data,
-                                                            tqdm_disable=workflow_step_tqdm_disable)
+                block_purging_blocks = block_purging_method.process(bblocks,
+                                                                    data,
+                                                                    tqdm_disable=workflow_step_tqdm_disable)
                 self.final_pairs = bblocks = block_purging_blocks
                 res = block_purging_method.evaluate(bblocks,
                                                     export_to_dict=True,
@@ -453,9 +453,9 @@ class ProgressiveWorkFlow(WorkFlow):
                 block_filtering_method = self.block_filtering['method'](**self.block_filtering["params"]) \
                                                 if "params" in self.block_filtering \
                                                 else self.block_filtering['method']()
-                block_filtering_blocks = block_filtering_method(bblocks,
-                                                            data,
-                                                            tqdm_disable=workflow_step_tqdm_disable)
+                block_filtering_blocks = block_filtering_method.process(bblocks,
+                                                                        data,
+                                                                        tqdm_disable=workflow_step_tqdm_disable)
                 self.final_pairs = bblocks = block_filtering_blocks
                 res = block_filtering_method.evaluate(bblocks,
                                                     export_to_dict=True,
