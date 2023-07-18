@@ -10,10 +10,10 @@ from networkx import Graph
 from tqdm.autonotebook import tqdm
 
 from .datamodel import Data
-from .evaluation import Evaluation, write
+from .evaluation import Evaluation
 from .block_building import StandardBlocking
 from .block_cleaning import BlockFiltering, BlockPurging
-from .comparison_cleaning import CardinalityNodePruning
+from .comparison_cleaning import *
 from .matching import EntityMatching
 from .clustering import ConnectedComponentsClustering, UniqueMappingClustering
 from .vector_based_blocking import EmbeddingsNNBlockBuilding
@@ -370,7 +370,7 @@ class BlockingBasedWorkFlow(PYJEDAIWorkFlow):
         self.block_cleaning, self.block_building, self.comparison_cleaning, \
             self.clustering, self.joins, self.entity_matching = \
             block_cleaning, block_building, comparison_cleaning, clustering, joins, entity_matching
-        self.name: str = name if name else "Workflow-" + str(self._id)
+        self.name: str = name if name else "BlockingBasedWorkFlow-" + str(self._id)
 
     def run(self,
             data: Data,
@@ -466,12 +466,21 @@ class BlockingBasedWorkFlow(PYJEDAIWorkFlow):
         entity_matching_method = self.entity_matching['method'](**self.entity_matching["params"]) \
                                         if "params" in self.entity_matching \
                                         else self.entity_matching['method']()
-        self.final_pairs = em_graph = entity_matching_method.predict(
-            comparison_cleaning_blocks if comparison_cleaning_blocks is not None \
-                else block_building_blocks,
-            data,
-            tqdm_disable=workflow_step_tqdm_disable
-        )
+                                        
+        if "exec_params" not in self.entity_matching:
+            self.final_pairs = em_graph = entity_matching_method.predict(
+                comparison_cleaning_blocks if comparison_cleaning_blocks is not None \
+                    else block_building_blocks,
+                data,
+                tqdm_disable=workflow_step_tqdm_disable)
+        else:
+            self.final_pairs = em_graph = entity_matching_method.predict(
+                comparison_cleaning_blocks if comparison_cleaning_blocks is not None \
+                    else block_building_blocks,
+                data,
+                tqdm_disable=workflow_step_tqdm_disable,
+                **self.entity_matching["exec_params"])
+
         res = entity_matching_method.evaluate(em_graph,
                                                 export_to_dict=True,
                                                 with_classification_report=with_classification_report,
@@ -485,7 +494,11 @@ class BlockingBasedWorkFlow(PYJEDAIWorkFlow):
             clustering_method = self.clustering['method'](**self.clustering["params"]) \
                                             if "params" in self.clustering \
                                             else self.clustering['method']()
-            self.final_pairs = components = clustering_method.process(em_graph, data)
+            if "exec_params" not in self.clustering:
+                self.final_pairs = components = clustering_method.process(em_graph, data)
+            else:
+                self.final_pairs = components = clustering_method.process(em_graph, data, **self.clustering["exec_params"])
+            
             res = clustering_method.evaluate(components,
                                             export_to_dict=True,
                                             with_classification_report=False,
@@ -506,14 +519,17 @@ class BlockingBasedWorkFlow(PYJEDAIWorkFlow):
             PYJEDAIWorkFlow: Best workflow
         """
         self.block_building = dict(method=StandardBlocking)
-        self.block_cleaning = [dict(method=BlockPurging,
-                                    params=dict(smoothing_factor=1.0)),
-                               dict(method=BlockFiltering)]
-        self.comparison_cleaning = dict(method=CardinalityNodePruning)
+        self.block_cleaning = [dict(
+            method=BlockFiltering,
+            params=dict(ratio=0.9)
+        )]
+        self.comparison_cleaning = dict(method=WeightedEdgePruning, params=dict(weighting_scheme='EJS'))
         self.entity_matching = dict(method=EntityMatching,
-                                    metric='cosine',
-                                    similarity_threshold=0.55)
-        self.clustering = dict(method=ConnectedComponentsClustering)
+                                    params=dict(metric='cosine',
+                                                     tokenizer='tfidf_char_3gram', 
+                                                     similarity_threshold=0.0))
+        self.clustering = dict(method=UniqueMappingClustering, 
+                               exec_params=dict(similarity_threshold=0.17))
         self.name="best-ccer-workflow"
 
     def best_blocking_workflow_der(self) -> None:

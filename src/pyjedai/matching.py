@@ -22,7 +22,6 @@ from py_stringmatching.tokenizer.whitespace_tokenizer import \
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.metrics.pairwise import pairwise_distances
 from tqdm.autonotebook import tqdm
-from whoosh.scoring import BM25F, PL2, TF_IDF, Frequency
 
 from .datamodel import Data, PYJEDAIFeature
 from .evaluation import Evaluation
@@ -37,10 +36,6 @@ metrics_mapping = {
     'generalized_jaccard' : GeneralizedJaccard(),
     'dice': Dice(),
     'overlap_coefficient' : OverlapCoefficient(),
-    'whoosh_tfidf' : TF_IDF(),
-    'whoosh_frequency' : Frequency(),
-    'whoosh_PL2' : PL2(),
-    'whoosh_BM25F' : BM25F()
 }
 
 vector_metrics_mapping = {
@@ -55,7 +50,7 @@ set_metrics = [
     'cosine', 'dice', 'generalized_jaccard', 'jaccard', 'overlap_coefficient'
 ]
 
-vector_metrics = [
+vector_metrics = [ 
     'cosine', 'dice', 'jaccard'
 ]
 

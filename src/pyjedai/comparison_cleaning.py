@@ -161,7 +161,8 @@ class AbstractComparisonCleaning(PYJEDAIFeature):
             raise AttributeError("Can not proceed to evaluation without a ground-truth file. \
                 Data object mush have initialized with the ground-truth file")
         pairs_df = pd.DataFrame(columns=['id1', 'id2'])
-        for entity_id, candidates in prediction:
+        
+        for entity_id, candidates in prediction.items():
             id1 = self.data._gt_to_ids_reversed_1[entity_id]                                            
             for candiadate_id in candidates:
                 id2 = self.data._gt_to_ids_reversed_1[candiadate_id] if self.data.is_dirty_er \
