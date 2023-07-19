@@ -8,7 +8,13 @@ from itertools import product
 from pyjedai.utils import to_path
 from pyjedai.datamodel import Data
 from pyjedai.workflow import ProgressiveWorkFlow
-from pyjedai.utils import values_given, get_multiples, necessary_dfs_supplied, store_workflow_results, pretty_print_workflow
+from pyjedai.utils import (
+    values_given,
+    get_multiples,
+    necessary_dfs_supplied,
+    save_worfklow_in_path,
+    pretty_print_workflow,
+    clear_json_file)
 from pyjedai.block_building import (
     StandardBlocking,
     QGramsBlocking,
@@ -55,7 +61,7 @@ VALID_WORKFLOW_PARAMETERS = ['matcher',
 # path of the configuration file
 CONFIG_FILE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-configs/per_experiments.json')
 # which configuration from the json file should be used in current experiment  
-EXPERIMENT_NAME = 'vector-based-test'
+EXPERIMENT_NAME = 'local-sn-test'
 # path at which the results will be stored within a json file
 RESULTS_STORE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-results/' + EXPERIMENT_NAME + '.json')
 # results should be stored in the predefined path
@@ -94,9 +100,10 @@ if(not necessary_dfs_supplied(config)):
 
 datasets_info = list(zip(config['source_dataset_path'], config['target_dataset_path'], config['ground_truth_path']))
 
-
-results = dict()
 execution_count : int = 0
+
+if(STORE_RESULTS):
+    clear_json_file(path=RESULTS_STORE_PATH)
 
 for id, dataset_info in enumerate(datasets_info):
     dataset_id = id + 1
@@ -137,19 +144,20 @@ for id, dataset_info in enumerate(datasets_info):
                                  block_building=_block_building,
                                  block_purging=_block_purging,
                                  block_filtering=_block_filtering,
-                                 **workflow_arguments)            
-            current_workflow_info : dict =  store_workflow_results(results=results,current_workflow=current_workflow,workflow_arguments=workflow_arguments)
+                                 **workflow_arguments)    
             
+            if(STORE_RESULTS):
+                current_workflow_info = save_worfklow_in_path(workflow=current_workflow,
+                                                            workflow_arguments=workflow_arguments,
+                                                            path=RESULTS_STORE_PATH)
             if(PRINT_WORKFLOWS):
                 pretty_print_workflow(current_workflow_info)
             
-evaluator = Evaluation(data)
 if(VISUALIZE_RESULTS):
-    evaluator.visualize_results_roc(results=results)        
-                     
-if(STORE_RESULTS):
-    with open(RESULTS_STORE_PATH, 'w') as file:
-        json.dump(results, file, indent=4)
+    with open(RESULTS_STORE_PATH, 'r') as file:
+        results = json.load(file)
+    evaluator = Evaluation(data)
+    evaluator.visualize_results_roc(results=results)
     
     
     

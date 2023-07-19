@@ -73,6 +73,24 @@
     },
     "local-sn-test": {
         "matcher": ["LocalPSNM"],
+        "algorithm": ["BFS"],
+        "budget" : [],
+        "dataset_name" : ["D1"],
+        "source_dataset_path": ["~/pyJedAI/pyJedAI-Dev/data/test/ccer/abt_100.csv"],
+        "target_dataset_path": ["~/pyJedAI/pyJedAI-Dev/data/test/ccer/buy_100.csv"],
+        "ground_truth_path": ["~/pyJedAI/pyJedAI-Dev/data/test/ccer/gt_100.csv"],
+        "d1_attributes" : [["id","name","description"]],
+        "d2_attributes" : [["id","name","description"]],
+        "number_of_nearest_neighbors": [],
+        "indexing": ["inorder"],
+        "similarity_function": [],
+        "language_model": [],
+        "tokenizer": [],
+        "weighting_scheme": ["ACF"],
+        "window_size": [1]
+    },
+    "local-mb-test": {
+        "matcher": ["GlobalTopPM"],
         "algorithm": ["BFS", "DFS", "HB", "GLOBAL"],
         "budget" : [],
         "dataset_name" : ["D1"],
@@ -82,11 +100,11 @@
         "d1_attributes" : [["id","name","description"]],
         "d2_attributes" : [["id","name","description"]],
         "number_of_nearest_neighbors": [],
-        "indexing": ["inorder", "reverse", "bilateral"],
+        "indexing": ["inorder"],
         "similarity_function": [],
         "language_model": [],
         "tokenizer": [],
-        "weighting_scheme": ["ACF", "ID"],
-        "window_size": [1,2,3,4,5]
+        "weighting_scheme": ["ARCS", "CBS", "CNC", "CND", "CNJ", "COSINE", "DICE", "ECBS", "EJS", "X2"],
+        "window_size": []
     }
 }
