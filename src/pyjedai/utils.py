@@ -845,7 +845,7 @@ def save_worfklow_in_path(workflow, workflow_arguments : dict, path : str) -> di
     Returns:
         dict: Dictionary containing the information about the given workflow
     """
-    if(os.path.getsize(path) == 0):
+    if(not os.path.exists(path) or os.path.getsize(path) == 0):
         results = {}
     else:
         with open(path, 'r', encoding="utf-8") as file:
@@ -932,14 +932,13 @@ def clear_json_file(path : str):
     if os.path.exists(path):
         if os.path.getsize(path) > 0:
             open(path, 'w').close()
-
-#####################################################
-    
             
             
-        
-        
-        
+def purge_id_column(columns : list):
+    non_id_columns : list = []
+    for column in columns:
+        if(column != 'id'):
+            non_id_columns.append(column)
     
-
-        
+    return non_id_columns
+#####################################################    

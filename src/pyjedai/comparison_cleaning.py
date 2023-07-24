@@ -172,11 +172,20 @@ class AbstractMetablocking(AbstractComparisonCleaning, ABC):
     def _apply_main_processing(self) -> dict:
         self._counters = np.empty([self.data.num_of_entities], dtype=float)
         self._flags = np.empty([self.data.num_of_entities], dtype=int)
-        if self.weighting_scheme == 'EJS':
+        if(self._comparisons_per_entity_required()):
             self._set_statistics()
         self._set_threshold()
 
         return self._prune_edges()
+
+    def _comparisons_per_entity_required(self):
+        return (self.weighting_scheme == 'EJS' or 
+                self.weighting_scheme == 'CNC' or
+                self.weighting_scheme == 'SNC' or
+                self.weighting_scheme == 'SND' or
+                self.weighting_scheme == 'CND' or
+                self.weighting_scheme == 'CNJ' or
+                self.weighting_scheme == 'SNJ')
 
     def _get_weight(self, entity_id: int, neighbor_id: int) -> float:
         ws = self.weighting_scheme
@@ -184,7 +193,7 @@ class AbstractMetablocking(AbstractComparisonCleaning, ABC):
             return self._counters[neighbor_id]
         # CARDINALITY_NORM_COSINE, SIZE_NORM_COSINE
         elif ws == 'CNC' or ws == 'SNC':
-            return self._counters[neighbor_id] / float(sqrt(len(self._comparisons_per_entity[entity_id]) * self._comparisons_per_entity[neighbor_id]))
+            return self._counters[neighbor_id] / float(sqrt(self._comparisons_per_entity[entity_id] * self._comparisons_per_entity[neighbor_id]))
         # SIZE_NORM_DICE, CARDINALITY_NORM_DICE
         elif ws == 'SND' or ws == 'CND':
             return 2 * self._counters[neighbor_id] / float(self._comparisons_per_entity[entity_id] + self._comparisons_per_entity[neighbor_id])

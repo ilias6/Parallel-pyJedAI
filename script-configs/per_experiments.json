@@ -89,22 +89,36 @@
         "weighting_scheme": ["ACF"],
         "window_size": [1]
     },
-    "local-mb-test": {
+    "local-mb-test-inorder": {
         "matcher": ["GlobalTopPM"],
-        "algorithm": ["BFS", "DFS", "HB", "GLOBAL"],
+        "algorithm": ["BFS"],
         "budget" : [],
         "dataset_name" : ["D1"],
-        "source_dataset_path": ["~/pyJedAI/pyJedAI-Dev/data/test/ccer/abt_100.csv"],
-        "target_dataset_path": ["~/pyJedAI/pyJedAI-Dev/data/test/ccer/buy_100.csv"],
-        "ground_truth_path": ["~/pyJedAI/pyJedAI-Dev/data/test/ccer/gt_100.csv"],
-        "d1_attributes" : [["id","name","description"]],
-        "d2_attributes" : [["id","name","description"]],
+        "source_dataset_path": ["~/pyjedai_datasets/D1/rest1.csv"],
+        "target_dataset_path": ["~/pyjedai_datasets/D1/rest2.csv"],
+        "ground_truth_path": ["~/pyjedai_datasets/D1/gt.csv"],
         "number_of_nearest_neighbors": [],
         "indexing": ["inorder"],
         "similarity_function": [],
         "language_model": [],
         "tokenizer": [],
-        "weighting_scheme": ["ARCS", "CBS", "CNC", "CND", "CNJ", "COSINE", "DICE", "ECBS", "EJS", "X2"],
+        "weighting_scheme": ["ARCS"],
+        "window_size": []
+    },
+    "local-mb-test-inorder-2": {
+        "matcher": ["GlobalTopPM"],
+        "algorithm": ["BFS"],
+        "budget" : [],
+        "dataset_name" : ["D1"],
+        "source_dataset_path": ["~/pyjedai_datasets/D1/rest1.csv"],
+        "target_dataset_path": ["~/pyjedai_datasets/D1/rest2.csv"],
+        "ground_truth_path": ["~/pyjedai_datasets/D1/gt.csv"],
+        "number_of_nearest_neighbors": [],
+        "indexing": ["inorder"],
+        "similarity_function": [],
+        "language_model": [],
+        "tokenizer": [],
+        "weighting_scheme": ["ARCS"],
         "window_size": []
     }
 }

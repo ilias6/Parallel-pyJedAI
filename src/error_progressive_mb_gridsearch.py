@@ -60,15 +60,15 @@ VALID_WORKFLOW_PARAMETERS = ['matcher',
                             'weighting_scheme',
                             'window_size']
 # path of the configuration file
-CONFIG_FILE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-configs/per_experiments.json')
+CONFIG_FILE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-configs/mb_experiments.json')
 # which configuration from the json file should be used in current experiment  
-EXPERIMENT_NAME = 'local-mb-test-inorder-2'
+EXPERIMENT_NAME = 'mb-test'
 # path at which the results will be stored within a json file
 RESULTS_STORE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-results/' + EXPERIMENT_NAME + '.json')
 # results should be stored in the predefined path
 STORE_RESULTS = True
 # AUC calculation and ROC visualization after execution
-VISUALIZE_RESULTS = True
+VISUALIZE_RESULTS = False
 # workflow arguments and execution info should be printed in terminal once executed
 PRINT_WORKFLOWS = True
 # identifier column names for source and target datasets
@@ -77,8 +77,8 @@ D2_ID = 'id'
 # methods and their corresponding parameters for MB-based workflows
 # if you don't want to apply filtering, purging or block building (or want to use the default methods when necessary)
 # set those values to None
-_block_building = dict(method=QGramsBlocking, 
-                        params=dict(qgrams=3))
+_block_building = dict(method=StandardBlocking, 
+                       params=dict())
 
 _block_filtering = dict(method=BlockFiltering, 
                         params=dict(ratio=0.8))
@@ -129,6 +129,10 @@ for id, dataset_info in enumerate(datasets_info):
         ground_truth=gt,
     )
     
+    print(sep)
+    print(data.entities_d1)
+    print(data.entities_d2)
+    
     true_positives_number = len(gt)
     budgets = config['budget'] if values_given(config, 'budget') else get_multiples(true_positives_number, 10)
     total_workflows = len(workflow_combinations) * len(datasets_info) * len(budgets)
@@ -153,18 +157,5 @@ for id, dataset_info in enumerate(datasets_info):
                                                             workflow_arguments=workflow_arguments,
                                                             path=RESULTS_STORE_PATH)
             if(PRINT_WORKFLOWS):
-                pretty_print_workflow(current_workflow_info)
-            
-if(VISUALIZE_RESULTS):
-    with open(RESULTS_STORE_PATH, 'r') as file:
-        results = json.load(file)
-    evaluator = Evaluation(data)
-    evaluator.visualize_results_roc(results=results)
-    
-if(STORE_RESULTS):    
-    with open(RESULTS_STORE_PATH, 'w', encoding="utf-8") as file:
-        json.dump(results, file, indent=4)
-    
-    
-    
-                                      
+                pretty_print_workflow(current_workflow_info)   
+                                            

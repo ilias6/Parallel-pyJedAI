@@ -419,7 +419,7 @@ class BlockIndependentPM(ProgressiveMatching):
             self,
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
-            similarity_threshold: float = 0.5,
+            similarity_threshold: float = 0.0,
             qgram: int = 2, # for jaccard
             tokenizer_return_set = True, # unique values or not
             attributes: any = None,
@@ -521,7 +521,7 @@ class HashBasedProgressiveMatching(ProgressiveMatching):
             weighting_scheme: str = 'X2',
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
-            similarity_threshold: float = 0.5,
+            similarity_threshold: float = 0.0,
             qgram: int = 2, # for jaccard
             tokenizer_return_set = True, # unique values or not
             attributes: any = None,
@@ -547,7 +547,7 @@ class GlobalTopPM(HashBasedProgressiveMatching):
             weighting_scheme: str = 'X2',
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
-            similarity_threshold: float = 0.5,
+            similarity_threshold: float = 0.0,
             qgram: int = 2, # for jaccard
             tokenizer_return_set = True, # unique values or not
             attributes: any = None,
@@ -601,7 +601,7 @@ class LocalTopPM(HashBasedProgressiveMatching):
             similarity_function: str = 'dice',
             number_of_nearest_neighbors: int = 10,
             tokenizer: str = 'white_space_tokenizer',
-            similarity_threshold: float = 0.5,
+            similarity_threshold: float = 0.0,
             qgram: int = 2, # for jaccard
             tokenizer_return_set = True, # unique values or not
             attributes: any = None,
@@ -659,7 +659,7 @@ class EmbeddingsNNBPM(BlockIndependentPM):
             num_of_clusters: int = 5,
             similarity_function: str = 'faiss-cosine',
             tokenizer: str = 'white_space_tokenizer',
-            similarity_threshold: float = 0.5,
+            similarity_threshold: float = 0.0,
             qgram: int = 2, # for jaccard
             tokenizer_return_set = True, # unique values or not
             attributes: any = None,
@@ -807,7 +807,7 @@ class SimilarityBasedProgressiveMatching(ProgressiveMatching):
             window_size: int = 10,
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
-            similarity_threshold: float = 0.5,
+            similarity_threshold: float = 0.0,
             qgram: int = 2, # for jaccard
             tokenizer_return_set = True, # unique values or not
             attributes: any = None,
@@ -836,7 +836,7 @@ class GlobalPSNM(SimilarityBasedProgressiveMatching):
             window_size: int = 10,
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
-            similarity_threshold: float = 0.5,
+            similarity_threshold: float = 0.0,
             qgram: int = 2, # for jaccard
             tokenizer_return_set = True, # unique values or not
             attributes: any = None,
@@ -871,7 +871,7 @@ class LocalPSNM(SimilarityBasedProgressiveMatching):
             window_size = 10,
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
-            similarity_threshold: float = 0.5,
+            similarity_threshold: float = 0.0,
             qgram: int = 2, # for jaccard
             tokenizer_return_set = True, # unique values or not
             attributes: any = None,
@@ -902,7 +902,7 @@ class RandomPM(ProgressiveMatching):
             self,
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
-            similarity_threshold: float = 0.5,
+            similarity_threshold: float = 0.0,
             qgram: int = 2, # for jaccard
             tokenizer_return_set = True, # unique values or not
             attributes: any = None,
@@ -939,7 +939,7 @@ class PESM(HashBasedProgressiveMatching):
             weighting_scheme: str = 'CBS',
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
-            similarity_threshold: float = 0.5,
+            similarity_threshold: float = 0.0,
             qgram: int = 2, # for jaccard
             tokenizer_return_set = True, # unique values or not
             attributes: any = None,
@@ -977,7 +977,7 @@ class WhooshPM(BlockIndependentPM):
             similarity_function: str = 'WH-TF-IDF',
             number_of_nearest_neighbors: int = 10,
             tokenizer: str = 'white_space_tokenizer',
-            similarity_threshold: float = 0.5,
+            similarity_threshold: float = 0.0,
             qgram: int = 2, # for jaccard
             tokenizer_return_set = True, # unique values or not
             attributes: any = None,
