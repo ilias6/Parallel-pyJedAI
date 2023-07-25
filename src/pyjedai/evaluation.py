@@ -204,7 +204,7 @@ class Evaluation:
         normalized_aucs = []
         # for each method layout its plot
         for method_data in methods_data:
-            cumulative_recall, normalized_auc = self._generate_auc_data(total_candidates=method_data['total_emissions'], tp_positions=method_data['tp_idx'])
+            cumulative_recall, normalized_auc = self._generate_auc_data(total_candidates=method_data['total_emissions'], tp_positions=method_data['tp_idx'][0])
             del(method_data['tp_idx'])
             method_name=method_data['name']
             method_data['auc'] = normalized_auc
@@ -324,11 +324,11 @@ class Evaluation:
         # ideal_auc = self.calculate_ideal_auc(len(pairs), self.num_of_true_duplicates)
         self.total_emissions : int = 0
         for batch in batches:
-            for _, entity, candidate in batch:
+            for score, entity, candidate in batch:
                 if(self._all_tps_emitted()): break                
                 if candidate in duplicate_of[entity]:
                     self._update_true_positive_entry(entity, candidate)
-                    self._tps_indices.append(self.total_emissions)
+                    self._tps_indices.append([self.total_emissions, entity, candidate, score])
                     
             self.total_emissions += 1
             # _normalized_auc += ((_new_recall + _current_recall) / 2) * (_current_batch_size / self.num_of_true_duplicates)

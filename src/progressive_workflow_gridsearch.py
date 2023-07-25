@@ -62,7 +62,7 @@ VALID_WORKFLOW_PARAMETERS = ['matcher',
 # path of the configuration file
 CONFIG_FILE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-configs/per_experiments.json')
 # which configuration from the json file should be used in current experiment  
-EXPERIMENT_NAME = 'local-mb-test-inorder-2'
+EXPERIMENT_NAME = 'local-mb-test-reverse'
 # path at which the results will be stored within a json file
 RESULTS_STORE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-results/' + EXPERIMENT_NAME + '.json')
 # results should be stored in the predefined path
@@ -116,8 +116,8 @@ for id, dataset_info in enumerate(datasets_info):
     d2 = pd.read_csv(to_path(d2_path), sep=sep, engine='python', na_filter=False).astype(str)
     gt = pd.read_csv(to_path(gt_path), sep=sep, engine='python')
 
-    d1_attributes = config['d1_attributes'][id] if values_given(config, 'd1_attributes') else purge_id_column(d1.columns.tolist())
-    d2_attributes = config['d2_attributes'][id] if values_given(config, 'd2_attributes') else purge_id_column(d2.columns.tolist())
+    d1_attributes = config['d1_attributes'][id] if values_given(config, 'd1_attributes') else d1.columns.tolist()
+    d2_attributes = config['d2_attributes'][id] if values_given(config, 'd2_attributes') else d2.columns.tolist()
 
     data = Data(
         dataset_1=d1,
@@ -161,9 +161,9 @@ if(VISUALIZE_RESULTS):
     evaluator = Evaluation(data)
     evaluator.visualize_results_roc(results=results)
     
-if(STORE_RESULTS):    
-    with open(RESULTS_STORE_PATH, 'w', encoding="utf-8") as file:
-        json.dump(results, file, indent=4)
+# if(STORE_RESULTS):    
+#     with open(RESULTS_STORE_PATH, 'w', encoding="utf-8") as file:
+#         json.dump(results, file, indent=4)
     
     
     

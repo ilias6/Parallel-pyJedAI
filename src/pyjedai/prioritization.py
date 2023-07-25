@@ -206,7 +206,6 @@ class ProgressiveMatching(EntityMatching):
         self._prediction_data : PredictionData = None
         self.data : Data = data
         self.duplicate_of = data.duplicate_of
-        _pipi = self.duplicate_of
         self.scheduler : DatasetScheduler = None
 
         if not blocks:
@@ -237,7 +236,7 @@ class ProgressiveMatching(EntityMatching):
             
         if(indexing == 'bilateral'): self._indexing = 'reverse'
         if(self._indexing == 'reverse'):
-            _reverse_blocks = reverse_blocks_entity_indexing(_inorder_blocks, self.data.dataset_limit)
+            _reverse_blocks = reverse_blocks_entity_indexing(_inorder_blocks, self.data)
             self.data = reverse_data_indexing(self.data)
             if 'Block' in str(type(all_blocks[0])):
                 self._predict_raw_blocks(_reverse_blocks)
@@ -272,6 +271,7 @@ class ProgressiveMatching(EntityMatching):
         """
         self.scheduler = DatasetScheduler(budget=float('inf') if self._emit_all_tps_stop else self._budget, global_top=(self._algorithm=="TOP")) if self.scheduler == None else self.scheduler
         self._store_id_mappings()
+        
         for score, entity, candidate in self.pairs:            
             # entities of first and second dataframe in the context of the current indexing
             d1_entity, d2_entity = (entity, candidate) if(entity < candidate) else (candidate, entity)
@@ -285,8 +285,6 @@ class ProgressiveMatching(EntityMatching):
             # print(f"---------------Workflow IDs [D1 context Ent First]---------------")
             # print(f"D1 Entity: {d1_entity}")
             # print(f"D2 Entity: {d2_entity}")
-            
-            
             
             # the dataframe ids of the entities from first and second dataset in the context of indexing
             d1_entity_df_id, d2_entity_df_id = (d1_map[d1_entity], d2_map[d2_entity])
@@ -353,7 +351,6 @@ class ProgressiveMatching(EntityMatching):
         for score, entity, candidate in self.pairs:
             _inorder_entities : bool = self._inorder_phase_entity(entity)
             entity, candidate = (self._retrieve_entity_df_id(entity), self._retrieve_entity_df_id(candidate))
-            print
             entity, candidate = (entity, candidate) if _inorder_entities else (candidate, entity)
             _identified_pairs.append((score, entity, candidate))
             
@@ -463,7 +460,6 @@ class BlockIndependentPM(ProgressiveMatching):
         self._prediction_data : PredictionData = None
         self.data : Data = data
         self.duplicate_of = data.duplicate_of
-        _pipi = self.duplicate_of
         self.scheduler : DatasetScheduler = None
         
         if self.data.is_dirty_er and self._indexing == 'bilateral':
@@ -491,7 +487,7 @@ class BlockIndependentPM(ProgressiveMatching):
             
         if(indexing == 'bilateral'): self._indexing = 'reverse'
         if(self._indexing == 'reverse'):
-            _reverse_blocks = reverse_blocks_entity_indexing(_inorder_blocks, self.data.dataset_limit)
+            _reverse_blocks = reverse_blocks_entity_indexing(_inorder_blocks, self.data)
             self.data = reverse_data_indexing(self.data)
             if all_blocks is None or 'Block' in str(type(all_blocks[0])):
                 self._predict_raw_blocks(_reverse_blocks)
@@ -816,7 +812,6 @@ class SimilarityBasedProgressiveMatching(ProgressiveMatching):
             prefix_pad: str = '#', # QgramTokenizer (if padding=True)
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
-        print(similarity_function)
         super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
         self._weighting_scheme : str = weighting_scheme
         self._window_size : int = window_size

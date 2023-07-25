@@ -522,7 +522,6 @@ class DatasetScheduler(ABC):
         self._data : Data = data
 
         if(self._method == 'TOP'):
-            print(self._all_candidates.qsize())
             while(not self._all_candidates.empty()):
                 score, sorted_entity, neighbor = self._all_candidates.get()
                 if(not self._checked_pair(sorted_entity, neighbor)):
@@ -729,12 +728,11 @@ def has_duplicate_pairs(pairs : List[Tuple[float, int, int]]):
         seen_pairs.add((entity, candidate))
     return False
 
-def reverse_blocks_entity_indexing(blocks : dict, old_data_limit : int) -> dict:
+def reverse_blocks_entity_indexing(blocks : dict, data : Data) -> dict:
     """Returns a new instance of blocks containing the entity IDs of the given blocks translated into the reverse indexing system
     Args:
         blocks (dict): blocks as defined in the previous indexing
-        old_data_limit (int): Limit defining whether an ID belongs to the first (<limit) or second (>=limit) dataset
-                              within the context of the previous indexing 
+        data (Data): Previous data module used to define the reversed ids based on previous dataset limit and dataset sizes
 
     Returns:
         dict : New block instance with identifiers defined in the context of the reverse indexing
@@ -742,25 +740,25 @@ def reverse_blocks_entity_indexing(blocks : dict, old_data_limit : int) -> dict:
     if(blocks is None): return None
     all_blocks = list(blocks.values())
     if 'Block' in str(type(all_blocks[0])):
-        return reverse_raw_blocks_entity_indexing(blocks, old_data_limit)
+        return reverse_raw_blocks_entity_indexing(blocks, data)
     elif isinstance(all_blocks[0], set):
-        return reverse_prunned_blocks_entity_indexing(blocks, old_data_limit)
+        return reverse_prunned_blocks_entity_indexing(blocks, data)
  
-def reverse_prunned_blocks_entity_indexing(blocks : dict, old_data_limit : int) -> dict:
+def reverse_prunned_blocks_entity_indexing(blocks : dict, data : Data) -> dict:
     _reversed_blocks : dict = dict()
     _reversed_block : set
      
     for entity in blocks:
-        _updated_entity : int = get_reverse_indexing_id(entity)
+        _updated_entity : int = get_reverse_indexing_id(entity, data)
         _reversed_block = set()
         block : set = blocks[entity]
         for candidate in block:
-            _reversed_block.add(get_reverse_indexing_id(candidate))
+            _reversed_block.add(get_reverse_indexing_id(candidate, data))
         _reversed_blocks[_updated_entity] = _reversed_block
         
     return _reversed_blocks
         
-def reverse_raw_blocks_entity_indexing(blocks : dict, old_data_limit : int) -> dict:
+def reverse_raw_blocks_entity_indexing(blocks : dict, data : Data) -> dict:
     _reversed_blocks : dict = dict()
     _reversed_block : Block 
     
@@ -770,10 +768,10 @@ def reverse_raw_blocks_entity_indexing(blocks : dict, old_data_limit : int) -> d
         _updated_D2_entities = OrderedSet()
         
         for d1_entity in _current_block.entities_D1:
-            _updated_D2_entities.add(get_reverse_indexing_id(d1_entity, old_data_limit))
+            _updated_D2_entities.add(get_reverse_indexing_id(d1_entity, data))
             
         for d2_entity in _current_block.entities_D2:
-            _updated_D1_entities.add(get_reverse_indexing_id(d2_entity, old_data_limit))
+            _updated_D1_entities.add(get_reverse_indexing_id(d2_entity, data))
          
         _reversed_block = Block()   
         _reversed_block.entities_D1 = _updated_D1_entities
@@ -784,8 +782,8 @@ def reverse_raw_blocks_entity_indexing(blocks : dict, old_data_limit : int) -> d
     return _reversed_blocks
         
     
-def get_reverse_indexing_id(id : int, old_data_limit : int) -> int:
-    return (id + old_data_limit) if (id < old_data_limit) else (id - old_data_limit)
+def get_reverse_indexing_id(id : int, data : Data) -> int:
+    return (id + data.num_of_entities_2) if (id < data.num_of_entities_1) else (id - data.num_of_entities_1)
 
 
 # Progressive Workflow Grid Search Utility Functions
@@ -913,6 +911,7 @@ def save_workflow(current_workflow, workflow_arguments : dict) -> dict:
     workflow_info['time'] = current_workflow.workflow_exec_time
     workflow_info['name'] = generate_unique_identifier()
     workflow_info['tp_idx'] = current_workflow.tp_indices
+    workflow_info['all_emissions'] = current_workflow.final_pairs
 
     return workflow_info    
 
