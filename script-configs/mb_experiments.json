@@ -40,8 +40,7 @@
         "similarity_function": [],
         "language_model": [],
         "tokenizer": [],
-        "weighting_scheme": ["CNC"],
-        "dummy_param": ["ARCS", "CBS", "CNC", "CND", "CNJ", "COSINE", "DICE", "ECBS", "EJS", "X2"],
+        "weighting_scheme": ["ARCS", "CBS", "CNC", "CND", "CNJ", "COSINE", "DICE", "ECBS", "EJS", "X2"],
         "window_size": []
     }
 }

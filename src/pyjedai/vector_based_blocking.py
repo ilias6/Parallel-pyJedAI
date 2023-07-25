@@ -394,7 +394,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         self.distances, self.neighbors = index.search(self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
                                     self.top_k)
 
-        if self.simiarity_distance == 'euclidean':
+        if self.similarity_distance == 'euclidean':
             self.distances = 1/(1 + self.distances)
 
         self.blocks = dict()

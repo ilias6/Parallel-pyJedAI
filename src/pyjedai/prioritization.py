@@ -12,57 +12,45 @@ from .comparison_cleaning import (
     LocalProgressiveSortedNeighborhood,
     ProgressiveEntityScheduling)
 from .vector_based_blocking import EmbeddingsNNBlockBuilding
-from sklearn.metrics.pairwise import (
-    cosine_similarity
-)
+
 from networkx import Graph
-from py_stringmatching.similarity_measure.affine import Affine
-from py_stringmatching.similarity_measure.bag_distance import BagDistance
 from py_stringmatching.similarity_measure.cosine import Cosine
 from py_stringmatching.similarity_measure.dice import Dice
-from py_stringmatching.similarity_measure.editex import Editex
 from py_stringmatching.similarity_measure.generalized_jaccard import \
     GeneralizedJaccard
-from py_stringmatching.similarity_measure.hamming_distance import \
-    HammingDistance
 from py_stringmatching.similarity_measure.jaccard import Jaccard
 from py_stringmatching.similarity_measure.jaro import Jaro
-from py_stringmatching.similarity_measure.jaro_winkler import JaroWinkler
 from py_stringmatching.similarity_measure.levenshtein import Levenshtein
-from py_stringmatching.similarity_measure.monge_elkan import MongeElkan
-from py_stringmatching.similarity_measure.needleman_wunsch import \
-    NeedlemanWunsch
 from py_stringmatching.similarity_measure.overlap_coefficient import \
     OverlapCoefficient
-from py_stringmatching.similarity_measure.partial_ratio import PartialRatio
-from py_stringmatching.similarity_measure.token_sort import TokenSort
-from py_stringmatching.similarity_measure.partial_token_sort import \
-    PartialTokenSort
-from py_stringmatching.similarity_measure.ratio import Ratio
-from py_stringmatching.similarity_measure.smith_waterman import SmithWaterman
-from py_stringmatching.similarity_measure.soundex import Soundex
-from py_stringmatching.similarity_measure.tfidf import TfIdf
-from py_stringmatching.similarity_measure.tversky_index import TverskyIndex
-from py_stringmatching.tokenizer.alphabetic_tokenizer import \
-    AlphabeticTokenizer
-from py_stringmatching.tokenizer.alphanumeric_tokenizer import \
-    AlphanumericTokenizer
-from py_stringmatching.tokenizer.delimiter_tokenizer import DelimiterTokenizer
 from py_stringmatching.tokenizer.qgram_tokenizer import QgramTokenizer
 from py_stringmatching.tokenizer.whitespace_tokenizer import \
     WhitespaceTokenizer
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.metrics.pairwise import pairwise_distances
 from tqdm.autonotebook import tqdm
 
-from .evaluation import Evaluation
 from .datamodel import Data, PYJEDAIFeature
+from .evaluation import Evaluation
 from .matching import EntityMatching
 from .comparison_cleaning import AbstractMetablocking
 from queue import PriorityQueue
 from random import sample
-from .utils import sorted_enumerate, canonical_swap
 from abc import abstractmethod
 from typing import Tuple, List
-from .utils import SubsetIndexer, DatasetScheduler, EntityScheduler, is_infinite, PredictionData, reverse_data_indexing, reverse_blocks_entity_indexing
+from .utils import (
+    SubsetIndexer,
+    DatasetScheduler,
+    EntityScheduler,
+    is_infinite,
+    PredictionData,
+    reverse_data_indexing,
+    reverse_blocks_entity_indexing,
+    sorted_enumerate,
+    canonical_swap,
+    WordQgramTokenizer,
+    cosine,
+    get_qgram_from_tokenizer_name)
 import pandas as pd
 import os
 from whoosh.fields import TEXT, Schema, ID
@@ -77,79 +65,62 @@ from faiss import METRIC_INNER_PRODUCT, METRIC_L2
 # Directory where the whoosh index is stored
 INDEXER_DIR='.indexer'
 
-# Package import from https://anhaidgroup.github.io/py_stringmatching/v0.4.2/index.html
-
-available_tokenizers = [
-    'white_space_tokenizer', 'qgram_tokenizer', 'delimiter_tokenizer',
-    'alphabetic_tokenizer', 'alphanumeric_tokenizer'
-]
-
 metrics_mapping = {
-    'levenshtein' : Levenshtein(),
     'edit_distance': Levenshtein(),
-    'jaro_winkler' : JaroWinkler(),
-    'bag_distance' : BagDistance(),
-    'editex' : Editex(),
     'cosine' : Cosine(),
     'jaro' : Jaro(),
-    'soundex' : Soundex(),
-    'tfidf' : TfIdf(),
-    'tversky_index':TverskyIndex(),
-    'ratio' : Ratio(),
-    'partial_token_sort' : PartialTokenSort(),
-    'partial_ratio' : PartialRatio(),
-    'hamming_distance' : HammingDistance(),
     'jaccard' : Jaccard(),
     'generalized_jaccard' : GeneralizedJaccard(),
     'dice': Dice(),
     'overlap_coefficient' : OverlapCoefficient(),
-    'token_sort': TokenSort(),
-    'cosine_vector_similarity': cosine_similarity,
-    'WH-TF-IDF' : TF_IDF(),
-    'WH-Frequency' : Frequency(),
-    'WH-PL2' : PL2(),
-    'WH-BM25F' : BM25F(),
-    'faiss-euclidean' : METRIC_L2,
-    'faiss-cosine': METRIC_INNER_PRODUCT
 }
 
-whoosh_similarity_function = {
-    'TF-IDF' : TF_IDF(),
-    'Frequency' : Frequency(),
-    'PL2' : PL2(),
-    'BM25F' : BM25F()
+vector_metrics_mapping = {
+    'cosine': cosine
 }
 
 string_metrics = [
-    'bag_distance', 'editex', 'hamming_distance', 'jaro', 'jaro_winkler', 'levenshtein',
-    'edit_distance', 'partial_ratio', 'partial_token_sort', 'ratio', 'soundex', 'token_sort'
+    'jaro', 'edit_distance'
 ]
 
 set_metrics = [
-    'cosine', 'dice', 'generalized_jaccard', 'jaccard', 'overlap_coefficient', 'tversky_index'
+    'cosine', 'dice', 'generalized_jaccard', 'jaccard', 'overlap_coefficient'
 ]
 
-bag_metrics = [
-    'tfidf'
+vector_metrics = [ 
+    'cosine', 'dice', 'jaccard'
 ]
 
-index_metrics = [
-    'WH-TF-IDF', 'WH-Frequency', 'WH-PL2', 'WH-BM25F'
+whoosh_index_metrics = [
+    'TF-IDF', 'Frequency', 'PL2', 'BM25F'
 ] 
 
-vector_metrics = [
-    'cosine_vector_similarity'
-]
-
 faiss_metrics = [
-    'faiss-euclidean', 'faiss-cosine'
+    'cosine', 'euclidean'
 ]
 
-index_metrics = [
-    'WH-TF-IDF', 'WH-Frequency', 'WH-PL2', 'WH-BM25F'
-]
+magellan_metrics = string_metrics + set_metrics
+available_metrics = magellan_metrics + vector_metrics + whoosh_index_metrics + faiss_metrics
 
-available_metrics = string_metrics + set_metrics + bag_metrics + vector_metrics + index_metrics + faiss_metrics
+#
+# Tokenizers
+#
+char_qgram_tokenizers = { 'char_'+ str(i) + 'gram':i for i in range(1, 7) }
+word_qgram_tokenizers = { 'word_'+ str(i) + 'gram':i for i in range(1, 7) }
+magellan_tokenizers = ['white_space_tokenizer']
+
+tfidf_tokenizers = [ 'tfidf_' + cq for cq in char_qgram_tokenizers.keys() ] + \
+                    [ 'tfidf_' + wq for wq in word_qgram_tokenizers.keys() ]
+
+tf_tokenizers = [ 'tf_' + cq for cq in char_qgram_tokenizers.keys() ] + \
+                    [ 'tf_' + wq for wq in word_qgram_tokenizers.keys() ]
+                        
+boolean_tokenizers = [ 'boolean_' + cq for cq in char_qgram_tokenizers.keys() ] + \
+                        [ 'boolean_' + wq for wq in word_qgram_tokenizers.keys() ]
+
+vector_tokenizers = tfidf_tokenizers + tf_tokenizers + boolean_tokenizers
+
+available_tokenizers = [key for key in char_qgram_tokenizers] + [key for key in word_qgram_tokenizers] + magellan_tokenizers + vector_tokenizers
 
 class ProgressiveMatching(EntityMatching):
     """Applies the matching process to a subset of available pairs progressively 
@@ -157,22 +128,20 @@ class ProgressiveMatching(EntityMatching):
 
     _method_name: str = "Progressive Matching"
     _method_info: str = "Applies the matching process to a subset of available pairs progressively "
-
     def __init__(
             self,
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.0,
-            qgram: int = 2, # for jaccard
-            tokenizer_return_set = True, # unique values or not
+            tokenizer_return_unique_values = True, # unique values or not
             attributes: any = None,
-            delim_set: list = None, # DelimiterTokenizer
-            padding: bool = True, # QgramTokenizer
-            prefix_pad: str = '#', # QgramTokenizer (if padding=True)
-            suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(metric=similarity_function,
+                        tokenizer=tokenizer,
+                        similarity_threshold=similarity_threshold,
+                        tokenizer_return_unique_values=tokenizer_return_unique_values,
+                        attributes=attributes)
         self.similarity_function : str = similarity_function
         
     def predict(self,
@@ -417,17 +386,15 @@ class BlockIndependentPM(ProgressiveMatching):
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.0,
-            qgram: int = 2, # for jaccard
-            tokenizer_return_set = True, # unique values or not
+            tokenizer_return_unique_values = True, # unique values or not
             attributes: any = None,
-            delim_set: list = None, # DelimiterTokenizer
-            padding: bool = True, # QgramTokenizer
-            prefix_pad: str = '#', # QgramTokenizer (if padding=True)
-            suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
-        self.similarity_function : str = similarity_function
+        super().__init__(similarity_function=similarity_function,
+                        tokenizer=tokenizer,
+                        similarity_threshold=similarity_threshold,
+                        tokenizer_return_unique_values=tokenizer_return_unique_values,
+                        attributes=attributes)
         
     def predict(self,
             data: Data,
@@ -513,22 +480,20 @@ class HashBasedProgressiveMatching(ProgressiveMatching):
     _method_info: str = "Applies hash based candidate graph prunning, sorts retained comparisons and applies Progressive Matching"
 
     def __init__(
-            self,
-            weighting_scheme: str = 'X2',
-            similarity_function: str = 'dice',
-            tokenizer: str = 'white_space_tokenizer',
-            similarity_threshold: float = 0.0,
-            qgram: int = 2, # for jaccard
-            tokenizer_return_set = True, # unique values or not
-            attributes: any = None,
-            delim_set: list = None, # DelimiterTokenizer
-            padding: bool = True, # QgramTokenizer
-            prefix_pad: str = '#', # QgramTokenizer (if padding=True)
-            suffix_pad: str = '$' # QgramTokenizer (if padding=True)
-        ) -> None:
+        self,
+        weighting_scheme: str = 'X2',
+        similarity_function: str = 'dice',
+        tokenizer: str = 'white_space_tokenizer',
+        similarity_threshold: float = 0.0,
+        tokenizer_return_unique_values = True, # unique values or not
+        attributes: any = None,
+    ) -> None:
 
-        super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
-        self.similarity_function : str = similarity_function
+        super().__init__(similarity_function=similarity_function,
+                        tokenizer=tokenizer,
+                        similarity_threshold=similarity_threshold,
+                        tokenizer_return_unique_values=tokenizer_return_unique_values,
+                        attributes=attributes)
         self._weighting_scheme : str = weighting_scheme
 
 class GlobalTopPM(HashBasedProgressiveMatching):
@@ -539,21 +504,21 @@ class GlobalTopPM(HashBasedProgressiveMatching):
     _method_info: str = "Applies Progressive CEP, sorts retained comparisons and applies Progressive Matching"
 
     def __init__(
-            self,
-            weighting_scheme: str = 'X2',
-            similarity_function: str = 'dice',
-            tokenizer: str = 'white_space_tokenizer',
-            similarity_threshold: float = 0.0,
-            qgram: int = 2, # for jaccard
-            tokenizer_return_set = True, # unique values or not
-            attributes: any = None,
-            delim_set: list = None, # DelimiterTokenizer
-            padding: bool = True, # QgramTokenizer
-            prefix_pad: str = '#', # QgramTokenizer (if padding=True)
-            suffix_pad: str = '$' # QgramTokenizer (if padding=True)
-        ) -> None:
+        self,
+        weighting_scheme: str = 'X2',
+        similarity_function: str = 'dice',
+        tokenizer: str = 'white_space_tokenizer',
+        similarity_threshold: float = 0.0,
+        tokenizer_return_unique_values = True, # unique values or not
+        attributes: any = None,
+    ) -> None:
 
-        super().__init__(weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(weighting_scheme=weighting_scheme,
+                        similarity_function=similarity_function,
+                        tokenizer=tokenizer,
+                        similarity_threshold=similarity_threshold,
+                        tokenizer_return_unique_values=tokenizer_return_unique_values,
+                        attributes=attributes)
 
     def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         self.pairs = Graph()
@@ -592,22 +557,22 @@ class LocalTopPM(HashBasedProgressiveMatching):
     _method_info: str = "Applies Progressive CNP, sorts retained comparisons and applies Progressive Matching"
 
     def __init__(
-            self,
-            weighting_scheme: str = 'X2',
-            similarity_function: str = 'dice',
-            number_of_nearest_neighbors: int = 10,
-            tokenizer: str = 'white_space_tokenizer',
-            similarity_threshold: float = 0.0,
-            qgram: int = 2, # for jaccard
-            tokenizer_return_set = True, # unique values or not
-            attributes: any = None,
-            delim_set: list = None, # DelimiterTokenizer
-            padding: bool = True, # QgramTokenizer
-            prefix_pad: str = '#', # QgramTokenizer (if padding=True)
-            suffix_pad: str = '$' # QgramTokenizer (if padding=True)
-        ) -> None:
+        self,
+        weighting_scheme: str = 'X2',
+        similarity_function: str = 'dice',
+        number_of_nearest_neighbors: int = 10,
+        tokenizer: str = 'white_space_tokenizer',
+        similarity_threshold: float = 0.0,
+        tokenizer_return_unique_values = True, # unique values or not
+        attributes: any = None,
+    ) -> None:
 
-        super().__init__(weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(weighting_scheme=weighting_scheme,
+                        similarity_function=similarity_function,
+                        tokenizer=tokenizer,
+                        similarity_threshold=similarity_threshold,
+                        tokenizer_return_unique_values=tokenizer_return_unique_values,
+                        attributes=attributes)
         self._number_of_nearest_neighbors : int = number_of_nearest_neighbors
         
     def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
@@ -653,19 +618,19 @@ class EmbeddingsNNBPM(BlockIndependentPM):
             similarity_search: str = 'faiss',
             vector_size: int = 300,
             num_of_clusters: int = 5,
-            similarity_function: str = 'faiss-cosine',
+            similarity_function: str = 'cosine',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.0,
-            qgram: int = 2, # for jaccard
-            tokenizer_return_set = True, # unique values or not
-            attributes: any = None,
-            delim_set: list = None, # DelimiterTokenizer
-            padding: bool = True, # QgramTokenizer
-            prefix_pad: str = '#', # QgramTokenizer (if padding=True)
-            suffix_pad: str = '$' # QgramTokenizer (if padding=True)
+            tokenizer_return_unique_values = True, # unique values or not
+            attributes: any = None
         ) -> None:
 
-        super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(similarity_function=similarity_function,
+                        tokenizer=tokenizer,
+                        similarity_threshold=similarity_threshold,
+                        tokenizer_return_unique_values=tokenizer_return_unique_values,
+                        attributes=attributes)
+        
         self._language_model : str = language_model
         self._number_of_nearest_neighbors : int = number_of_nearest_neighbors
         self._similarity_search : str = similarity_search
@@ -804,15 +769,14 @@ class SimilarityBasedProgressiveMatching(ProgressiveMatching):
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.0,
-            qgram: int = 2, # for jaccard
-            tokenizer_return_set = True, # unique values or not
-            attributes: any = None,
-            delim_set: list = None, # DelimiterTokenizer
-            padding: bool = True, # QgramTokenizer
-            prefix_pad: str = '#', # QgramTokenizer (if padding=True)
-            suffix_pad: str = '$' # QgramTokenizer (if padding=True)
+            tokenizer_return_unique_values = True, # unique values or not
+            attributes: any = None
         ) -> None:
-        super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(similarity_function=similarity_function,
+                        tokenizer=tokenizer,
+                        similarity_threshold=similarity_threshold,
+                        tokenizer_return_unique_values=tokenizer_return_unique_values,
+                        attributes=attributes)
         self._weighting_scheme : str = weighting_scheme
         self._window_size : int = window_size
         
@@ -832,16 +796,17 @@ class GlobalPSNM(SimilarityBasedProgressiveMatching):
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.0,
-            qgram: int = 2, # for jaccard
-            tokenizer_return_set = True, # unique values or not
-            attributes: any = None,
-            delim_set: list = None, # DelimiterTokenizer
-            padding: bool = True, # QgramTokenizer
-            prefix_pad: str = '#', # QgramTokenizer (if padding=True)
-            suffix_pad: str = '$' # QgramTokenizer (if padding=True)
+            tokenizer_return_unique_values = True, # unique values or not
+            attributes: any = None
         ) -> None:
 
-        super().__init__(weighting_scheme, window_size, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(weighting_scheme=weighting_scheme,
+                        window_size=window_size,
+                        similarity_function=similarity_function,
+                        tokenizer=tokenizer,
+                        similarity_threshold=similarity_threshold,
+                        tokenizer_return_unique_values=tokenizer_return_unique_values,
+                        attributes=attributes)
 
     def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[float, int, int]]:
         gpsn : GlobalProgressiveSortedNeighborhood = GlobalProgressiveSortedNeighborhood(self._weighting_scheme, self._budget)
@@ -863,20 +828,21 @@ class LocalPSNM(SimilarityBasedProgressiveMatching):
     def __init__(
             self,
             weighting_scheme: str = 'ACF',
-            window_size = 10,
+            window_size: int = 10,
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.0,
-            qgram: int = 2, # for jaccard
-            tokenizer_return_set = True, # unique values or not
-            attributes: any = None,
-            delim_set: list = None, # DelimiterTokenizer
-            padding: bool = True, # QgramTokenizer
-            prefix_pad: str = '#', # QgramTokenizer (if padding=True)
-            suffix_pad: str = '$' # QgramTokenizer (if padding=True)
+            tokenizer_return_unique_values = True, # unique values or not
+            attributes: any = None
         ) -> None:
 
-        super().__init__(weighting_scheme, window_size, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(weighting_scheme=weighting_scheme,
+                        window_size=window_size,
+                        similarity_function=similarity_function,
+                        tokenizer=tokenizer,
+                        similarity_threshold=similarity_threshold,
+                        tokenizer_return_unique_values=tokenizer_return_unique_values,
+                        attributes=attributes)
 
     def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[float, int, int]]:
         lpsn : LocalProgressiveSortedNeighborhood = LocalProgressiveSortedNeighborhood(self._weighting_scheme, self._budget)
@@ -899,7 +865,7 @@ class RandomPM(ProgressiveMatching):
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.0,
             qgram: int = 2, # for jaccard
-            tokenizer_return_set = True, # unique values or not
+            tokenizer_return_unique_values = True, # unique values or not
             attributes: any = None,
             delim_set: list = None, # DelimiterTokenizer
             padding: bool = True, # QgramTokenizer
@@ -907,7 +873,7 @@ class RandomPM(ProgressiveMatching):
             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
 
-        super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
+        super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_unique_values, attributes, delim_set, padding, prefix_pad, suffix_pad)
 
     def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         cp : ComparisonPropagation = ComparisonPropagation()
@@ -929,23 +895,23 @@ class PESM(HashBasedProgressiveMatching):
                         "emits the top pair per entity. Finally, traverses the sorted " + \
                         "entities and emits their comparisons in descending weight order " + \
                         "within specified budget."
+                        
     def __init__(
             self,
             weighting_scheme: str = 'CBS',
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
             similarity_threshold: float = 0.0,
-            qgram: int = 2, # for jaccard
-            tokenizer_return_set = True, # unique values or not
+            tokenizer_return_unique_values = True, # unique values or not
             attributes: any = None,
-            delim_set: list = None, # DelimiterTokenizer
-            padding: bool = True, # QgramTokenizer
-            prefix_pad: str = '#', # QgramTokenizer (if padding=True)
-            suffix_pad: str = '$' # QgramTokenizer (if padding=True)
         ) -> None:
-        
-        super().__init__(weighting_scheme, similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
 
+        super().__init__(weighting_scheme=weighting_scheme,
+                        similarity_function=similarity_function,
+                        tokenizer=tokenizer,
+                        similarity_threshold=similarity_threshold,
+                        tokenizer_return_unique_values=tokenizer_return_unique_values,
+                        attributes=attributes)
 
     def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         
@@ -957,139 +923,135 @@ class PESM(HashBasedProgressiveMatching):
         return self._predict_raw_blocks(blocks)
         # raise NotImplementedError("Sorter Neighborhood Algorithms doesn't support prunned blocks (lack of precalculated weights)")
     
-class WhooshPM(BlockIndependentPM):
-    """Applies progressive index based matching using whoosh library 
-    """
+# class WhooshPM(BlockIndependentPM):
+#     """Applies progressive index based matching using whoosh library 
+#     """
 
-    _method_name: str = "Whoosh Progressive Matching"
-    _method_info: str = "Applies Whoosh Progressive Matching - Indexes the entities of the second dataset, " + \
-                        "stores their specified attributes, " + \
-                        "defines a query for each entity of the first dataset, " + \
-                        "and retrieves its pair candidates from the indexer within specified budget"
+#     _method_name: str = "Whoosh Progressive Matching"
+#     _method_info: str = "Applies Whoosh Progressive Matching - Indexes the entities of the second dataset, " + \
+#                         "stores their specified attributes, " + \
+#                         "defines a query for each entity of the first dataset, " + \
+#                         "and retrieves its pair candidates from the indexer within specified budget"
 
-    def __init__(
-            self,
-            similarity_function: str = 'WH-TF-IDF',
-            number_of_nearest_neighbors: int = 10,
-            tokenizer: str = 'white_space_tokenizer',
-            similarity_threshold: float = 0.0,
-            qgram: int = 2, # for jaccard
-            tokenizer_return_set = True, # unique values or not
-            attributes: any = None,
-            delim_set: list = None, # DelimiterTokenizer
-            padding: bool = True, # QgramTokenizer
-            prefix_pad: str = '#', # QgramTokenizer (if padding=True)
-            suffix_pad: str = '$' # QgramTokenizer (if padding=True)
-        ) -> None:
-        # budget set to float('inf') implies unlimited budget
-        super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_set, attributes, delim_set, padding, prefix_pad, suffix_pad)
-        self._number_of_nearest_neighbors : int = number_of_nearest_neighbors
+#     def __init__(
+#             self,
+#             similarity_function: str = 'WH-TF-IDF',
+#             number_of_nearest_neighbors: int = 10,
+#             tokenizer: str = 'white_space_tokenizer',
+#             similarity_threshold: float = 0.0,
+#             qgram: int = 2, # for jaccard
+#             tokenizer_return_unique_values = True, # unique values or not
+#             attributes: any = None,
+#             delim_set: list = None, # DelimiterTokenizer
+#             padding: bool = True, # QgramTokenizer
+#             prefix_pad: str = '#', # QgramTokenizer (if padding=True)
+#             suffix_pad: str = '$' # QgramTokenizer (if padding=True)
+#         ) -> None:
+#         # budget set to float('inf') implies unlimited budget
+#         super().__init__(similarity_function, tokenizer, similarity_threshold, qgram, tokenizer_return_unique_values, attributes, delim_set, padding, prefix_pad, suffix_pad)
+#         self._number_of_nearest_neighbors : int = number_of_nearest_neighbors
         
-    def _set_whoosh_datasets(self) -> None:
-        """Saves the rows of both datasets corresponding to the indices of the entities that have been retained after comparison cleaning
-        """
+#     def _set_whoosh_datasets(self) -> None:
+#         """Saves the rows of both datasets corresponding to the indices of the entities that have been retained after comparison cleaning
+#         """
         
-        self._whoosh_d1 = self.data.dataset_1[self.attributes + [self.data.id_column_name_1]] if self.attributes else self.data.dataset_1
-        self._whoosh_d1 = self._whoosh_d1[self._whoosh_d1[self.data.id_column_name_1].isin(self._whoosh_d1_retained_index)]
-        if(not self.data.is_dirty_er):  
-            self._whoosh_d2 = self.data.dataset_2[self.attributes + [self.data.id_column_name_2]] if self.attributes else self.data.dataset_2
-            self._whoosh_d2 = self._whoosh_d2[self._whoosh_d2[self.data.id_column_name_2].isin(self._whoosh_d2_retained_index)]
+#         self._whoosh_d1 = self.data.dataset_1[self.attributes + [self.data.id_column_name_1]] if self.attributes else self.data.dataset_1
+#         self._whoosh_d1 = self._whoosh_d1[self._whoosh_d1[self.data.id_column_name_1].isin(self._whoosh_d1_retained_index)]
+#         if(not self.data.is_dirty_er):  
+#             self._whoosh_d2 = self.data.dataset_2[self.attributes + [self.data.id_column_name_2]] if self.attributes else self.data.dataset_2
+#             self._whoosh_d2 = self._whoosh_d2[self._whoosh_d2[self.data.id_column_name_2].isin(self._whoosh_d2_retained_index)]
         
 
-    def _set_retained_entries(self) -> None:
-        """Saves the indices of entities of both datasets that have been retained after comparison cleaning
-        """
-        self._whoosh_d1_retained_index = pd.Index([self.data._gt_to_ids_reversed_1[id] 
-        for id in self._si.d1_retained_ids])
+#     def _set_retained_entries(self) -> None:
+#         """Saves the indices of entities of both datasets that have been retained after comparison cleaning
+#         """
+#         self._whoosh_d1_retained_index = pd.Index([self.data._gt_to_ids_reversed_1[id] 
+#         for id in self._si.d1_retained_ids])
         
-        if(not self.data.is_dirty_er):
-            self._whoosh_d2_retained_index = pd.Index([self.data._gt_to_ids_reversed_2[id] 
-        for id in self._si.d2_retained_ids])
+#         if(not self.data.is_dirty_er):
+#             self._whoosh_d2_retained_index = pd.Index([self.data._gt_to_ids_reversed_2[id] 
+#         for id in self._si.d2_retained_ids])
     
     
-    def _initialize_index_path(self):
-        """Creates index directory if non-existent, constructs the absolute path to the current whoosh index
-        """
-        global INDEXER_DIR
-        INDEXER_DIR = os.path.abspath(INDEXER_DIR)  
-        _d1_name = self.data.dataset_name_1 if self.data.dataset_name_1 is not None else 'd3'    
-        self._index_path = os.path.join(INDEXER_DIR, _d1_name if self.data.is_dirty_er else (_d1_name + (self.data.dataset_name_2 if self.data.dataset_name_2 is not None else 'd4')))
-        if not os.path.exists(self._index_path):
-            print('Created index directory at: ' + self._index_path)
-            os.makedirs(self._index_path, exist_ok=True)
+#     def _initialize_index_path(self):
+#         """Creates index directory if non-existent, constructs the absolute path to the current whoosh index
+#         """
+#         global INDEXER_DIR
+#         INDEXER_DIR = os.path.abspath(INDEXER_DIR)  
+#         _d1_name = self.data.dataset_name_1 if self.data.dataset_name_1 is not None else 'd3'    
+#         self._index_path = os.path.join(INDEXER_DIR, _d1_name if self.data.is_dirty_er else (_d1_name + (self.data.dataset_name_2 if self.data.dataset_name_2 is not None else 'd4')))
+#         if not os.path.exists(self._index_path):
+#             print('Created index directory at: ' + self._index_path)
+#             os.makedirs(self._index_path, exist_ok=True)
         
     
-    def _create_index(self):
-        """Defines the schema [ID, CONTENT], creates the index in the defined path 
-           and populates it with all the entities of the target dataset (first - Dirty ER, second - Clean ER)
-        """
-        self._schema = Schema(ID=ID(stored=True), content=TEXT(stored=True))
-        self._index = create_in(self._index_path, self._schema)
-        writer = self._index.writer()
+#     def _create_index(self):
+#         """Defines the schema [ID, CONTENT], creates the index in the defined path 
+#            and populates it with all the entities of the target dataset (first - Dirty ER, second - Clean ER)
+#         """
+#         self._schema = Schema(ID=ID(stored=True), content=TEXT(stored=True))
+#         self._index = create_in(self._index_path, self._schema)
+#         writer = self._index.writer()
         
-        _target_dataset = self._whoosh_d1 if self.data.is_dirty_er else self._whoosh_d2
-        _id_column_name = self.data.id_column_name_1 if self.data.is_dirty_er else self.data.id_column_name_2
+#         _target_dataset = self._whoosh_d1 if self.data.is_dirty_er else self._whoosh_d2
+#         _id_column_name = self.data.id_column_name_1 if self.data.is_dirty_er else self.data.id_column_name_2
         
-        for _, entity in _target_dataset.iterrows():
-            entity_values = [str(entity[column]) for column in _target_dataset.columns if column != _id_column_name]
-            writer.add_document(ID=entity[_id_column_name], content=' '.join(entity_values))
-        writer.commit()
+#         for _, entity in _target_dataset.iterrows():
+#             entity_values = [str(entity[column]) for column in _target_dataset.columns if column != _id_column_name]
+#             writer.add_document(ID=entity[_id_column_name], content=' '.join(entity_values))
+#         writer.commit()
     
-    def _populate_whoosh_dataset(self) -> None:
-        """For each retained entity in the first dataset, construct a query with its text content,
-           parses it to the indexers, retrieves best candidates and stores them in entity's neighborhood.
-           Populates a list with all the retrieved pairs.
-        """
-        # None value for budget implies unlimited budget in whoosh 
-        _query_budget = self._number_of_nearest_neighbors
+#     def _populate_whoosh_dataset(self) -> None:
+#         """For each retained entity in the first dataset, construct a query with its text content,
+#            parses it to the indexers, retrieves best candidates and stores them in entity's neighborhood.
+#            Populates a list with all the retrieved pairs.
+#         """
+#         # None value for budget implies unlimited budget in whoosh 
+#         _query_budget = self._number_of_nearest_neighbors
         
-        if(self.similarity_function not in whoosh_similarity_function):
-            print(f'{self.similarity_function} Similarity Function is Undefined')
-            self.similarity_function = 'Frequency'
-        print(f'Applying {self.similarity_function} Similarity Function')
-        _scorer = whoosh_similarity_function[self.similarity_function]
+#         if(self.similarity_function not in whoosh_similarity_function):
+#             print(f'{self.similarity_function} Similarity Function is Undefined')
+#             self.similarity_function = 'Frequency'
+#         print(f'Applying {self.similarity_function} Similarity Function')
+#         _scorer = whoosh_similarity_function[self.similarity_function]
         
-        with self._index.searcher(weighting=_scorer) as searcher:
-            self._parser = qparser.QueryParser('content', schema=self._index.schema, group=qparser.OrGroup)
-            for _, entity in self._whoosh_d1.iterrows():
-                entity_values = [str(entity[column]) for column in self._whoosh_d1.columns if column != self.data.id_column_name_1]
-                entity_string = ' '.join(entity_values)
-                entity_id = entity[self.data.id_column_name_1]
-                entity_query = self._parser.parse(entity_string)
-                query_results = searcher.search(entity_query, limit = _query_budget)
+#         with self._index.searcher(weighting=_scorer) as searcher:
+#             self._parser = qparser.QueryParser('content', schema=self._index.schema, group=qparser.OrGroup)
+#             for _, entity in self._whoosh_d1.iterrows():
+#                 entity_values = [str(entity[column]) for column in self._whoosh_d1.columns if column != self.data.id_column_name_1]
+#                 entity_string = ' '.join(entity_values)
+#                 entity_id = entity[self.data.id_column_name_1]
+#                 entity_query = self._parser.parse(entity_string)
+#                 query_results = searcher.search(entity_query, limit = _query_budget)
                 
-                for neighbor in query_results:
-                    _score = neighbor.score
-                    _neighbor_id = neighbor['ID']
-                    self.pairs.append((_score, self.data._ids_mapping_1[entity], self.data._ids_mapping_2[_neighbor_id]))
+#                 for neighbor in query_results:
+#                     _score = neighbor.score
+#                     _neighbor_id = neighbor['ID']
+#                     self.pairs.append((_score, self.data._ids_mapping_1[entity], self.data._ids_mapping_2[_neighbor_id]))
                        
-    def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
-        self._start_time = time()
-        self._si = SubsetIndexer(blocks=blocks, data=self.data, subset=False)
-        self._set_retained_entries()
-        self._set_whoosh_datasets()
-        self._initialize_index_path()
-        self._create_index()
-        self.pairs : List[Tuple[float, int, int]] = []
-        self._budget = float('inf') if self._emit_all_tps_stop else self._budget
-        self._populate_whoosh_dataset()
-        self.execution_time = time() - self._start_time
-        return self.pairs
+#     def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
+#         self._start_time = time()
+#         self._si = SubsetIndexer(blocks=blocks, data=self.data, subset=False)
+#         self._set_retained_entries()
+#         self._set_whoosh_datasets()
+#         self._initialize_index_path()
+#         self._create_index()
+#         self.pairs : List[Tuple[float, int, int]] = []
+#         self._budget = float('inf') if self._emit_all_tps_stop else self._budget
+#         self._populate_whoosh_dataset()
+#         self.execution_time = time() - self._start_time
+#         return self.pairs
         
-    def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
-        self._predict_raw_blocks(blocks)  
+#     def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
+#         self._predict_raw_blocks(blocks)  
         
-
-
-
 class_references = {
     'GlobalTopPM' : GlobalTopPM,
     'LocalTopPM' : LocalTopPM,
     'GlobalPSNM' : GlobalPSNM,
     'LocalPSNM' : LocalPSNM,
     'PESM' : PESM,
-    'EmbeddingsNNBPM' : EmbeddingsNNBPM,
-    'WhooshPM' : WhooshPM    
+    'EmbeddingsNNBPM' : EmbeddingsNNBPM 
 }  
         
 

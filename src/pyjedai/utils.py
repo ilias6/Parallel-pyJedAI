@@ -935,7 +935,6 @@ def save_workflow(current_workflow, workflow_arguments : dict) -> dict:
     workflow_info['time'] = current_workflow.workflow_exec_time
     workflow_info['name'] = generate_unique_identifier()
     workflow_info['tp_idx'] = current_workflow.tp_indices
-    workflow_info['all_emissions'] = current_workflow.final_pairs
 
     return workflow_info    
 

@@ -41,8 +41,7 @@ from pyjedai.prioritization import (
     EmbeddingsNNBPM, 
     GlobalPSNM, 
     LocalPSNM, 
-    PESM, 
-    WhooshPM,
+    PESM,
     class_references)
 from pyjedai.evaluation import Evaluation
 
@@ -62,7 +61,7 @@ VALID_WORKFLOW_PARAMETERS = ['matcher',
 # path of the configuration file
 CONFIG_FILE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-configs/per_experiments.json')
 # which configuration from the json file should be used in current experiment  
-EXPERIMENT_NAME = 'local-mb-test-reverse'
+EXPERIMENT_NAME = 'pesm-test'
 # path at which the results will be stored within a json file
 RESULTS_STORE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-results/' + EXPERIMENT_NAME + '.json')
 # results should be stored in the predefined path
@@ -161,9 +160,9 @@ if(VISUALIZE_RESULTS):
     evaluator = Evaluation(data)
     evaluator.visualize_results_roc(results=results)
     
-# if(STORE_RESULTS):    
-#     with open(RESULTS_STORE_PATH, 'w', encoding="utf-8") as file:
-#         json.dump(results, file, indent=4)
+if(STORE_RESULTS):    
+    with open(RESULTS_STORE_PATH, 'w', encoding="utf-8") as file:
+        json.dump(results, file, indent=4)
     
     
     

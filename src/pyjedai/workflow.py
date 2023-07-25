@@ -271,6 +271,9 @@ class ProgressiveWorkFlow(PYJEDAIWorkFlow):
         matcher = class_references[matcher_arguments['matcher']]
         self.constructor_arguments = new_dictionary_from_keys(dictionary=matcher_arguments, keys=get_class_function_arguments(class_reference=matcher, function_name='__init__'))
         self.predictor_arguments = new_dictionary_from_keys(dictionary=matcher_arguments, keys=get_class_function_arguments(class_reference=matcher, function_name='predict'))
+        print(self.constructor_arguments)
+        print(self.predictor_arguments)
+        
         progressive_matcher : ProgressiveMatching = matcher(**self.constructor_arguments)
         self.progressive_matcher : ProgressiveMatching = progressive_matcher
         #

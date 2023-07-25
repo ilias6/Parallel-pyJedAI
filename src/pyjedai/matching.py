@@ -58,8 +58,12 @@ whoosh_index_metrics = [
     'TF-IDF', 'Frequency', 'PL2', 'BM25F'
 ] 
 
+faiss_metrics = [
+    'cosine', 'euclidean'
+]
+
 magellan_metrics = string_metrics + set_metrics
-available_metrics = magellan_metrics + vector_metrics + whoosh_index_metrics
+available_metrics = magellan_metrics + vector_metrics + whoosh_index_metrics + faiss_metrics
 
 #
 # Tokenizers
