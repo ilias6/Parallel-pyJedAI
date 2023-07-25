@@ -3,6 +3,7 @@ import logging as log
 import math
 import re
 import time
+import pandas as pd
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import Tuple
@@ -13,7 +14,7 @@ from tqdm.auto import tqdm
 
 from .datamodel import Block, Data, PYJEDAIFeature
 from .utils import (are_matching, drop_big_blocks_by_size,
-                    drop_single_entity_blocks)
+                    drop_single_entity_blocks, get_blocks_cardinality)
 from .evaluation import Evaluation
 
 class AbstractBlockProcessing(PYJEDAIFeature):
@@ -27,7 +28,13 @@ class AbstractBlockProcessing(PYJEDAIFeature):
         self.attributes_2: list
         self.num_of_blocks_dropped: int
         self.original_num_of_blocks: int
-    
+        self.sum_of_sizes: int = 0
+        self.total_num_of_comparisons: int = 0
+        self.min_block_size: int = None
+        self.max_block_size: int = None
+        self.min_block_comparisons: int = None
+        self.max_block_comparisons: int = None
+            
     def report(self) -> None:
         """Prints Block Building method configuration
         """
@@ -75,7 +82,8 @@ class AbstractBlockProcessing(PYJEDAIFeature):
                 id2 in entity_index and are_matching(entity_index, id1, id2):
                 true_positives += 1
 
-        eval_obj.calculate_scores(true_positives=true_positives)
+        total_matching_pairs = get_blocks_cardinality(eval_blocks, self.data.is_dirty_er)
+        eval_obj.calculate_scores(true_positives=true_positives, total_matching_pairs=total_matching_pairs)
         eval_result = eval_obj.report(self.method_configuration(),
                                 export_to_df,
                                 export_to_dict,
@@ -84,8 +92,7 @@ class AbstractBlockProcessing(PYJEDAIFeature):
         if with_stats:
             self.stats(eval_blocks)
         return eval_result
-    
-    
+
     def stats(self, blocks: dict) -> None:
         self.list_of_sizes = []
         self.entities_in_blocks = set()
@@ -120,6 +127,41 @@ class AbstractBlockProcessing(PYJEDAIFeature):
         )
         print(u'\u2500' * 123)
 
+    def export_to_df(
+        self,
+        blocks: dict
+    ) -> pd.DataFrame:
+        """creates a dataframe for the evaluation report
+
+        Args:
+            blocks (any): Predicted blocks
+            data (Data): initial dataset
+
+        Returns:
+            pd.DataFrame: Dataframe predicted pairs (can be exported to csv)
+        """
+        if self.data.ground_truth is None:
+            raise AttributeError("Can not proceed to evaluation without a ground-truth file. \
+                Data object mush have initialized with the ground-truth file")
+        pairs_df = pd.DataFrame(columns=['id1', 'id2'])
+        for _, block in blocks.items():
+            if self.data.is_dirty_er:
+                lblock = list(block.entities_D1)
+                for i1 in range(0, len(lblock)):
+                    for i2 in range(i1+1, len(lblock)):
+                        id1 = self.data._gt_to_ids_reversed_1[lblock[i1]]
+                        id2 = self.data._gt_to_ids_reversed_1[lblock[i2]] if self.data.is_dirty_er \
+                            else self.data._gt_to_ids_reversed_2[lblock[i2]]
+                        pairs_df = pd.concat([pairs_df, pd.DataFrame([{'id1':id1, 'id2':id2}], index=[0])], ignore_index=True)
+            else:
+                for i1 in block.entities_D1:
+                    for i2 in block.entities_D2:
+                        id1 = self.data._gt_to_ids_reversed_1[i1]
+                        id2 = self.data._gt_to_ids_reversed_1[i2] if self.data.is_dirty_er \
+                            else self.data._gt_to_ids_reversed_2[i2]
+                        pairs_df = pd.concat([pairs_df, pd.DataFrame([{'id1':id1, 'id2':id2}], index=[0])], ignore_index=True)
+        return pairs_df
+
 class AbstractBlockBuilding(AbstractBlockProcessing):
     """Abstract class for the block building method
     """
@@ -136,13 +178,8 @@ class AbstractBlockBuilding(AbstractBlockProcessing):
         self.attributes_2: list
         self.execution_time: float
         self.data: Data
-        self.sum_of_sizes: int = 0
         self.list_of_sizes: list = []
-        self.total_num_of_comparisons: int = 0
-        self.min_block_size: int = None
-        self.max_block_size: int = None
-        self.min_block_comparisons: int = None
-        self.max_block_comparisons: int = None
+
     def build_blocks(
             self,
             data: Data,

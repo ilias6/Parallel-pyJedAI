@@ -71,13 +71,12 @@ class Evaluation:
             self.false_negatives = self.num_of_true_duplicates - self.true_positives
             self.false_positives = self.total_matching_pairs - self.true_positives
             cardinality = (self.data.num_of_entities_1*(self.data.num_of_entities_1-1))/2 \
-                if self.data.is_dirty_er else self.data.num_of_entities_1 * self.data.num_of_entities_2
-            self.true_negatives = cardinality - self.false_negatives - self.false_positives
+                if self.data.is_dirty_er else (self.data.num_of_entities_1 * self.data.num_of_entities_2)
+            self.true_negatives = cardinality - self.false_negatives - self.num_of_true_duplicates
             self.precision = self.true_positives / self.total_matching_pairs
             self.recall = self.true_positives / self.num_of_true_duplicates
             if self.precision == 0.0 or self.recall == 0.0:
                 self.f1 = 0.0
-                #raise DivisionByZero("Recall or Precision is equal to zero. Can't calculate F1 score.")
             else:
                 self.f1 = 2*((self.precision*self.recall)/(self.precision+self.recall))
 
@@ -422,69 +421,5 @@ class Evaluation:
             matcher_prediction_data : PredictionData = PredictionData(matcher=matcher, matcher_info=matcher_info)
             matcher.set_prediction_data(matcher_prediction_data)
             self.matchers_info.append(matcher_info)
-            
+
         self.visualize_roc(methods_data=self.matchers_info)
-
-def write(
-        prediction: any,
-        data: Data
-    ) -> pd.DataFrame:
-    """creates a dataframe for the evaluation report
-
-    Args:
-        prediction (any): Predicted pairs, blocks, candidate pairs or graph
-        data (Data): initial dataset
-
-    Returns:
-        pd.DataFrame: Dataframe containg evaluation scores and stats
-    """
-    if data.ground_truth is None:
-        raise AttributeError("Can not proceed to evaluation without a ground-truth file. \
-            Data object mush have initialized with the ground-truth file")
-    pairs_df = pd.DataFrame(columns=['id1', 'id2'])
-    if isinstance(prediction, list): # clusters evaluation
-        for cluster in prediction:
-            lcluster = list(cluster)
-            for i1 in range(0, len(lcluster)):
-                for i2 in range(i1+1, len(lcluster)):
-                    id1 = data._gt_to_ids_reversed_1[lcluster[i1]]
-                    id2 = data._gt_to_ids_reversed_1[lcluster[i2]] if data.is_dirty_er \
-                            else data._gt_to_ids_reversed_2[lcluster[i2]]
-                    pairs_df = pd.concat(
-                        [pairs_df, pd.DataFrame([{'id1':id1, 'id2':id2}], index=[0])], 
-                        ignore_index=True
-                    )
-    elif 'Block' in str(type(list(prediction.values())[0])): # blocks evaluation
-        for _, block in prediction.items():
-            if data.is_dirty_er:
-                lblock = list(block.entities_D1)
-                for i1 in range(0, len(lblock)):
-                    for i2 in range(i1+1, len(lblock)):
-                        id1 = data._gt_to_ids_reversed_1[lblock[i1]]
-                        id2 = data._gt_to_ids_reversed_1[lblock[i2]] if data.is_dirty_er \
-                            else data._gt_to_ids_reversed_2[lblock[i2]]
-                        pairs_df = pd.concat([pairs_df, pd.DataFrame([{'id1':id1, 'id2':id2}], index=[0])], ignore_index=True)
-            else:
-                for i1 in block.entities_D1:
-                    for i2 in block.entities_D2:
-                        id1 = data._gt_to_ids_reversed_1[i1]
-                        id2 = data._gt_to_ids_reversed_1[i2] if data.is_dirty_er \
-                            else data._gt_to_ids_reversed_2[i2]
-                        pairs_df = pd.concat([pairs_df, pd.DataFrame([{'id1':id1, 'id2':id2}], index=[0])], ignore_index=True)
-    elif isinstance(prediction, dict) and isinstance(list(prediction.values())[0], set):# candidate pairs
-        for entity_id, candidates in prediction:
-            id1 = data._gt_to_ids_reversed_1[entity_id]                                            
-            for candiadate_id in candidates:
-                id2 = data._gt_to_ids_reversed_1[candiadate_id] if data.is_dirty_er \
-                        else data._gt_to_ids_reversed_2[candiadate_id]
-                pairs_df = pd.concat([pairs_df, pd.DataFrame([{'id1':id1, 'id2':id2}], index=[0])], ignore_index=True)
-    elif isinstance(prediction, nx.Graph): # graph
-        for edge in prediction.edges:
-            id1 = data._gt_to_ids_reversed_1[edge[0]]
-            id2 = data._gt_to_ids_reversed_1[edge[1]] if data.is_dirty_er \
-                        else data._gt_to_ids_reversed_2[edge[1]]
-            pairs_df = pd.concat([pairs_df, pd.DataFrame([{'id1':id1, 'id2':id2}], index=[0])], ignore_index=True)
-    else:
-        raise TypeError("Not supported type")
-
-    return pairs_df

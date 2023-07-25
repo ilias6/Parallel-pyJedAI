@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 
 import numpy as np
+import re
 from nltk import ngrams
 from nltk.tokenize import word_tokenize
 from pyjedai.datamodel import Block, Data
@@ -18,8 +19,7 @@ import uuid
 import os
 import json
 import copy
-
-
+from math import floor
 # ----------------------- #
 # Constants
 # ----------------------- #
@@ -59,6 +59,17 @@ def are_matching(entity_index, id1, id2) -> bool:
     if isinstance(list(entity_index.values())[0], set): # Blocks case
         return len(entity_index[id1].intersection(entity_index[id2])) > 0
     return entity_index[id1] == entity_index[id2] # Clusters case
+
+def get_blocks_cardinality(blocks: dict, is_dirty_er: bool) -> int:
+    """Returns the cardinality of the blocks.
+
+    Args:
+        blocks (dict): Blocks.
+
+    Returns:
+        int: Cardinality.
+    """
+    return sum([block.get_cardinality(is_dirty_er) for block in blocks.values()])
 
 def drop_big_blocks_by_size(blocks: dict, max_block_size: int, is_dirty_er: bool) -> dict:
     """Drops blocks if:
@@ -136,6 +147,26 @@ def print_clusters(clusters: list) -> None:
             str(len(entity_ids)) + " entities\033[0m]")
         print(entity_ids)
 
+def cosine(x, y):
+    """Cosine similarity between two vectors
+    """
+    return cosine_similarity(x.reshape(1, -1), y.reshape(1, -1))[0][0]
+
+def get_ngrams(text, n ):
+    n_grams = ngrams(word_tokenize(text), n)
+    return [ ' '.join(grams) for grams in n_grams]
+
+def get_qgram_from_tokenizer_name(tokenizer: str) -> int:
+    """Returns the q-gram value from the tokenizer name.
+
+    Args:
+        tokenizer (str): Tokenizer name.
+
+    Returns:
+        int: q-gram value.
+    """
+    return [int(s) for s in re.findall('\d+', tokenizer)][0]
+
 def text_cleaning_method(col):
     """Lower clean.
     """
@@ -159,6 +190,8 @@ def chi_square(in_array: np.array) -> float:
             sum_sq += ((in_array[r][c]-expected)**2)/expected
     return sum_sq
 
+def java_math_round(value):
+    return int(value + 0.5)
 
 def batch_pairs(iterable, batch_size: int = 1):
     """
@@ -194,7 +227,7 @@ class Tokenizer(ABC):
     def tokenize(self, text: str) -> list:
         pass
 
-class WordQgrammsTokenizer(Tokenizer):
+class WordQgramTokenizer(Tokenizer):
     
     def __init__(self, q: int = 3) -> None:
         super().__init__()
@@ -212,15 +245,6 @@ class Tokenizer(ABC):
     @abstractmethod
     def tokenize(self, text: str) -> list:
         pass
-
-class WordQgrammsTokenizer(Tokenizer):
-    
-    def __init__(self, q: int = 3) -> None:
-        super().__init__()
-        self.q = q
-    
-    def tokenize(self, text: str) -> list:
-        return [' '.join(gram) for gram in list(ngrams(word_tokenize(text), self.q))]
 
 class SubsetIndexer(ABC):
     """Stores the indices of retained entities of the initial datasets,

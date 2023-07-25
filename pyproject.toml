@@ -6,35 +6,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyjedai"
-version = "0.0.1"
-description = "Development pyJedAI package"
+version = "0.0.9"
+description = "An open-source library that builds powerful end-to-end Entity Resolution workflows."
 readme = "README.md"
 authors = [
     { name = "Konstantinos Nikoletos", email = "nikoletos.kon@gmail.com" },
     { name = "George Papadakis", email = "gpapadis84@gmail.com" },
 ]
 license = {text = "Apache Software License 2.0"}
-classifiers = [
-    "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: Implementation",
-    "Intended Audience :: Information Technology",
-    "Intended Audience :: Science/Research",
-    "Intended Audience :: Developers",
-    "Natural Language :: English",
-    "Operating System :: Microsoft :: Windows",
-    "Operating System :: Unix",
-    "Operating System :: iOS",
-    "Topic :: Database",
-    "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    "Topic :: Software Development :: Libraries :: Python Modules"
-]
-keywords = ["deduplication", "entity-resolution", "link-discovery"]
 requires-python = ">=3.7"
 dependencies = [
     "gensim >= 4.2.0",
@@ -59,16 +38,11 @@ dependencies = [
     "sentence-transformers >= 2.2",
     "faiss-cpu >= 1.7",
     "optuna >= 3.0",
-    'tomli; python_version < "3.11"', 
+    'tomli; python_version < "3.11"',
     "py-stringmatching >= 0.4",
-    "whoosh >= 2.7"
+    "valentine>=0.1; python_version > '3.7'",
+    "ordered-set >= 4.0"
 ]
 
 [project.optional-dependencies]
 dev = ["pip-tools", "pytest"]
-
-[project.urls]
-"Homepage" = "http://pyjedai.rtfd.io"
-"Documentation" = "http://pyjedai.rtfd.io"
-"Bug Tracker" = "https://github.com/AI-team-UoA/pyJedAI/issues"
-"Source code" = "https://github.com/AI-team-UoA/pyJedAI/tree/main/pyjedai"

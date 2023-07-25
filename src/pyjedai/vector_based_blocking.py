@@ -7,6 +7,7 @@ import pickle
 import re
 import sys
 import warnings
+import pandas as pd
 from time import time
 from typing import List, Tuple
 
@@ -106,7 +107,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
                      load_embeddings_if_exist: bool = False,
                      with_entity_matching: bool = False,
                      input_cleaned_blocks: dict = None,
-                     similarity_distance: str = 'faiss-cosine'
+                     similarity_distance: str = 'cosine'
     ) -> any:
         """Main method of the vector based approach. Contains two steps. First an embedding method. \
             And afterwards a similarity search upon the vectors created in the previous step.
@@ -163,9 +164,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
         self._si = SubsetIndexer(self.input_cleaned_blocks, self.data, self._applied_to_subset)
         self._d1_valid_indices: list[int] = self._si.d1_retained_ids
         self._d2_valid_indices: list[int] = [x - self.data.dataset_limit for x in self._si.d2_retained_ids]   
-        
-        # print(data.attributes_1, data.attributes_2)
-        print(attributes_1 if attributes_1 else data.attributes_1)
+
         self._entities_d1 = data.dataset_1[attributes_1 if attributes_1 else data.attributes_1] \
                             .apply(" ".join, axis=1) \
                             .apply(self._tokenize_entity) \
@@ -369,35 +368,35 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
     def _similarity_search_with_FAISS(self):
         index = faiss.IndexFlatL2(self.vectors_1.shape[1])
         
-        if self.similarity_distance == 'faiss-cosine' or self.similarity_distance == 'cosine_without_normalization':
+        if self.similarity_distance == 'cosine' or self.similarity_distance == 'cosine_without_normalization':
             index.metric_type = faiss.METRIC_INNER_PRODUCT
-        elif self.similarity_distance == 'faiss-euclidean':
+        elif self.similarity_distance == 'euclidean':
             index.metric_type = faiss.METRIC_L2
         else:
             raise ValueError("Invalid similarity distance: ", self.similarity_distance)
 
-        if self.similarity_distance == 'faiss-cosine':
+        if self.similarity_distance == 'cosine':
             faiss.normalize_L2(self.vectors_1)
             faiss.normalize_L2(self.vectors_2)
             
         index.train(self.vectors_1)  # train on the vectors of dataset 1
 
-        if self.similarity_distance == 'faiss-cosine':
+        if self.similarity_distance == 'cosine':
             faiss.normalize_L2(self.vectors_1)
             faiss.normalize_L2(self.vectors_2)
 
         index.add(self.vectors_1)   # add the vectors and update the index
 
-        if self.similarity_distance == 'faiss-cosine':
+        if self.similarity_distance == 'cosine':
             faiss.normalize_L2(self.vectors_1)
             faiss.normalize_L2(self.vectors_2)
         
         self.distances, self.neighbors = index.search(self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
                                     self.top_k)
-        
-        if self.similarity_distance == 'faiss-euclidean':
+
+        if self.simiarity_distance == 'euclidean':
             self.distances = 1/(1 + self.distances)
-        
+
         self.blocks = dict()
         
         for _entity in range(0, self.neighbors.shape[0]):
@@ -506,3 +505,26 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
             pass
         
         print(u'\u2500' * 123)
+        
+    
+    def export_to_df(self, prediction) -> pd.DataFrame:
+        """creates a dataframe with the predicted pairs
+
+        Args:
+            prediction (any): Predicted candidate pairs
+
+        Returns:
+            pd.DataFrame: Dataframe with the predicted pairs
+        """
+        if self.data.ground_truth is None:
+            raise AttributeError("Can not proceed to evaluation without a ground-truth file. \
+                Data object mush have initialized with the ground-truth file")
+        pairs_df = pd.DataFrame(columns=['id1', 'id2'])
+        for entity_id, candidates in prediction:
+            id1 = self.data._gt_to_ids_reversed_1[entity_id]                                            
+            for candiadate_id in candidates:
+                id2 = self.data._gt_to_ids_reversed_1[candiadate_id] if self.data.is_dirty_er \
+                        else self.data._gt_to_ids_reversed_2[candiadate_id]
+                pairs_df = pd.concat([pairs_df, pd.DataFrame([{'id1':id1, 'id2':id2}], index=[0])], ignore_index=True)
+
+        return pairs_df

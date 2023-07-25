@@ -372,7 +372,7 @@ class Block:
             key (any): Block key
             is_dirty_er (bool): Dirty or Clean-Clean ER.
         """
-        print("\nBlock ", "\033[1;32m"+key+"\033[0m", " contains entities with ids: ")
+        print("\nBlock ", "\033[1;32m"+key+"\033[0m", " has cardinality ", str(self.get_cardinality(is_dirty_er)) ," and contains entities with ids: ")
         if is_dirty_er:
             print("Dirty dataset: " + "[\033[1;34m" + \
              str(len(self.entities_D1)) + " entities\033[0m]")

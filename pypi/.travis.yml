@@ -1,4 +1,0 @@
-deploy:
-  provider: pypi
-  username: "pyjedai2022"
-  password: "pypi-AgEIcHlwaS5vcmcCJDY4YzAwMjMyLWRiYzctNDFhZC05ZTM2LWViZGU4ZWU3MGQyMwACKlszLCI4Mjc3NGI3MC0xYjAwLTQxNTgtOWI0OS1hZTcwNjQzNjQ5YWUiXQAABiDgvuy0saVDWKAQzFtjWe70NBzV3yyaENbVvCdUJ0BDAg"
