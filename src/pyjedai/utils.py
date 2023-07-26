@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
-
+from sklearn.metrics.pairwise import pairwise_distances
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 import numpy as np
 import re
 from nltk import ngrams
@@ -963,4 +964,53 @@ def purge_id_column(columns : list):
             non_id_columns.append(column)
     
     return non_id_columns
-#####################################################    
+
+# Frequency based Vectorization/Similarity evaluation Module   
+class FrequencyEvaluator(ABC):
+    def __init__(self, vectorizer : str, tokenizer : str, qgram : int) -> None:
+        super().__init__()
+        self.vectorizer_name : str = vectorizer
+        self.tokenizer : str = tokenizer
+        self.qgram : int = qgram
+        self.analyzer = 'char' if 'char' in self.tokenizer else 'word'
+        
+        if self.vectorizer_name == 'tfidf' or self.vectorizer_name == 'boolean':
+            self.vectorizer = TfidfVectorizer(analyzer='') if self.qgram is None else \
+                            TfidfVectorizer(analyzer=self.analyzer, ngram_range=(self.qgram, self.qgram))
+        elif self.vectorizer_name == 'tf':
+            self.vectorizer = CountVectorizer(analyzer=self.analyzer) if self.qgram is None else \
+                            CountVectorizer(analyzer=self.analyzer, ngram_range=(self.qgram, self.qgram))
+        else:
+            raise ValueError(f"{self.vectorizer_name}: Invalid Frequency Evaluator Model Name")
+                            
+    def fit(self, metric : str, d1_entities : list = None, d2_entities : list = None) -> None:
+    """Initializes the entities' corpus, and constructs the similarity matrix 
+    Args:
+        metric (str): Distance metric for entity strings
+        d1_entities (list): List of D1 entities' string representations
+        d2_entities (list): List of D2 entities' string representations
+    """
+        if(d1_entities is None or d2_entities is None):
+            raise NotImplementedError(f"{self.vectorizer_name} Frequency Evaluator Model - Dirty ER is not implemented yet")
+        else:
+            self.metric : str = metric
+            self._entities_d1 : list = d1_entities
+            self._entities_d2 : list = d2_entities
+            self.corpus = self._entities_d1 + self._entities_d2
+            self.corpus_as_matrix = self.vectorizer.fit_transform(self.corpus)
+            if self.vectorizer_name == 'boolean':
+                # transform to boolean if value is positive to 1 and negative to 0
+                self.similarity_matrix = self.corpus_as_matrix.astype(bool).astype(int)
+                
+            self.similarity_matrix = 1 - pairwise_distances(self.corpus_as_matrix.toarray(), 
+                                                            metric=self.metric)      
+    def predict(self, id1 : int, id2 : int) -> float:
+    """Returns the predicted similarity score for the given entities
+    Args:
+        id1 (int): D1 entity ID
+        id2 (int): D2 entity ID
+    Returns:
+        float: Similarity score of entities with specified IDs
+    """
+        return self.similarity_matrix[id1][id2]
+    

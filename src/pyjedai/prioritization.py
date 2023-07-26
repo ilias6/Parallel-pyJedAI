@@ -11,6 +11,7 @@ from .comparison_cleaning import (
     GlobalProgressiveSortedNeighborhood,
     LocalProgressiveSortedNeighborhood,
     ProgressiveEntityScheduling)
+from .joins import TopKJoin
 from .vector_based_blocking import EmbeddingsNNBlockBuilding
 
 from networkx import Graph
@@ -26,7 +27,6 @@ from py_stringmatching.similarity_measure.overlap_coefficient import \
 from py_stringmatching.tokenizer.qgram_tokenizer import QgramTokenizer
 from py_stringmatching.tokenizer.whitespace_tokenizer import \
     WhitespaceTokenizer
-from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.metrics.pairwise import pairwise_distances
 from tqdm.autonotebook import tqdm
 
@@ -50,7 +50,8 @@ from .utils import (
     canonical_swap,
     WordQgramTokenizer,
     cosine,
-    get_qgram_from_tokenizer_name)
+    get_qgram_from_tokenizer_name,
+    FrequencyEvaluator)
 import pandas as pd
 import os
 from whoosh.fields import TEXT, Schema, ID
@@ -1052,6 +1053,79 @@ class_references = {
     'LocalPSNM' : LocalPSNM,
     'PESM' : PESM,
     'EmbeddingsNNBPM' : EmbeddingsNNBPM 
+    'TopKJoinPM' : TopKJoinPM
 }  
-        
 
+
+class TopKJoinPM(EntityMatching):
+    """Applies the matching process to a subset of available pairs progressively 
+    """
+
+    _method_name: str = "Top-K Join Progressive Matching"
+    _method_info: str = "Applies index based matching for ES, emits candidate pairs using defined budget/emission technique"
+    def __init__(
+            self,
+            similarity_function: str = 'dice',
+            number_of_nearest_neighbors : int = 10,
+            tokenizer: str = None,
+            weighting_scheme : str = None,
+            qgram : int = 1,
+            similarity_threshold: float = 0.0,
+            tokenizer_return_unique_values = True, # unique values or not
+            attributes: any = None,
+        ) -> None:
+
+        super().__init__(metric=similarity_function,
+                        tokenizer=tokenizer,
+                        similarity_threshold=similarity_threshold,
+                        tokenizer_return_unique_values=tokenizer_return_unique_values,
+                        attributes=attributes)
+        
+        self.similarity_function : str = similarity_function
+        self.number_of_nearest_neighbors : int = number_of_nearest_neighbors
+        self.weighting_scheme : str = weighting_scheme
+        self.qgram : int = qgram 
+        
+    def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
+        ptkj : TopKJoin = TopKJoin(K=self.number_of_nearest_neighbors,
+                                   metric=self.similarity_function,
+                                   tokenization=self.tokenizer,
+                                   qgrams=self.qgram)
+        
+        if(self.weighting_scheme is not None):
+            ptkj.vectorizer = self.initialize_vectorizer()
+        
+        self.pairs = ptkj.fit(data=self.data,
+                              reverse_order=(self._indexing=='reverse'),
+                              attributes_1=self.data.attributes_1,
+                              attributes_2=self.data.attributes_2)
+        
+        self.pairs = [(edge[2]['weight'], edge[0], edge[1]) for edge in self.pairs.edges]
+        return self.pairs
+
+    
+    def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
+        raise NotImplementedError("Progressive TopKJoin PM for prunned blocks - Not implemented yet!")
+        
+    
+        
+    def initialize_vectorizer(self) -> FrequencyEvaluator:
+        self.vectorizer : FrequencyEvaluator = FrequencyEvaluator(vectorizer=self.weighting_scheme,
+                                                                  tokenizer=self.tokenizer,
+                                                                  qgram=self.qgram)
+        d1 = self.data.dataset_1[self.data.attributes_1] if self.data.attributes_1 is not None else self.data.dataset_1
+        self._entities_d1 = d1 \
+                    .apply(" ".join, axis=1) \
+                    .apply(lambda x: x.lower()) \
+                    .values.tolist()
+        d2 = self.data.dataset_2[self.data.attributes_1] if self.data.attributes_2 is not None else self.data.dataset_2
+        self._entities_d2 = d2 \
+                    .apply(" ".join, axis=1) \
+                    .apply(lambda x: x.lower()) \
+                    .values.tolist() if not self.data.is_dirty_er else None
+        
+        self.vectorizer.fit(metric=self.similarity_function,
+                            d1_entities=self._entities_d1,
+                            d2_entities=self._entities_d2)
+        
+        return self.vectorizer
