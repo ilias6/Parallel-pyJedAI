@@ -57,11 +57,12 @@ VALID_WORKFLOW_PARAMETERS = ['matcher',
                             'language_model',
                             'tokenizer',
                             'weighting_scheme',
-                            'window_size']
+                            'window_size',
+                            'qgram']
 # path of the configuration file
 CONFIG_FILE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-configs/per_experiments.json')
 # which configuration from the json file should be used in current experiment  
-EXPERIMENT_NAME = 'pesm-test'
+EXPERIMENT_NAME = 'vector-joins-test'
 # path at which the results will be stored within a json file
 RESULTS_STORE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-results/' + EXPERIMENT_NAME + '.json')
 # results should be stored in the predefined path

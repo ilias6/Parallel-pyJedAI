@@ -984,12 +984,12 @@ class FrequencyEvaluator(ABC):
             raise ValueError(f"{self.vectorizer_name}: Invalid Frequency Evaluator Model Name")
                             
     def fit(self, metric : str, d1_entities : list = None, d2_entities : list = None) -> None:
-    """Initializes the entities' corpus, and constructs the similarity matrix 
-    Args:
-        metric (str): Distance metric for entity strings
-        d1_entities (list): List of D1 entities' string representations
-        d2_entities (list): List of D2 entities' string representations
-    """
+        """Initializes the entities' corpus, and constructs the similarity matrix 
+        Args:
+            metric (str): Distance metric for entity strings
+            d1_entities (list): List of D1 entities' string representations
+            d2_entities (list): List of D2 entities' string representations
+        """
         if(d1_entities is None or d2_entities is None):
             raise NotImplementedError(f"{self.vectorizer_name} Frequency Evaluator Model - Dirty ER is not implemented yet")
         else:
@@ -1005,12 +1005,12 @@ class FrequencyEvaluator(ABC):
             self.similarity_matrix = 1 - pairwise_distances(self.corpus_as_matrix.toarray(), 
                                                             metric=self.metric)      
     def predict(self, id1 : int, id2 : int) -> float:
-    """Returns the predicted similarity score for the given entities
-    Args:
-        id1 (int): D1 entity ID
-        id2 (int): D2 entity ID
-    Returns:
-        float: Similarity score of entities with specified IDs
-    """
+        """Returns the predicted similarity score for the given entities
+        Args:
+            id1 (int): D1 entity ID
+            id2 (int): D2 entity ID
+        Returns:
+            float: Similarity score of entities with specified IDs
+        """
         return self.similarity_matrix[id1][id2]
     

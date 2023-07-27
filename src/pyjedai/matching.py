@@ -69,8 +69,9 @@ available_metrics = magellan_metrics + vector_metrics + whoosh_index_metrics + f
 # char_qgram_tokenizers = { 'char_'+ str(i) + 'gram':i for i in range(1, 7) }
 # word_qgram_tokenizers = { 'word_'+ str(i) + 'gram':i for i in range(1, 7) }
 char_qgram_tokenizers = ['char_tokenizer']
-word_qgram_tokenizers ['word_tokenizer']
+word_qgram_tokenizers = ['word_tokenizer']
 magellan_tokenizers = ['white_space_tokenizer']
+joins_tokenizers = ["qgrams", "standard", "standard_multiset", "qgrams_multiset"]
 
 # tfidf_tokenizers = [ 'tfidf_' + cq for cq in char_qgram_tokenizers.keys() ] + \
 #                     [ 'tfidf_' + wq for wq in word_qgram_tokenizers.keys() ]
@@ -84,8 +85,8 @@ magellan_tokenizers = ['white_space_tokenizer']
 # vector_tokenizers = tfidf_tokenizers + tf_tokenizers + boolean_tokenizers
 
 # available_tokenizers = [key for key in char_qgram_tokenizers] + [key for key in word_qgram_tokenizers] + magellan_tokenizers + vector_tokenizers
-available_tokenizers = char_qgram_tokenizers + word_qgram_tokenizers + magellan_tokenizers
-available_vectorizers = ['tf-idf', 'tf', 'boolean']
+available_tokenizers = char_qgram_tokenizers + word_qgram_tokenizers + magellan_tokenizers + joins_tokenizers
+available_vectorizers = ['tfidf', 'tf', 'boolean']
 
 class AbstractEntityMatching(PYJEDAIFeature):
     """Calculates similarity from 0.0 to 1.0
@@ -387,7 +388,7 @@ class EntityMatching(AbstractEntityMatching):
                                                 return_set=self.tokenizer_return_set)
             elif tokenizer == 'word_tokenizer':
                 self._tokenizer = WordQgramTokenizer(q=self.qgram)
-            else:
+            elif tokenizer not in available_tokenizers:
                 raise AttributeError(
                     'Tokenizer ({}) does not exist. Please select one of the available. ({})'.format(
                         tokenizer, available_tokenizers

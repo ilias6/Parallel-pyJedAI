@@ -133,6 +133,8 @@ class ProgressiveMatching(EntityMatching):
             self,
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
+            vectorizer : str = None,
+            qgram : int = 1,
             similarity_threshold: float = 0.0,
             tokenizer_return_unique_values = True, # unique values or not
             attributes: any = None,
@@ -140,6 +142,8 @@ class ProgressiveMatching(EntityMatching):
 
         super().__init__(metric=similarity_function,
                         tokenizer=tokenizer,
+                        vectorizer=vectorizer,
+                        qgram=qgram,
                         similarity_threshold=similarity_threshold,
                         tokenizer_return_unique_values=tokenizer_return_unique_values,
                         attributes=attributes)
@@ -386,6 +390,8 @@ class BlockIndependentPM(ProgressiveMatching):
             self,
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
+            vectorizer : str = None,
+            qgram : int = 1,
             similarity_threshold: float = 0.0,
             tokenizer_return_unique_values = True, # unique values or not
             attributes: any = None,
@@ -393,6 +399,8 @@ class BlockIndependentPM(ProgressiveMatching):
 
         super().__init__(similarity_function=similarity_function,
                         tokenizer=tokenizer,
+                        vectorizer=vectorizer,
+                        qgram=qgram,
                         similarity_threshold=similarity_threshold,
                         tokenizer_return_unique_values=tokenizer_return_unique_values,
                         attributes=attributes)
@@ -485,6 +493,8 @@ class HashBasedProgressiveMatching(ProgressiveMatching):
         weighting_scheme: str = 'X2',
         similarity_function: str = 'dice',
         tokenizer: str = 'white_space_tokenizer',
+        vectorizer : str = None,
+        qgram : int = 1,
         similarity_threshold: float = 0.0,
         tokenizer_return_unique_values = True, # unique values or not
         attributes: any = None,
@@ -492,6 +502,8 @@ class HashBasedProgressiveMatching(ProgressiveMatching):
 
         super().__init__(similarity_function=similarity_function,
                         tokenizer=tokenizer,
+                        vectorizer=vectorizer,
+                        qgram=qgram,
                         similarity_threshold=similarity_threshold,
                         tokenizer_return_unique_values=tokenizer_return_unique_values,
                         attributes=attributes)
@@ -509,6 +521,8 @@ class GlobalTopPM(HashBasedProgressiveMatching):
         weighting_scheme: str = 'X2',
         similarity_function: str = 'dice',
         tokenizer: str = 'white_space_tokenizer',
+        vectorizer : str = None,
+        qgram : int = 1,
         similarity_threshold: float = 0.0,
         tokenizer_return_unique_values = True, # unique values or not
         attributes: any = None,
@@ -517,6 +531,8 @@ class GlobalTopPM(HashBasedProgressiveMatching):
         super().__init__(weighting_scheme=weighting_scheme,
                         similarity_function=similarity_function,
                         tokenizer=tokenizer,
+                        vectorizer=vectorizer,
+                        qgram=qgram,
                         similarity_threshold=similarity_threshold,
                         tokenizer_return_unique_values=tokenizer_return_unique_values,
                         attributes=attributes)
@@ -563,6 +579,8 @@ class LocalTopPM(HashBasedProgressiveMatching):
         similarity_function: str = 'dice',
         number_of_nearest_neighbors: int = 10,
         tokenizer: str = 'white_space_tokenizer',
+        vectorizer : str = None,
+        qgram : int = 1,
         similarity_threshold: float = 0.0,
         tokenizer_return_unique_values = True, # unique values or not
         attributes: any = None,
@@ -571,6 +589,8 @@ class LocalTopPM(HashBasedProgressiveMatching):
         super().__init__(weighting_scheme=weighting_scheme,
                         similarity_function=similarity_function,
                         tokenizer=tokenizer,
+                        vectorizer=vectorizer,
+                        qgram=qgram,
                         similarity_threshold=similarity_threshold,
                         tokenizer_return_unique_values=tokenizer_return_unique_values,
                         attributes=attributes)
@@ -621,6 +641,8 @@ class EmbeddingsNNBPM(BlockIndependentPM):
             num_of_clusters: int = 5,
             similarity_function: str = 'cosine',
             tokenizer: str = 'white_space_tokenizer',
+            vectorizer : str = None,
+            qgram : int = 1,
             similarity_threshold: float = 0.0,
             tokenizer_return_unique_values = True, # unique values or not
             attributes: any = None
@@ -628,6 +650,8 @@ class EmbeddingsNNBPM(BlockIndependentPM):
 
         super().__init__(similarity_function=similarity_function,
                         tokenizer=tokenizer,
+                        vectorizer=vectorizer,
+                        qgram=qgram,
                         similarity_threshold=similarity_threshold,
                         tokenizer_return_unique_values=tokenizer_return_unique_values,
                         attributes=attributes)
@@ -769,12 +793,16 @@ class SimilarityBasedProgressiveMatching(ProgressiveMatching):
             window_size: int = 10,
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
+            vectorizer : str = None,
+            qgram : int = 1,
             similarity_threshold: float = 0.0,
             tokenizer_return_unique_values = True, # unique values or not
             attributes: any = None
         ) -> None:
         super().__init__(similarity_function=similarity_function,
                         tokenizer=tokenizer,
+                        vectorizer=vectorizer,
+                        qgram=qgram,
                         similarity_threshold=similarity_threshold,
                         tokenizer_return_unique_values=tokenizer_return_unique_values,
                         attributes=attributes)
@@ -796,6 +824,8 @@ class GlobalPSNM(SimilarityBasedProgressiveMatching):
             window_size: int = 10,
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
+            vectorizer : str = None,
+            qgram : int = 1,
             similarity_threshold: float = 0.0,
             tokenizer_return_unique_values = True, # unique values or not
             attributes: any = None
@@ -805,6 +835,8 @@ class GlobalPSNM(SimilarityBasedProgressiveMatching):
                         window_size=window_size,
                         similarity_function=similarity_function,
                         tokenizer=tokenizer,
+                        vectorizer=vectorizer,
+                        qgram=qgram,
                         similarity_threshold=similarity_threshold,
                         tokenizer_return_unique_values=tokenizer_return_unique_values,
                         attributes=attributes)
@@ -832,6 +864,8 @@ class LocalPSNM(SimilarityBasedProgressiveMatching):
             window_size: int = 10,
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
+            vectorizer : str = None,
+            qgram : int = 1,
             similarity_threshold: float = 0.0,
             tokenizer_return_unique_values = True, # unique values or not
             attributes: any = None
@@ -841,6 +875,8 @@ class LocalPSNM(SimilarityBasedProgressiveMatching):
                         window_size=window_size,
                         similarity_function=similarity_function,
                         tokenizer=tokenizer,
+                        vectorizer=vectorizer,
+                        qgram=qgram,
                         similarity_threshold=similarity_threshold,
                         tokenizer_return_unique_values=tokenizer_return_unique_values,
                         attributes=attributes)
@@ -902,6 +938,8 @@ class PESM(HashBasedProgressiveMatching):
             weighting_scheme: str = 'CBS',
             similarity_function: str = 'dice',
             tokenizer: str = 'white_space_tokenizer',
+            vectorizer : str = None,
+            qgram : int = 1,
             similarity_threshold: float = 0.0,
             tokenizer_return_unique_values = True, # unique values or not
             attributes: any = None,
@@ -910,6 +948,8 @@ class PESM(HashBasedProgressiveMatching):
         super().__init__(weighting_scheme=weighting_scheme,
                         similarity_function=similarity_function,
                         tokenizer=tokenizer,
+                        vectorizer=vectorizer,
+                        qgram=qgram,
                         similarity_threshold=similarity_threshold,
                         tokenizer_return_unique_values=tokenizer_return_unique_values,
                         attributes=attributes)
@@ -1045,20 +1085,9 @@ class PESM(HashBasedProgressiveMatching):
         
 #     def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
 #         self._predict_raw_blocks(blocks)  
-        
-class_references = {
-    'GlobalTopPM' : GlobalTopPM,
-    'LocalTopPM' : LocalTopPM,
-    'GlobalPSNM' : GlobalPSNM,
-    'LocalPSNM' : LocalPSNM,
-    'PESM' : PESM,
-    'EmbeddingsNNBPM' : EmbeddingsNNBPM 
-    'TopKJoinPM' : TopKJoinPM
-}  
 
-
-class TopKJoinPM(EntityMatching):
-    """Applies the matching process to a subset of available pairs progressively 
+class TopKJoinPM(ProgressiveMatching):
+    """Applies index based matching for ES, emits candidate pairs using defined budget/emission technique
     """
 
     _method_name: str = "Top-K Join Progressive Matching"
@@ -1075,8 +1104,10 @@ class TopKJoinPM(EntityMatching):
             attributes: any = None,
         ) -> None:
 
-        super().__init__(metric=similarity_function,
+        super().__init__(similarity_function=similarity_function,
                         tokenizer=tokenizer,
+                        vectorizer=weighting_scheme,
+                        qgram=qgram,
                         similarity_threshold=similarity_threshold,
                         tokenizer_return_unique_values=tokenizer_return_unique_values,
                         attributes=attributes)
@@ -1091,16 +1122,13 @@ class TopKJoinPM(EntityMatching):
                                    metric=self.similarity_function,
                                    tokenization=self.tokenizer,
                                    qgrams=self.qgram)
-        
         if(self.weighting_scheme is not None):
             ptkj.vectorizer = self.initialize_vectorizer()
-        
         self.pairs = ptkj.fit(data=self.data,
                               reverse_order=(self._indexing=='reverse'),
                               attributes_1=self.data.attributes_1,
                               attributes_2=self.data.attributes_2)
-        
-        self.pairs = [(edge[2]['weight'], edge[0], edge[1]) for edge in self.pairs.edges]
+        self.pairs = [(edge[2]['weight'], edge[0], edge[1]) for edge in self.pairs.edges(data=True)]
         return self.pairs
 
     
@@ -1129,3 +1157,14 @@ class TopKJoinPM(EntityMatching):
                             d2_entities=self._entities_d2)
         
         return self.vectorizer
+
+class_references = {
+    'GlobalTopPM' : GlobalTopPM,
+    'LocalTopPM' : LocalTopPM,
+    'GlobalPSNM' : GlobalPSNM,
+    'LocalPSNM' : LocalPSNM,
+    'PESM' : PESM,
+    'EmbeddingsNNBPM' : EmbeddingsNNBPM,
+    'TopKJoinPM' : TopKJoinPM
+} 
+

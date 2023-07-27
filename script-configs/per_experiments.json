@@ -106,5 +106,39 @@
         "tokenizer": [],
         "weighting_scheme": ["ARCS", "CBS", "CNC", "CND", "CNJ", "COSINE", "DICE", "ECBS", "EJS", "X2"],
         "window_size": []
+    },
+    "base-joins-test": {
+        "matcher": ["TopKJoinPM"],
+        "algorithm": ["TOP", "DFS", "BFS", "HB"],
+        "budget" : [],
+        "dataset_name" : ["D100"],
+        "source_dataset_path": ["~/pyJedAI/pyJedAI-Dev/data/test/ccer/abt_100.csv"],
+        "target_dataset_path": ["~/pyJedAI/pyJedAI-Dev/data/test/ccer/buy_100.csv"],
+        "ground_truth_path": ["~/pyJedAI/pyJedAI-Dev/data/test/ccer/gt_100.csv"],
+        "number_of_nearest_neighbors": [1,2,3,4,5,6,7,8,9,10],
+        "indexing": ["inorder", "reverse", "bilateral"],
+        "similarity_function": ["cosine", "dice", "jaccard"],
+        "language_model": [],
+        "tokenizer": ["qgrams", "standard", "standard_multiset", "qgrams_multiset"],
+        "qgram": [1,2,3,4,5],
+        "weighting_scheme": [],
+        "window_size": []
+    },
+    "vector-joins-test": {
+        "matcher": ["TopKJoinPM"],
+        "algorithm": ["DFS", "BFS"],
+        "budget" : [],
+        "dataset_name" : ["D100"],
+        "source_dataset_path": ["~/pyJedAI/pyJedAI-Dev/data/test/ccer/abt_100.csv"],
+        "target_dataset_path": ["~/pyJedAI/pyJedAI-Dev/data/test/ccer/buy_100.csv"],
+        "ground_truth_path": ["~/pyJedAI/pyJedAI-Dev/data/test/ccer/gt_100.csv"],
+        "number_of_nearest_neighbors": [5],
+        "indexing": ["inorder"],
+        "similarity_function": ["cosine", "dice", "jaccard"],
+        "language_model": [],
+        "tokenizer": ["word_tokenizer", "char_tokenizer"],
+        "qgram": [2],
+        "weighting_scheme": ["tfidf", "tf", "boolean"],
+        "window_size": []
     }
 }
