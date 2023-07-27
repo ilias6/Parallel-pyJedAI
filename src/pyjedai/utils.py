@@ -965,6 +965,136 @@ def purge_id_column(columns : list):
     
     return non_id_columns
 
+def common_elements(elements1 : list, elements2 : list) -> list:
+    """Returns the union of the elements of both lists in the order they appear in the first list
+
+    Args:
+        elements1 (list): Source list of elements
+        elements2 (list): Target list of elements
+
+    Returns:
+        list : Returns the union of the elements of both lists in the order they appear in the first list
+    """
+    _common_elements : list = []
+    
+    for element in elements1:
+        if element in elements2:
+            _common_elements.append(element)
+    return _common_elements
+
+def matching_arguments(workflow : dict, arguments : dict) -> bool:
+    """Checks if given workflow's arguments that are shared with the target arguments have values that appear in the those arguments
+
+    Args:
+        workflow (dict): Dictionary of argument -> value for the given workflow
+        arguments (dict): Dictionary of argument -> lists of values that are valid for the workflow in order for it to be matching
+
+    Returns:
+        bool : Checks if given workflow's arguments that are shared with the target arguments have values that appear in the those arguments
+    """
+    for argument, value in workflow.items():
+        if argument in arguments and value not in arguments[argument]:
+            return False  
+    return True
+
+def update_top_results(results : dict, new_workflow : dict, metric : str, keep_top_budget : bool) -> dict:
+    """Based on its performance, sets the new workflow as the top one in 
+       its budget/global category (don't / only keep the budget with top performance)  
+
+    Args:
+        results (dict): Budget -> Best workflow for giben budget
+        new_workflow (dict): Arguments -> values for given workflow
+        metric (str) : Metric upon which workflows are being compared
+        keep_top_budget (bool): Keep only the workflow corresponding to the budget with the best performance
+
+    Returns:
+        dict : Updated Results Dictionary
+    """
+    
+    _budget : int = new_workflow['budget']
+    _current_top_workflow = (None if not results else results[next(iter(results))]) if keep_top_budget \
+                            else (None if _budget not in results else results[_budget])
+    
+    if(_current_top_workflow is None or _current_top_workflow[metric] < new_workflow[metric]):
+        if(keep_top_budget):
+            return {_budget : new_workflow}
+        else:
+            results[_budget] = new_workflow
+            return results
+    return results
+
+def retrieve_top_workflows(workflows : dict = None,
+                           workflows_path : str = None,
+                           store_path : str = None,
+                           metric : str = 'auc',
+                           top_budget : bool = False,
+                           **arguments):
+    """Takes a workflow dictionary or retrieves it from given path.
+       Gathers the best workflows was specified comparison metric and argument values.
+       Stores the best workflows in the given storage path.  
+
+    Args:
+        workflows (dict): Dictionary containing the workflows (Defaults to None)
+        workflows_path (dict): Path from which the program will attempt to retrieve the workflows (Defaults to None)
+        store_path (str) : Path in which the best workflows will be stored in json format (Defaults to None)
+        metric (bool): Metric used to compare workflows (Default to 'auc')
+        top_budget (bool): Store only the workflow for the budget with the best performance (Defaults to False)
+        arguments (dict): Arguments and the corresponding values that workflows have to possess in order to be considered
+
+    Returns:
+        dict : Updated Results Dictionary
+    """
+    
+    retrievable_metrics = ['time', 'auc', 'recall']
+    
+    if(workflows is not None):
+        _workflows = workflows
+    elif(workflows_path is not None):
+        with open(workflows_path) as file:
+            _workflows = json.load(file)
+    else:
+        raise ValueError("Please provide workflows dictionary / json file path.")
+    
+    if metric not in ['time', 'auc', 'recall']:
+        raise AttributeError(
+            'Metric ({}) does not exist. Please select one of the available. ({})'.format(
+                metric, retrievable_metrics
+                )
+            )
+     
+    _results : dict = {} 
+    # datasets, matchers and language models
+    # for which we want to find the top workflows  
+    datasets : List[str] = None if 'dataset' not in arguments else arguments['dataset'] 
+    matchers : List[str] = None if 'matcher' not in arguments else arguments['matcher'] 
+    lms : List[str] = None if 'language_model' not in arguments else arguments['language_model']
+    
+    _dataset_names : List[str] = _workflows.keys() if datasets is None else common_elements(datasets, workflows.keys())
+    _current_workflows : List[dict] = []
+
+    for _dataset_name in _dataset_names:
+        _dataset_info : dict = _workflows[_dataset_name]
+        _matcher_names = _dataset_info.keys() if matchers is None else common_elements(matchers, _dataset_info.keys())
+        for _matcher_name in _matcher_names:
+            _matcher_info : dict = _dataset_info[_matcher_name]
+            if _matcher_name == 'EmbeddingsNNBPM':
+                _lm_names = _matcher_info.keys() if lms is None else common_elements(lms, _matcher_info.keys())
+                for _lm_workflows in _matcher_info[_lm_names]:
+                    _current_workflows += _lm_workflows
+            else:
+                _current_workflows += _matcher_info
+            for _current_workflow in _current_workflows:
+                if(matching_arguments(workflow=_current_workflow, arguments=arguments)):
+                    _results = update_top_results(results=_results, 
+                                                  new_workflow=_current_workflow,
+                                                  metric=metric,
+                                                  keep_top_budget=top_budget)
+    
+    print(_results)                
+    if (store_path is not None):
+        with open(store_path, 'w', encoding="utf-8") as file:
+            json.dump(_results, file, indent=4)
+        
 # Frequency based Vectorization/Similarity evaluation Module   
 class FrequencyEvaluator(ABC):
     def __init__(self, vectorizer : str, tokenizer : str, qgram : int) -> None:

@@ -15,7 +15,8 @@ from pyjedai.utils import (
     save_worfklow_in_path,
     pretty_print_workflow,
     clear_json_file,
-    purge_id_column)
+    purge_id_column,
+    retrieve_top_workflows)
 from pyjedai.block_building import (
     StandardBlocking,
     QGramsBlocking,
@@ -62,9 +63,11 @@ VALID_WORKFLOW_PARAMETERS = ['matcher',
 # path of the configuration file
 CONFIG_FILE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-configs/per_experiments.json')
 # which configuration from the json file should be used in current experiment  
-EXPERIMENT_NAME = 'vector-joins-test'
+EXPERIMENT_NAME = 'gsn-test'
 # path at which the results will be stored within a json file
 RESULTS_STORE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-results/' + EXPERIMENT_NAME + '.json')
+# path at which the top workflows for specified argument values are stored
+BEST_WORKFLOWS_STORE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-results/best_workflows.json')
 # results should be stored in the predefined path
 STORE_RESULTS = True
 # AUC calculation and ROC visualization after execution
@@ -155,13 +158,14 @@ for id, dataset_info in enumerate(datasets_info):
             if(PRINT_WORKFLOWS):
                 pretty_print_workflow(current_workflow_info)
             
+with open(RESULTS_STORE_PATH, 'r') as file:
+    results = json.load(file)
+            
 if(VISUALIZE_RESULTS):
-    with open(RESULTS_STORE_PATH, 'r') as file:
-        results = json.load(file)
     evaluator = Evaluation(data)
     evaluator.visualize_results_roc(results=results)
     
-if(STORE_RESULTS):    
+if(STORE_RESULTS):   
     with open(RESULTS_STORE_PATH, 'w', encoding="utf-8") as file:
         json.dump(results, file, indent=4)
     
