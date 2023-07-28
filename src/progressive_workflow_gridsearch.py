@@ -16,7 +16,8 @@ from pyjedai.utils import (
     pretty_print_workflow,
     clear_json_file,
     purge_id_column,
-    retrieve_top_workflows)
+    retrieve_top_workflows,
+    workflows_to_dataframe)
 from pyjedai.block_building import (
     StandardBlocking,
     QGramsBlocking,
@@ -63,13 +64,16 @@ VALID_WORKFLOW_PARAMETERS = ['matcher',
 # path of the configuration file
 CONFIG_FILE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-configs/per_experiments.json')
 # which configuration from the json file should be used in current experiment  
-EXPERIMENT_NAME = 'gsn-test'
+EXPERIMENT_NAME = 'gsn-test-multiple-iterations'
 # path at which the results will be stored within a json file
-RESULTS_STORE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-results/' + EXPERIMENT_NAME + '.json')
+RESULTS_STORE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-results/' + EXPERIMENT_NAME)
+JSON_STORE_PATH = RESULTS_STORE_PATH + '.json'
+DF_STORE_PATH = RESULTS_STORE_PATH + '.csv'
 # path at which the top workflows for specified argument values are stored
 BEST_WORKFLOWS_STORE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-results/best_workflows.json')
 # results should be stored in the predefined path
 STORE_RESULTS = True
+STORE_RESULTS_AS_DF = True
 # AUC calculation and ROC visualization after execution
 VISUALIZE_RESULTS = True
 # workflow arguments and execution info should be printed in terminal once executed
@@ -103,11 +107,12 @@ if(not necessary_dfs_supplied(config)):
     raise ValueError("Different number of source, target dataset and ground truth paths!")
 
 datasets_info = list(zip(config['source_dataset_path'], config['target_dataset_path'], config['ground_truth_path']))
+iterations = config['iterations'][0] if(values_given(config, 'iterations')) else 1
 
 execution_count : int = 0
 
 if(STORE_RESULTS):
-    clear_json_file(path=RESULTS_STORE_PATH)
+    clear_json_file(path=JSON_STORE_PATH)
 
 for id, dataset_info in enumerate(datasets_info):
     dataset_id = id + 1
@@ -134,7 +139,7 @@ for id, dataset_info in enumerate(datasets_info):
     
     true_positives_number = len(gt)
     budgets = config['budget'] if values_given(config, 'budget') else get_multiples(true_positives_number, 10)
-    total_workflows = len(workflow_combinations) * len(datasets_info) * len(budgets)
+    total_workflows = len(workflow_combinations) * len(datasets_info) * len(budgets) * iterations
        
     for budget in budgets:
         for workflow_combination in workflow_combinations:
@@ -142,32 +147,37 @@ for id, dataset_info in enumerate(datasets_info):
             workflow_arguments['budget'] = budget
             workflow_arguments['dataset'] = dataset_name
             
-            execution_count += 1
-            print(f"#### WORKFLOW {execution_count}/{total_workflows} ####")
-            current_workflow = ProgressiveWorkFlow()
-            current_workflow.run(data=data,
-                                 block_building=_block_building,
-                                 block_purging=_block_purging,
-                                 block_filtering=_block_filtering,
-                                 **workflow_arguments)    
-            
-            if(STORE_RESULTS):
+            for iteration in range(iterations):
+                execution_count += 1
+                print(f"#### WORKFLOW {execution_count}/{total_workflows} ####")
+                current_workflow = ProgressiveWorkFlow()
+                current_workflow.run(data=data,
+                                    block_building=_block_building,
+                                    block_purging=_block_purging,
+                                    block_filtering=_block_filtering,
+                                    **workflow_arguments)    
+                
                 current_workflow_info = save_worfklow_in_path(workflow=current_workflow,
                                                             workflow_arguments=workflow_arguments,
-                                                            path=RESULTS_STORE_PATH)
-            if(PRINT_WORKFLOWS):
-                pretty_print_workflow(current_workflow_info)
+                                                            path=JSON_STORE_PATH)
+                if(PRINT_WORKFLOWS):
+                    pretty_print_workflow(current_workflow_info)
             
-with open(RESULTS_STORE_PATH, 'r') as file:
+with open(JSON_STORE_PATH, 'r') as file:
     results = json.load(file)
             
 if(VISUALIZE_RESULTS):
     evaluator = Evaluation(data)
     evaluator.visualize_results_roc(results=results)
     
-if(STORE_RESULTS):   
-    with open(RESULTS_STORE_PATH, 'w', encoding="utf-8") as file:
-        json.dump(results, file, indent=4)
+if(STORE_RESULTS):
+    if(STORE_RESULTS_AS_DF):
+        workflows_to_dataframe(workflows=results,
+                               store_path=DF_STORE_PATH)
+        os.remove(JSON_STORE_PATH)
+    else: 
+        with open(JSON_STORE_PATH, 'w', encoding="utf-8") as file:
+            json.dump(results, file, indent=4)
     
     
     

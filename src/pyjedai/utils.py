@@ -21,6 +21,7 @@ import os
 import json
 import copy
 from math import floor
+import pandas as pd
 # ----------------------- #
 # Constants
 # ----------------------- #
@@ -1094,7 +1095,69 @@ def retrieve_top_workflows(workflows : dict = None,
     if (store_path is not None):
         with open(store_path, 'w', encoding="utf-8") as file:
             json.dump(_results, file, indent=4)
+  
+
+def add_entry(workflow : dict, dataframe_dictionary : dict) -> None:
+    """Retrieves features and their values from the given workflow dictionary,
+       and stores them in the to-be-constructed dataframe dictionary
+
+    Args:
+        workflow (dict): Dictionary containing workflow's arguments and their values
+        dataframe_dictionary (dict): Dictionary that stores workflows arguments and their values - 
+                                     to be transformed into columns
+    """
+    for feature, value in workflow.items():
+        if feature not in dataframe_dictionary:
+            dataframe_dictionary[feature] = []
+        dataframe_dictionary[feature].append(value)
+          
+def workflows_to_dataframe(workflows : dict = None,
+                           workflows_path : str = None,
+                           store_path : str = None) -> pd.DataFrame:
+    """Takes a workflow dictionary or retrieves it from given path.
+       Stores all of its entries in a dataframe.
+       Stores the dataframe in specified path if provided.
+
+    Args:
+        workflows (dict): Dictionary containing the workflows (Defaults to None)
+        workflows_path (dict): Path from which the program will attempt to retrieve the workflows (Defaults to None)
+        store_path (str) : Path in which the dataframe will be stored in json format (Defaults to None)
+
+    Returns:
+        pd.Dataframe : Dataframe containing the workflow entries in the given workflows dictionary
+    """
+    if(workflows is not None):
+        _workflows = workflows
+    elif(workflows_path is not None):
+        with open(workflows_path) as file:
+            _workflows = json.load(file)
+    else:
+        raise ValueError("Please provide workflows dictionary / json file path.")
+    
+    
+    dataframe_dictionary : dict = {}
+    workflows_dataframe : pd.DataFrame   
+    
+    for dataset in _workflows:
+        dataset_info : dict = _workflows[dataset]
+        for matcher in dataset_info:
+            matcher_info : dict = dataset_info[matcher]
+            current_workflows : list = []
+            if(matcher == 'EmbeddingsNNBPM'):
+                for lm in matcher_info:
+                    current_workflows += matcher_info[lm]
+            else:
+                current_workflows += matcher_info
+                
+            for current_workflow in current_workflows:
+                add_entry(current_workflow, dataframe_dictionary)
+     
+    workflows_dataframe = pd.DataFrame(dataframe_dictionary)           
+    if(store_path is not None):
+        workflows_dataframe.to_csv(store_path, index=False)
         
+    return workflows_dataframe
+
 # Frequency based Vectorization/Similarity evaluation Module   
 class FrequencyEvaluator(ABC):
     def __init__(self, vectorizer : str, tokenizer : str, qgram : int) -> None:
