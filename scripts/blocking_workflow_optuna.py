@@ -36,7 +36,7 @@ engine = [
 
 
 bf_ratio = {1:0.9, 2:0.075, 7:0.6}
-weighting_schemes = {1:'JS',2:'CBS',7:'ARCS'}
+weighting_schemes = {1:'JS',2:'CBS',7:'CN-CBS'}
 
 datasets_wanted = [1, 2, 7]
 for i in datasets_wanted:

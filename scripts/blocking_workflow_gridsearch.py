@@ -43,7 +43,7 @@ tokenizers = [
 
 available_metrics = set_metrics + bag_metrics
 
-weighting_schemes = {1:'JS',2:'CBS',7:'ARCS'}
+weighting_schemes = {1:'JS',2:'CBS',7:'CN-CBS'}
 
 
 datasets_wanted = [1, 2, 7]

@@ -165,5 +165,23 @@
         "weighting_scheme": ["tfidf", "tf", "boolean"],
         "window_size": [],
         "iterations": [1]
+    },
+    "mb-all-test-2": {
+        "matcher": ["GlobalTopPM"],
+        "algorithm": ["TOP", "BFS", "DFS", "HB"],
+        "budget" : [],
+        "dataset_name" : ["D1"],
+        "source_dataset_path": ["~/pyjedai_datasets/D1/rest1.csv"],
+        "target_dataset_path": ["~/pyjedai_datasets/D1/rest2.csv"],
+        "ground_truth_path": ["~/pyjedai_datasets/D1/gt.csv"],
+		"separator": ["|"],
+        "number_of_nearest_neighbors": [],
+        "indexing": ["inorder"],
+        "similarity_function": [],
+        "language_model": [],
+        "tokenizer": [],
+        "weighting_scheme":["CNC"],
+        "window_size": [],
+		"iterations": [10]
     }
 }

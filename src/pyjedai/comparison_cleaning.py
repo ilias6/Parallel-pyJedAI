@@ -210,10 +210,10 @@ class AbstractMetablocking(AbstractComparisonCleaning, ABC):
                 self.weighting_scheme == 'CND' or
                 self.weighting_scheme == 'CNJ' or
                 self.weighting_scheme == 'SNJ')
-
+        
     def _get_weight(self, entity_id: int, neighbor_id: int) -> float:
         ws = self.weighting_scheme
-        if ws == 'ARCS' or ws == 'CBS':
+        if ws == 'CN-CBS' or ws == 'CBS' or ws == 'SN_CBS':
             return self._counters[neighbor_id]
         # CARDINALITY_NORM_COSINE, SIZE_NORM_COSINE
         elif ws == 'CNC' or ws == 'SNC':
@@ -381,8 +381,10 @@ class WeightedEdgePruning(AbstractMetablocking):
                 if self._flags[neighbor_id] != entity_id:
                     self._counters[neighbor_id] = 0
                     self._flags[neighbor_id] = entity_id
-                if self.weighting_scheme == 'ARCS':
+                if self.weighting_scheme == 'CN-CBS' or self.weighting_scheme == 'CNC' or self.weighting_scheme == 'CND' or self.weighting_scheme == 'CNJ':
                     self._counters[neighbor_id] += 1 / self._blocks[block_id].get_cardinality(self.data.is_dirty_er)
+                if self.weighting_scheme == 'SN-CBS' or self.weighting_scheme == 'SNC' or self.weighting_scheme == 'SND' or self.weighting_scheme == 'SNJ':
+                    self._counters[neighbor_id] += 1 / self._blocks[block_id].get_size()
                 else:
                     self._counters[neighbor_id] += 1
                 self._valid_entities.add(neighbor_id)
@@ -559,7 +561,7 @@ class ReciprocalCardinalityNodePruning(CardinalityNodePruning):
                     "that correspond to edges in the blocking graph that are among " + \
                     "the top-k weighted ones for both adjacent entities/nodes."
 
-    def __init__(self, weighting_scheme: str = 'ARCS') -> None:
+    def __init__(self, weighting_scheme: str = 'CN-CBS') -> None:
         super().__init__(weighting_scheme)
 
     def _is_valid_comparison(self, entity_id: int, neighbor_id: int) -> bool:
@@ -658,7 +660,7 @@ class ReciprocalWeightedNodePruning(WeightedNodePruning):
                     "that correspond to edges in the blocking graph that are " + \
                     "exceed the average edge weight in both adjacent node neighborhoods."
 
-    def __init__(self, weighting_scheme: str = 'ARCS') -> None:
+    def __init__(self, weighting_scheme: str = 'CN-CBS') -> None:
         super().__init__(weighting_scheme)
 
     def _get_valid_weight(self, entity_id: int, neighbor_id: int) -> float:
@@ -1013,8 +1015,10 @@ class ProgressiveEntityScheduling(WeightedNodePruning):
                 if self._flags[neighbor_id] != entity_id:
                     self._counters[neighbor_id] = 0
                     self._flags[neighbor_id] = entity_id
-                if self.weighting_scheme == 'ARCS':
+                if self.weighting_scheme == 'CN-CBS' or self.weighting_scheme == 'CNC' or self.weighting_scheme == 'CND' or self.weighting_scheme == 'CNJ':
                     self._counters[neighbor_id] += 1 / self._blocks[block_id].get_cardinality(self.data.is_dirty_er)
+                if self.weighting_scheme == 'SN-CBS' or self.weighting_scheme == 'SNC' or self.weighting_scheme == 'SND' or self.weighting_scheme == 'SNJ':
+                    self._counters[neighbor_id] += 1 / self._blocks[block_id].get_size()
                 else:
                     self._counters[neighbor_id] += 1
                 self._valid_entities.add(neighbor_id)

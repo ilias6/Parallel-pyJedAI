@@ -1141,12 +1141,13 @@ class TopKJoinPM(ProgressiveMatching):
         self.vectorizer : FrequencyEvaluator = FrequencyEvaluator(vectorizer=self.weighting_scheme,
                                                                   tokenizer=self.tokenizer,
                                                                   qgram=self.qgram)
+        
         d1 = self.data.dataset_1[self.data.attributes_1] if self.data.attributes_1 is not None else self.data.dataset_1
         self._entities_d1 = d1 \
                     .apply(" ".join, axis=1) \
                     .apply(lambda x: x.lower()) \
                     .values.tolist()
-        d2 = self.data.dataset_2[self.data.attributes_1] if self.data.attributes_2 is not None else self.data.dataset_2
+        d2 = self.data.dataset_2[self.data.attributes_2] if self.data.attributes_2 is not None else self.data.dataset_2
         self._entities_d2 = d2 \
                     .apply(" ".join, axis=1) \
                     .apply(lambda x: x.lower()) \

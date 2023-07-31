@@ -1,8 +1,5 @@
-import time
 import os
-import sys
 import pandas as pd
-import numpy as np
 import json
 from itertools import product
 from pyjedai.utils import to_path
@@ -15,36 +12,8 @@ from pyjedai.utils import (
     save_worfklow_in_path,
     pretty_print_workflow,
     clear_json_file,
-    purge_id_column,
-    retrieve_top_workflows,
-    workflows_to_dataframe)
-from pyjedai.block_building import (
-    StandardBlocking,
-    QGramsBlocking,
-    ExtendedQGramsBlocking,
-    SuffixArraysBlocking,
-    ExtendedSuffixArraysBlocking)
-                                   
-from pyjedai.block_cleaning import (
-    BlockFiltering,
-    BlockPurging)                         
-from pyjedai.comparison_cleaning import (
-    WeightedEdgePruning, 
-    WeightedNodePruning,
-    CardinalityEdgePruning,
-    CardinalityNodePruning, 
-    BLAST,
-    ReciprocalCardinalityNodePruning,
-    ReciprocalWeightedNodePruning,
-    ComparisonPropagation)                                   
-from pyjedai.prioritization import (
-    GlobalTopPM, 
-    LocalTopPM, 
-    EmbeddingsNNBPM, 
-    GlobalPSNM, 
-    LocalPSNM, 
-    PESM,
-    class_references)
+    workflows_to_dataframe)                     
+                                
 from pyjedai.evaluation import Evaluation
 
 #-EDIT-THOSE-#
@@ -62,15 +31,15 @@ VALID_WORKFLOW_PARAMETERS = ['matcher',
                             'window_size',
                             'qgram']
 # path of the configuration file
-CONFIG_FILE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-configs/per_experiments.json')
+CONFIG_FILE_PATH = to_path('/home/gpapadakis/ccer/all_configurations.json')
 # which configuration from the json file should be used in current experiment  
-EXPERIMENT_NAME = 'gsn-test-multiple-iterations'
+EXPERIMENT_NAME = 'join-test'
 # path at which the results will be stored within a json file
-RESULTS_STORE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-results/' + EXPERIMENT_NAME)
+RESULTS_STORE_PATH = to_path('/home/gpapadakis/ccer/newresults/' + EXPERIMENT_NAME + '.json')
 JSON_STORE_PATH = RESULTS_STORE_PATH + '.json'
 DF_STORE_PATH = RESULTS_STORE_PATH + '.csv'
 # path at which the top workflows for specified argument values are stored
-BEST_WORKFLOWS_STORE_PATH = to_path('~/pyJedAI/pyJedAI-Dev/script-results/best_workflows.json')
+BEST_WORKFLOWS_STORE_PATH = to_path('/home/gpapadakis/ccer/bestresults/' + EXPERIMENT_NAME + '.json')
 # results should be stored in the predefined path
 STORE_RESULTS = True
 STORE_RESULTS_AS_DF = True
@@ -84,15 +53,6 @@ D2_ID = 'id'
 # methods and their corresponding parameters for MB-based workflows
 # if you don't want to apply filtering, purging or block building (or want to use the default methods when necessary)
 # set those values to None
-_block_building = dict(method=QGramsBlocking, 
-                        params=dict(qgrams=3))
-
-_block_filtering = dict(method=BlockFiltering, 
-                        params=dict(ratio=0.8))
-
-_block_purging = dict(method=BlockPurging, 
-                        params=dict(smoothing_factor=1.025))
-##############                          
                                    
 with open(CONFIG_FILE_PATH) as file:
     config = json.load(file)
@@ -152,9 +112,9 @@ for id, dataset_info in enumerate(datasets_info):
                 print(f"#### WORKFLOW {execution_count}/{total_workflows} ####")
                 current_workflow = ProgressiveWorkFlow()
                 current_workflow.run(data=data,
-                                    block_building=_block_building,
-                                    block_purging=_block_purging,
-                                    block_filtering=_block_filtering,
+                                    block_building=None,
+                                    block_purging=None,
+                                    block_filtering=None,
                                     **workflow_arguments)    
                 
                 current_workflow_info = save_worfklow_in_path(workflow=current_workflow,
