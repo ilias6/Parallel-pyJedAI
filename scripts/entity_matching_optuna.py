@@ -73,11 +73,8 @@ for i in range(0,len(D1CSV)):
             'cosine', 'dice', 'generalized_jaccard', 'jaccard', 'overlap_coefficient'
         ]
 
-        bag_metrics = [
-            'tf-idf'
-        ]
-
-        available_metrics = set_metrics + bag_metrics
+        available_metrics = set_metrics
+        available_vectorizers = ['tfidf']
 
 
         '''
@@ -100,6 +97,7 @@ for i in range(0,len(D1CSV)):
 
                 em = EntityMatching(
                     metric=trial.suggest_categorical('metric', available_metrics),
+                    vectorizer=trial.suggest_categorical('vectorizer', available_vectorizers),
                     similarity_threshold=0.0
                 )
                 pairs_graph = em.predict(candidate_pairs_blocks, data, tqdm_disable=False)

@@ -45,26 +45,19 @@ wep = CardinalityEdgePruning(weighting_scheme='X2')
 candidate_pairs_blocks = wep.process(blocks, data)
 wep.evaluate(candidate_pairs_blocks, with_classification_report=True)
 
-char_qgram_tokenizers = { 'char_'+ str(i) + 'gram':i for i in range(1, 6) }
-word_qgram_tokenizers = { 'word_'+ str(i) + 'gram':i for i in range(1, 6) }
-tfidf_tokenizers = [ 'tfidf_' + cq for cq in char_qgram_tokenizers.keys() ] + \
-                    [ 'tfidf_' + wq for wq in word_qgram_tokenizers.keys() ]
-
-tf_tokenizers = [ 'tf_' + cq for cq in char_qgram_tokenizers.keys() ] + \
-                    [ 'tf_' + wq for wq in word_qgram_tokenizers.keys() ]
-                        
-boolean_tokenizers = [ 'boolean_' + cq for cq in char_qgram_tokenizers.keys() ] + \
-                        [ 'boolean_' + wq for wq in word_qgram_tokenizers.keys() ]
-
-vector_tokenizers = tfidf_tokenizers + tf_tokenizers + boolean_tokenizers
-
+tokenizers = ['word_tokenizer', 'char_tokenizer']
+vectorizers = ['tfidf', 'tf', 'boolean']
 met = ['dice', 'jaccard', 'cosine']
 
 for m in met:
-    for t in vector_tokenizers:
-        print(f"\n\nMetric: {m}, Tokenizer: {t}\n")
-        EM = EntityMatching(metric=m, 
-                            tokenizer = t, 
-                            similarity_threshold=0.0)
-        pairs_graph = EM.predict(candidate_pairs_blocks, data)
-        EM.evaluate(pairs_graph, with_classification_report=True)
+    for t in tokenizers:
+        for v in vectorizers:
+            for q in range(1,6):
+                print(f"\n\nMetric: {m}, Tokenizer: {t}, Vectorizer: {v}, Qgram: {q}\n")
+                EM = EntityMatching(metric = m, 
+                                    tokenizer = t, 
+                                    vectorizer = v,
+                                    qgram= q,
+                                    similarity_threshold=0.0)
+                pairs_graph = EM.predict(candidate_pairs_blocks, data)
+                EM.evaluate(pairs_graph, with_classification_report=True)

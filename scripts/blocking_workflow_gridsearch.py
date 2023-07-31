@@ -33,15 +33,15 @@ set_metrics = [
     'cosine', 'dice', 'jaccard', 'overlap_coefficient'
 ]
 
-bag_metrics = [
+vectorizers = [
     'tf-idf'
 ]
 
 tokenizers = [
-    'white_space_tokenizer', 'char_qgram_tokenizer', 'word_qgram_tokenizer'
+    'white_space_tokenizer', 'char_tokenizer', 'word_tokenizer'
 ]
 
-available_metrics = set_metrics + bag_metrics
+available_metrics = set_metrics
 
 weighting_schemes = {1:'JS',2:'CBS',7:'CN-CBS'}
 
@@ -74,44 +74,46 @@ for i in datasets_wanted:
 
         for em_method in available_metrics:
             for tokenizer in tokenizers:
-                for q in range(1,6):
-                    for thr in np.arange(0, 1, 0.1):
-                        try:
-                            t1 = time.time()
-                            sb = StandardBlocking()
-                            blocks = sb.build_blocks(data, tqdm_disable=False)
+                for vectorizer in vectorizers:
+                    for q in range(1,6):
+                        for thr in np.arange(0, 1, 0.1):
+                            try:
+                                t1 = time.time()
+                                sb = StandardBlocking()
+                                blocks = sb.build_blocks(data, tqdm_disable=False)
 
-                            cbbp = BlockPurging(smoothing_factor=1.0)
-                            blocks = cbbp.process(blocks, data, tqdm_disable=False)
+                                cbbp = BlockPurging(smoothing_factor=1.0)
+                                blocks = cbbp.process(blocks, data, tqdm_disable=False)
 
-                            bf = BlockFiltering(ratio=0.8)
-                            blocks = bf.process(blocks, data, tqdm_disable=False)
+                                bf = BlockFiltering(ratio=0.8)
+                                blocks = bf.process(blocks, data, tqdm_disable=False)
 
-                            wep = CardinalityNodePruning(weighting_scheme=weighting_schemes[i])
-                            candidate_pairs_blocks = wep.process(blocks, data, tqdm_disable=False)
+                                wep = CardinalityNodePruning(weighting_scheme=weighting_schemes[i])
+                                candidate_pairs_blocks = wep.process(blocks, data, tqdm_disable=False)
 
-                            em = EntityMatching(
-                                metric=em_method,
-                                tokenizer=tokenizer,
-                                qgram=q,
-                                tfidf_similarity_metric='jaccard',
-                                similarity_threshold=0.0
-                            )
-                            pairs_graph = em.predict(candidate_pairs_blocks, data, tqdm_disable=False)
+                                em = EntityMatching(
+                                    metric=em_method,
+                                    tokenizer=tokenizer,
+                                    vectorizer=vectorizer,
+                                    qgram=q,
+                                    tfidf_similarity_metric='jaccard',
+                                    similarity_threshold=0.0
+                                )
+                                pairs_graph = em.predict(candidate_pairs_blocks, data, tqdm_disable=False)
 
-                            ccc = UniqueMappingClustering()
-                            clusters = ccc.process(pairs_graph, data,similarity_threshold=thr)
-                            results = ccc.evaluate(clusters, with_classification_report=True, verbose=True)
+                                ccc = UniqueMappingClustering()
+                                clusters = ccc.process(pairs_graph, data,similarity_threshold=thr)
+                                results = ccc.evaluate(clusters, with_classification_report=True, verbose=True)
 
-                            t2 = time.time()
-                            f1, precision, recall = results['F1 %'], results['Precision %'], results['Recall %']
+                                t2 = time.time()
+                                f1, precision, recall = results['F1 %'], results['Precision %'], results['Recall %']
 
-                            f.write('{}, {}, {}, {}, {}, {}, {}, {}, {}\n'.format(trial, em.metric, tokenizer, q, ccc.similarity_threshold, precision, recall, f1, t2-t1))
-                        
-                        except ValueError as e:
+                                f.write('{}, {}, {}, {}, {}, {}, {}, {}, {}\n'.format(trial, em.metric, tokenizer, q, ccc.similarity_threshold, precision, recall, f1, t2-t1))
+                            
+                            except ValueError as e:
 
-                            # Handle the exception and force Optuna to continue
-                            f.write('{}, {}, {}, {}, {}, {}, {}, {}, {}\n'.format(trial, str(e), None, None, None, None, None, None, None))                    
-                        
-                        trial += 1
+                                # Handle the exception and force Optuna to continue
+                                f.write('{}, {}, {}, {}, {}, {}, {}, {}, {}\n'.format(trial, str(e), None, None, None, None, None, None, None))                    
+                            
+                            trial += 1
     f.close()

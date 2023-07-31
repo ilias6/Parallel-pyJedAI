@@ -89,10 +89,10 @@ for i in range(0,len(D1CSV)):
                 candidate_pairs_blocks = wep.process(blocks, data, tqdm_disable=False)
                 wep.evaluate(candidate_pairs_blocks)
                 
-                em = EntityMatching(metric='tf-idf', 
-                                    tokenizer = trial.suggest_categorical("tokenizer", ["char_qgram_tokenizer", "word_qgram_tokenizer"]), 
+                em = EntityMatching(metric=trial.suggest_categorical("metric", ["cosine", "jaccard", "dice"]),
+                                    tokenizer=trial.suggest_categorical("tokenizer", ["char_tokenizer", "word_tokenizer"]),
+                                    vectorizer=trial.suggest_categorical("vectorizer", ["tfidf"]),
                                     qgram=trial.suggest_int("qgram", 1, 5),
-                                    tfidf_similarity_metric=trial.suggest_categorical("tfidf_similarity_metric", ["cosine", "jaccard", "dice"]), 
                                     similarity_threshold=0.0
                 )
                 pairs_graph = em.predict(candidate_pairs_blocks, data, tqdm_disable=False)

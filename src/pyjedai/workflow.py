@@ -718,8 +718,10 @@ class BlockingBasedWorkFlow(PYJEDAIWorkFlow):
         self.comparison_cleaning = dict(method=WeightedEdgePruning, params=dict(weighting_scheme='EJS'))
         self.entity_matching = dict(method=EntityMatching,
                                     params=dict(metric='cosine',
-                                                     tokenizer='tfidf_char_3gram', 
-                                                     similarity_threshold=0.0))
+                                                    tokenizer='char_tokenizer', 
+                                                    vectorizer='tfidf',
+                                                    qgram=3,
+                                                    similarity_threshold=0.0))
         self.clustering = dict(method=UniqueMappingClustering, 
                                exec_params=dict(similarity_threshold=0.17))
         self.name="best-ccer-workflow"
