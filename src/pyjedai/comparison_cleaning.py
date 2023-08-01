@@ -213,7 +213,7 @@ class AbstractMetablocking(AbstractComparisonCleaning, ABC):
         
     def _get_weight(self, entity_id: int, neighbor_id: int) -> float:
         ws = self.weighting_scheme
-        if ws == 'CN-CBS' or ws == 'CBS' or ws == 'SN_CBS':
+        if ws == 'CN-CBS' or ws == 'CBS' or ws == 'SN-CBS':
             return self._counters[neighbor_id]
         # CARDINALITY_NORM_COSINE, SIZE_NORM_COSINE
         elif ws == 'CNC' or ws == 'SNC':

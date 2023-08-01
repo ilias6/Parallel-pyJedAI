@@ -16,9 +16,9 @@ from .datamodel import Data
 from .utils import are_matching
 from .utils import batch_pairs
 from .utils import canonical_swap
-from .utils import generate_unique_identifier
 from math import inf
 from .utils import PredictionData
+from .utils import generate_unique_identifier
 import random
 import matplotlib.pyplot as plt
 
@@ -197,14 +197,15 @@ class Evaluation:
         plt.ylabel("Real matching pairs", fontsize=10, fontweight='bold')
         plt.show()
         
-    def visualize_roc(self, methods_data : List[dict], proportional : bool =True) -> None:
+    def visualize_roc(self, methods_data : List[dict], proportional : bool =True, drop_tp_indices=True) -> None:
         fig, ax = plt.subplots(figsize=(10, 6))  # set the size of the plot
         colors = []
         normalized_aucs = []
         # for each method layout its plot
         for method_data in methods_data:
             cumulative_recall, normalized_auc = self._generate_auc_data(total_candidates=method_data['total_emissions'], tp_positions=method_data['tp_idx'])
-            del(method_data['tp_idx'])
+            if(drop_tp_indices):
+                del(method_data['tp_idx'])
             method_name=method_data['name']
             method_data['auc'] = normalized_auc
             method_data['recall'] = cumulative_recall[-1] if len(cumulative_recall) != 0 else 0.0
@@ -366,7 +367,7 @@ class Evaluation:
         return _recall_axis, _normalized_auc    
     
     
-    def visualize_results_roc(self, results : dict) -> None:
+    def visualize_results_roc(self, results : dict, drop_tp_indices=True) -> None:
         """For each of the executed workflows, calculates the cumulative recall and normalized AUC based upon true positive indices.
            Finally, displays the ROC for all of the workflows with proper annotation (each workflow gains a unique identifier).
         Args:
@@ -387,10 +388,10 @@ class Evaluation:
                         for workflow_info in matcher_info[model]:
                             workflows_info.append((workflow_info))
                           
-        self.visualize_roc(workflows_info)
+        self.visualize_roc(workflows_info, drop_tp_indices=drop_tp_indices)
     
     
-    def evaluate_auc_roc(self, matchers : List, batch_size : int = 1, proportional : bool = True) -> None:
+    def evaluate_auc_roc(self, matchers : List, batch_size : int = 1, proportional : bool = True, drop_tp_indices=True) -> None:
         """For each matcher, takes its prediction data, calculates cumulative recall and auc, plots the corresponding ROC curve, populates prediction data with performance info
         Args:
             matchers List[ProgressiveMatching]: Progressive Matchers
@@ -422,4 +423,4 @@ class Evaluation:
             matcher.set_prediction_data(matcher_prediction_data)
             self.matchers_info.append(matcher_info)
 
-        self.visualize_roc(methods_data=self.matchers_info)
+        self.visualize_roc(methods_data=self.matchers_info, drop_tp_indices=drop_tp_indices)

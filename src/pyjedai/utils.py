@@ -859,98 +859,17 @@ def necessary_dfs_supplied(configuration : dict) -> bool:
         
     return len(configuration['source_dataset_path']) == len(configuration['target_dataset_path']) == len(configuration['ground_truth_path'])
 
-def save_worfklow_in_path(workflow, workflow_arguments : dict, path : str) -> dict:
-    """Stores argument / execution information for current workflow within a workflows dictionary.
-    
-    Args:
-        workflow (ProgressiveWorkFlow): Current PER Workflow
-        workflow_arguments (dict): Arguments that have been supplied for current workflow execution
-        path (str): Path where the workflows results are stored at
-    Returns:
-        dict: Dictionary containing the information about the given workflow
-    """
-    if(not os.path.exists(path) or os.path.getsize(path) == 0):
-        results = {}
-    else:
-        with open(path, 'r', encoding="utf-8") as file:
-            results = json.load(file)
-             
-    category_workflows = retrieve_matcher_workflows(results, workflow_arguments)
-    workflow_info : dict = save_workflow(workflow, workflow_arguments) 
-    category_workflows.append(workflow_info)
-    
-    with open(path, 'w', encoding="utf-8") as file:
-        json.dump(results, file, indent=4)
-        
-    return workflow_info
-
-
-def retrieve_matcher_workflows(results : dict, workflow_arguments : dict) -> list:
-    """Retrieves the list of already executed workflows for the matcher/model of current workflow 
-
-    Args:
-        results (dict): Dictionary of script's executed workflows' information
-        workflow_arguments (dict): Arguments that have been supplied for current workflow execution
-
-    Returns:
-        list: List of already executed workflows for given workflow's arguments' matcher/model
-    """
-    dataset : str = workflow_arguments['dataset']
-    matcher : str = workflow_arguments['matcher']
-    
-    results[dataset] = results[dataset] if dataset in results else dict()
-    matcher_results = results[dataset]
-    matcher_results[matcher] = matcher_results[matcher] if matcher in matcher_results \
-                               else ([] if('language_model' not in workflow_arguments) else {})
-            
-    matcher_info = matcher_results[matcher]
-    workflows_info = matcher_info
-    if(isinstance(matcher_info, dict)):
-        lm_name = workflow_arguments['language_model']
-        matcher_info[lm_name] = matcher_info[lm_name] if lm_name in matcher_info else []
-        workflows_info = matcher_info[lm_name]  
-        
-    return workflows_info
-
 def generate_unique_identifier() -> str:
     """Returns unique identifier which is used to cross reference workflows stored in json file and their performance graphs
 
     Returns:
         str: Unique identifier
     """
-    return str(uuid.uuid4())
-
-def save_workflow(current_workflow, workflow_arguments : dict) -> dict:
-    """Stores current workflow argument values and execution related data (like execution time and total emissions)
-
-    Args:
-        current_workflow (ProgressiveWorkFlow): Progressive Workflow instance
-        workflow_arguments (dict): Arguments that were passed to progressive workflow at hand
-
-    Returns:
-        dict : Dictionary with argument / execution information about current workflow
-    """
-    
-    workflow_info : dict = {k: v for k, v in workflow_arguments.items()}
-    workflow_info['total_candidates'] = current_workflow.total_candidates
-    workflow_info['total_emissions'] = current_workflow.total_emissions
-    workflow_info['time'] = current_workflow.workflow_exec_time
-    workflow_info['name'] = generate_unique_identifier()
-    workflow_info['tp_idx'] = current_workflow.tp_indices
-
-    return workflow_info    
+    return str(uuid.uuid4())  
 
 
 def to_path(path : str):
     return os.path.expanduser(path)
-
-def pretty_print_workflow(workflow : dict):
-    for attribute in workflow:
-        value = workflow[attribute]
-        if(attribute != 'tp_idx'):
-            print(f"{attribute} : {value}")
-        else:
-            print(f"true_positives : {len(value)}")
             
 def clear_json_file(path : str):
     if os.path.exists(path):

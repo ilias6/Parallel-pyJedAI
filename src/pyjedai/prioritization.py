@@ -192,7 +192,7 @@ class ProgressiveMatching(EntityMatching):
         self._pairs_top_score : dict = defaultdict(lambda: -1)
         all_blocks = list(blocks.values())
         self._progress_bar = tqdm(total=len(blocks),
-                        desc=self._method_name+" ("+self.similarity_function+")",
+                        desc=self._method_name,
                         disable=self.tqdm_disable)
         
         if(indexing == 'bilateral'): self._indexing = 'inorder'
@@ -445,7 +445,7 @@ class BlockIndependentPM(ProgressiveMatching):
         self._pairs_top_score : dict = defaultdict(lambda: -1)
         all_blocks = list(blocks.values()) if blocks is not None else None
         self._progress_bar = tqdm(total=len(blocks) if blocks is not None else 0,
-                        desc=self._method_name+" ("+self.similarity_function+")",
+                        desc=self._method_name,
                         disable=self.tqdm_disable)
         
         if(indexing == 'bilateral'): self._indexing = 'inorder'
@@ -598,8 +598,8 @@ class LocalTopPM(HashBasedProgressiveMatching):
         
     def _predict_raw_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         self.pairs = Graph()
-        pcnp : ProgressiveCardinalityNodePruning = ProgressiveCardinalityNodePruning(self._weighting_scheme, self._budget)
-        candidates : dict = pcnp.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=None, emit_all_tps_stop=self._emit_all_tps_stop)
+        pcnp : ProgressiveCardinalityNodePruning = ProgressiveCardinalityNodePruning(weighting_scheme=self._weighting_scheme, budget=self._budget)
+        candidates : dict = pcnp.process(blocks=blocks, data=self.data, number_of_nearest_neighbors=self._number_of_nearest_neighbors, tqdm_disable=True, cc=None, emit_all_tps_stop=self._emit_all_tps_stop)
         self.blocks = candidates
         
         for entity_id, candidate_ids in candidates.items():
@@ -613,7 +613,7 @@ class LocalTopPM(HashBasedProgressiveMatching):
     def _predict_prunned_blocks(self, blocks: dict) -> List[Tuple[int, int]]:
         self.pairs = Graph()
         pcnp : ProgressiveCardinalityNodePruning = ProgressiveCardinalityNodePruning(self._weighting_scheme, self._budget)
-        candidates : dict = pcnp.process(blocks=blocks, data=self.data, tqdm_disable=True, cc=self._comparison_cleaner, emit_all_tps_stop=self._emit_all_tps_stop)
+        candidates : dict = pcnp.process(blocks=blocks, data=self.data, number_of_nearest_neighbors=self._number_of_nearest_neighbors, tqdm_disable=True, cc=self._comparison_cleaner, emit_all_tps_stop=self._emit_all_tps_stop)
         self.blocks = candidates
 
         for entity_id, candidate_ids in candidates.items():

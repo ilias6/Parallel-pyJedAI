@@ -13,8 +13,6 @@ from pyjedai.utils import (
     values_given,
     get_multiples,
     necessary_dfs_supplied,
-    save_worfklow_in_path,
-    pretty_print_workflow,
     clear_json_file,
     purge_id_column,
     retrieve_top_workflows,
@@ -189,13 +187,11 @@ if __name__ == "__main__":
                                         block_building=_block_building,
                                         block_purging=_block_purging,
                                         block_filtering=_block_filtering,
-                                        **workflow_arguments)    
-                    
-                    current_workflow_info = save_worfklow_in_path(workflow=current_workflow,
-                                                                workflow_arguments=workflow_arguments,
-                                                                path=JSON_STORE_PATH)
+                                        **workflow_arguments)                        
+                    current_workflow_info = current_workflow.save(arguments=workflow_arguments,
+                                                                  path=JSON_STORE_PATH)
                     if(PRINT_WORKFLOWS):
-                        pretty_print_workflow(current_workflow_info)
+                        current_workflow.print_info(current_workflow_info)
                 
     with open(JSON_STORE_PATH, 'r') as file:
         results = json.load(file)

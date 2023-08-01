@@ -20,7 +20,8 @@ from .vector_based_blocking import EmbeddingsNNBlockBuilding
 from .joins import EJoin, TopKJoin
 
 from .prioritization import ProgressiveMatching, BlockIndependentPM, class_references
-from .utils import new_dictionary_from_keys, get_class_function_arguments
+from .utils import new_dictionary_from_keys, get_class_function_arguments, generate_unique_identifier
+
 
 
 plt.style.use('seaborn-whitegrid')
@@ -268,9 +269,12 @@ class ProgressiveWorkFlow(PYJEDAIWorkFlow):
         self.data : Data = data
         self._init_experiment()
         start_time = time()
+        self.matcher_arguments = matcher_arguments
+        self.matcher_name = self.matcher_arguments['matcher']
+        self.dataset_name = self.matcher_arguments['dataset']
         matcher = class_references[matcher_arguments['matcher']]
-        self.constructor_arguments = new_dictionary_from_keys(dictionary=matcher_arguments, keys=get_class_function_arguments(class_reference=matcher, function_name='__init__'))
-        self.predictor_arguments = new_dictionary_from_keys(dictionary=matcher_arguments, keys=get_class_function_arguments(class_reference=matcher, function_name='predict'))
+        self.constructor_arguments = new_dictionary_from_keys(dictionary=self.matcher_arguments, keys=get_class_function_arguments(class_reference=matcher, function_name='__init__'))
+        self.predictor_arguments = new_dictionary_from_keys(dictionary=self.matcher_arguments, keys=get_class_function_arguments(class_reference=matcher, function_name='predict'))
         print(self.constructor_arguments)
         print(self.predictor_arguments)
         
@@ -375,27 +379,100 @@ class ProgressiveWorkFlow(PYJEDAIWorkFlow):
         pass
 
     def export_pairs(self) -> pd.DataFrame:
-        """Export pairs to file.
-
-        Returns:
-            pd.DataFrame: pairs as a DataFrame
-        """
-        return write(self.final_pairs, self.data)
+        pass
 
     def _save_step(self, results: dict, configuration: dict) -> None:
-        self.f1.append(results['F1 %'])
-        self.recall.append(results['Recall %'])
-        self.precision.append(results['Precision %'])
-        self.configurations.append(configuration)
-        self.runtime.append(configuration['runtime'])
+        pass
 
     def get_final_scores(self) -> Tuple[float, float, float]:
-        """Final scores in the last step of the workflow.
+        pass
+    
+    def retrieve_matcher_workflows(self, workflows : dict, arguments : dict) -> list:
+        """Retrieves the list of already executed workflows for the matcher/model of current workflow 
+
+        Args:
+            workflows (dict): Dictionary of script's executed workflows' information
+            arguments (dict): Arguments that have been supplied for current workflow execution
 
         Returns:
-            Tuple[float, float, float]: F-Measure, Precision, Recall.
+            list: List of already executed workflows for given workflow's arguments' matcher/model
         """
-        return self.f1[-1], self.precision[-1], self.recall[-1]
+        dataset : str = self.dataset_name
+        matcher : str = self.matcher_name
+        
+        workflows[dataset] = workflows[dataset] if dataset in workflows else dict()
+        matcher_results = workflows[dataset]
+        matcher_results[matcher] = matcher_results[matcher] if matcher in matcher_results \
+                                else ([] if('language_model' not in arguments) else {})
+                
+        matcher_info = matcher_results[matcher]
+        workflows_info = matcher_info
+        if(isinstance(matcher_info, dict)):
+            lm_name = arguments['language_model']
+            matcher_info[lm_name] = matcher_info[lm_name] if lm_name in matcher_info else []
+            workflows_info = matcher_info[lm_name]  
+            
+        return workflows_info
+    
+    
+    
+    def save(self, arguments : dict, path : str = None, results = None) -> dict:
+        """Stores argument / execution information for current workflow within a workflows dictionary.
+        
+        Args:
+            arguments (dict): Arguments that have been supplied for current workflow execution
+            path (str): Path where the workflows results are stored at (Default to None),
+            results (str): A dictionary of workflows results at which we want to store current workflow's arguments/info
+        Returns:
+            dict: Dictionary containing the information about the given workflow
+        """
+        if(path is None and results is None):
+            raise ValueError(f"No dictionary path or workflows dictionary given - Cannot save workflow.")
+        
+        if(results is not None):
+            workflows = results
+        elif(not os.path.exists(path) or os.path.getsize(path) == 0):
+            workflows = {}
+        else:
+            with open(path, 'r', encoding="utf-8") as file:
+                workflows = json.load(file)
+                
+        category_workflows = self.retrieve_matcher_workflows(workflows=workflows, arguments=arguments)
+        self.save_workflow_info(arguments=arguments) 
+        category_workflows.append(self.info)
+        
+        if(path is not None):
+            with open(path, 'w', encoding="utf-8") as file:
+                json.dump(workflows, file, indent=4)
+            
+        return self.info
+    
+    def save_workflow_info(self, arguments : dict) -> dict:
+        """Stores current workflow argument values and execution related data (like execution time and total emissions)
+
+        Args:
+            arguments (dict): Arguments that were passed to progressive workflow at hand
+        """
+        
+        workflow_info : dict = {k: v for k, v in arguments.items()}
+        workflow_info['total_candidates'] = self.total_candidates
+        workflow_info['total_emissions'] = self.total_emissions
+        workflow_info['time'] = self.workflow_exec_time
+        workflow_info['name'] = generate_unique_identifier()
+        workflow_info['tp_idx'] = self.tp_indices
+        workflow_info['dataset'] = self.dataset_name
+        workflow_info['matcher'] = self.matcher_name
+
+        self.info = workflow_info  
+    
+    def print_info(self, info : dict):
+        for attribute in info:
+            value = info[attribute]
+            if(attribute != 'tp_idx'):
+                print(f"{attribute} : {value}")
+            else:
+                print(f"true_positives : {len(value)}")
+    
 
 def compare_workflows(workflows: List[PYJEDAIWorkFlow], with_visualization=True) -> pd.DataFrame:
     """Compares workflows by creating multiple plots and tables with results.
