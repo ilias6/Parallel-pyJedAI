@@ -1109,13 +1109,13 @@ class FrequencyEvaluator(ABC):
             self._entities_d1 : list = d1_entities
             self._entities_d2 : list = d2_entities
             self.corpus = self._entities_d1 + self._entities_d2
+            self._tf_limit = len(self._entities_d1)
             self.corpus_as_matrix = self.vectorizer.fit_transform(self.corpus)
             if self.vectorizer_name == 'boolean':
                 # transform to boolean if value is positive to 1 and negative to 0
-                self.similarity_matrix = self.corpus_as_matrix.astype(bool).astype(int)
-                
-            self.similarity_matrix = 1 - pairwise_distances(self.corpus_as_matrix.toarray(), 
-                                                            metric=self.metric)      
+                self.corpus_as_matrix = self.corpus_as_matrix.astype(bool).astype(int)
+            self.corpus_as_matrix = self.corpus_as_matrix.toarray()  
+     
     def predict(self, id1 : int, id2 : int) -> float:
         """Returns the predicted similarity score for the given entities
         Args:
@@ -1124,5 +1124,7 @@ class FrequencyEvaluator(ABC):
         Returns:
             float: Similarity score of entities with specified IDs
         """
-        return self.similarity_matrix[id1][id2]
+        candidates = np.vstack((self.corpus_as_matrix[id1], self.corpus_as_matrix[id2]))
+        distances = pairwise_distances(candidates, metric=self.metric)        
+        return 1.0 - distances[0][1]
     
