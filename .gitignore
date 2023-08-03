@@ -205,3 +205,4 @@ src/pyjedai/__pycache__/*
 build/*
 src/pyjedai.egg-info/*
 pypi/*
+src/*.out

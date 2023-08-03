@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import os
+from typing import List, Tuple
 
 # Function that creates a confusion matrix
 def create_confusion_matrix(confusion_matrix, title):
@@ -56,16 +57,6 @@ def plot_feature_progress_per_attribute_group(method_name : str,
         in_plot_directory (bool) : Plot to be saved in an experiment directory - 
         created in the target dataframe's / current directory if non-existent (Defaults to True)
     """
-    feature_acronyms = {
-        "algorithm": "alg",
-        "number_of_nearest_neighbors": "nnn",
-        "indexing": "ind",
-        "similarity_function": "sf",
-        "language_model": "lm",
-        "tokenizer": "tkn",
-        "weighting_scheme": "ws",
-        "window_size": "wsz",    
-    }
     
     experiments : pd.DataFrame
     if(df is not None):
@@ -117,22 +108,199 @@ def plot_feature_progress_per_attribute_group(method_name : str,
     
     
     
-#     # Create some sample data
-# data = np.arange(20)
+def plot_attribute_group_avg_ranking(method_name : str,
+                                     feature : str,
+                                     attributes : list,
+                                     dfs : List[pd.DataFrame] = None,
+                                     load_paths : List[str] = None,
+                                     grid : bool = True,
+                                     save : bool = True,
+                                     verbose : bool = True,
+                                     in_plot_directory : bool = True
+                                     ) -> None:
+    """For each unique combination of given attributes calculates its average feature value across datasets for each budget.
+       Plots the corresponding results and stores them as an image if it is requested.
+    
+    Args:
+        method_name (str): The name of the PER method whose experiments we are evaluating
+        feature (str): The feature that we want to evaluate the average ranking of the attribute group for  
+        attributes (list): Group of experiments' arguments whose each distinct combination constitutes a seperate curve
+        dfs (List[pd.Dataframe]): Dataframes containing the information about progressive PER experiments (Defaults to None)
+        load_paths (List[str]): Paths from which the dataframe should be loaded from (Defaults to None)
+        grid (bool): Grid to be displayed in the plot (Defaults to True)
+        save (bool) : Save the plot as an image on disk (Defaults to True)
+        verbose (bool) : Show the produced plot
+        in_plot_directory (bool) : Plot to be saved in an experiment directory - 
+        created in the target dataframe's / current directory if non-existent (Defaults to True)
+    """
+    
+    if(dfs is None and load_paths is None):
+        raise ValueError("No dataframes or csv files given - Cannot calculate and plot average combinations rankings.")
 
-# # Create a matplotlib figure
-# fig, ax = plt.subplots()
+    total_datasets = len(dfs) if dfs is not None else len(load_paths)
+    attributes_combinations = {}
+    attributes_combinations_budget_scores : List[Tuple[float, str]]
+    
+    for current_dataset in range(total_datasets):
+        if(dfs is not None):
+            experiments = dfs[current_dataset]
+        else:
+            current_dataset_path = load_paths[current_dataset]
+            experiments = pd.read_csv(current_dataset_path)
+    
+        budgets_experiments = experiments.sort_values(by='budget').groupby('budget')
 
-# # Create multiple plots 
-# for i in range(7):
-#     ax.plot(data, i * data, label=f'y={i}x')
+        for current_budget, current_budget_experiments in budgets_experiments:
+            current_budget_attributes_combinations = current_budget_experiments.groupby(attributes[0] if len(attributes) == 1 else attributes)
+            attributes_combinations_budget_scores = []
+            
+            for attributes_combination, current_budget_attributes_combination in current_budget_attributes_combinations:
+                attributes_combination_budget_feature_value = current_budget_attributes_combination[feature].mean()
+                attributes_combinations_budget_scores.append((attributes_combination_budget_feature_value, attributes_combination))
+                
+            for ranking, attributes_combinations_budget_score in enumerate(sorted(attributes_combinations_budget_scores, reverse=True)):
+                attributes_combination_budget_feature_value, attributes_combination = attributes_combinations_budget_score
+                if attributes_combination not in attributes_combinations:
+                    attributes_combinations[attributes_combination] = {}
+                    
+                if current_budget not in attributes_combinations[attributes_combination]:
+                    attributes_combinations[attributes_combination][current_budget] = []
+                    
+                attributes_combinations[attributes_combination][current_budget].append(ranking+1)
 
-# # Set title and labels
-# ax.set_title('Example plot')
-# ax.set_xlabel('x')
-# ax.set_ylabel('y')
+    fig = plt.figure(figsize=(16, 12))
+    ax = plt.subplot(111)       
+            
+    for attributes_combination, attributes_combination_budgets in attributes_combinations.items():
+        
+        attributes_combination_average_rankings = []
+        sorted_budgets = sorted(attributes_combination_budgets.keys(), reverse=False)
+        for budget in sorted_budgets:
+            attributes_combination_average_rankings.append(sum(attributes_combination_budgets[budget]) / len(attributes_combination_budgets[budget]))
+            
+        ax.plot(sorted_budgets, attributes_combination_average_rankings, label=str(attributes_combination), marker='o', linestyle='-')
+        
+        
+    # Customize the plot
+    ax.set_title(f'{method_name.capitalize()} - Average {feature.capitalize()} Ranking vs. Budget Curves')
+    ax.set_xlabel('Budget')
+    ax.set_ylabel('Average Ranking')
+    
+    pos = ax.get_position()
+    ax.set_position([pos.x0, pos.y0, pos.width * 0.9, pos.height])
+    ax.legend(title=attributes, fontsize="9", loc='center right', bbox_to_anchor=(1.23, 0.5))
+    
+    ax.grid(grid)
+    
+    if(save):
+        file_name = '_'.join([method_name, 'for', '_'.join(attributes), 'avg_rankings', feature]) + '.png'
+        dataframe_directory = os.path.dirname(load_paths[0]) if load_paths is not None else './'
+        store_directory = dataframe_directory if not in_plot_directory else os.path.join(dataframe_directory, 'avg_rankings/')        
+        
+        if in_plot_directory and not os.path.exists(store_directory):
+            os.makedirs(store_directory)
+            
+        plt.savefig(os.path.join(store_directory, file_name))
+        
+    plt.show()
+    
+    
+    
+def plot_attribute_group_avg_top_distance(method_name : str,
+                                     feature : str,
+                                     attributes : list,
+                                     dfs : List[pd.DataFrame] = None,
+                                     load_paths : List[str] = None,
+                                     grid : bool = True,
+                                     save : bool = True,
+                                     verbose : bool = True,
+                                     in_plot_directory : bool = True
+                                     ) -> None:
+    """For each unique combination of given attributes calculates its feature's value average difference from the best value across datasets for each budget.
+       Plots the corresponding results and stores them as an image if it is requested.
+    
+    Args:
+        method_name (str): The name of the PER method whose experiments we are evaluating
+        feature (str): The feature that we want to evaluate the average ranking of the attribute group for  
+        attributes (list): Group of experiments' arguments whose each distinct combination constitutes a seperate curve
+        dfs (List[pd.Dataframe]): Dataframes containing the information about progressive PER experiments (Defaults to None)
+        load_paths (List[str]): Paths from which the dataframe should be loaded from (Defaults to None)
+        grid (bool): Grid to be displayed in the plot (Defaults to True)
+        save (bool) : Save the plot as an image on disk (Defaults to True)
+        verbose (bool) : Show the produced plot
+        in_plot_directory (bool) : Plot to be saved in an experiment directory - 
+        created in the target dataframe's / current directory if non-existent (Defaults to True)
+    """
+    
+    if(dfs is None and load_paths is None):
+        raise ValueError("No dataframes or csv files given - Cannot calculate and plot average combinations rankings.")
 
-# # Add a legend
-# pos = ax.get_position()
-# ax.set_position([pos.x0, pos.y0, pos.width * 0.9, pos.height])
-# ax.legend(loc='center right', bbox_to_anchor=(1.25, 0.5))
+    total_datasets = len(dfs) if dfs is not None else len(load_paths)
+    attributes_combinations = {}
+    attributes_combinations_budget_scores : List[Tuple[float, str]]
+    
+    for current_dataset in range(total_datasets):
+        if(dfs is not None):
+            experiments = dfs[current_dataset]
+        else:
+            current_dataset_path = load_paths[current_dataset]
+            experiments = pd.read_csv(current_dataset_path)
+    
+        budgets_experiments = experiments.sort_values(by='budget').groupby('budget')
+
+        for current_budget, current_budget_experiments in budgets_experiments:
+            current_budget_attributes_combinations = current_budget_experiments.groupby(attributes[0] if len(attributes) == 1 else attributes)
+            attributes_combinations_budget_scores = []
+            
+            for attributes_combination, current_budget_attributes_combination in current_budget_attributes_combinations:
+                attributes_combination_budget_feature_value = current_budget_attributes_combination[feature].mean()
+                attributes_combinations_budget_scores.append((attributes_combination_budget_feature_value, attributes_combination))
+                
+            attributes_combinations_budget_scores = sorted(attributes_combinations_budget_scores, reverse=True)
+            budget_highest_feature_value = attributes_combinations_budget_scores[0][0]
+                
+            for attributes_combinations_budget_score in attributes_combinations_budget_scores:
+                attributes_combination_budget_feature_value, attributes_combination = attributes_combinations_budget_score
+                if attributes_combination not in attributes_combinations:
+                    attributes_combinations[attributes_combination] = {}
+                    
+                if current_budget not in attributes_combinations[attributes_combination]:
+                    attributes_combinations[attributes_combination][current_budget] = []
+                    
+                attributes_combinations[attributes_combination][current_budget].append(budget_highest_feature_value - attributes_combination_budget_feature_value)
+
+    fig = plt.figure(figsize=(16, 12))
+    ax = plt.subplot(111)       
+            
+    for attributes_combination, attributes_combination_budgets in attributes_combinations.items():
+        
+        attributes_combination_average_rankings = []
+        sorted_budgets = sorted(attributes_combination_budgets.keys(), reverse=False)
+        for budget in sorted_budgets:
+            attributes_combination_average_rankings.append(sum(attributes_combination_budgets[budget]) / len(attributes_combination_budgets[budget]))
+            
+        ax.plot(sorted_budgets, attributes_combination_average_rankings, label=str(attributes_combination), marker='o', linestyle='-')
+        
+        
+    # Customize the plot
+    ax.set_title(f'{method_name.capitalize()} - Average {feature.capitalize()} Distance from Top vs. Budget Curves')
+    ax.set_xlabel('Budget')
+    ax.set_ylabel('Average Distance from Top')
+    
+    pos = ax.get_position()
+    ax.set_position([pos.x0, pos.y0, pos.width * 0.9, pos.height])
+    ax.legend(title=attributes, fontsize="9", loc='center right', bbox_to_anchor=(1.23, 0.5))
+    
+    ax.grid(grid)
+    
+    if(save):
+        file_name = '_'.join([method_name, 'for', '_'.join(attributes), 'avg_distances', feature]) + '.png'
+        dataframe_directory = os.path.dirname(load_paths[0]) if load_paths is not None else './'
+        store_directory = dataframe_directory if not in_plot_directory else os.path.join(dataframe_directory, 'avg_distances/')        
+        
+        if in_plot_directory and not os.path.exists(store_directory):
+            os.makedirs(store_directory)
+            
+        plt.savefig(os.path.join(store_directory, file_name))
+        
+    plt.show()
