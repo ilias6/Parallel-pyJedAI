@@ -45,7 +45,7 @@ block_perf = bf.evaluate(blocks)
 print(block_perf)
 bf.stats(blocks)
 
-wep = WeightedEdgePruning(weighting_scheme='ARCS')
+wep = WeightedEdgePruning(weighting_scheme='CN-CBS')
 candidate_pairs_blocks = wep.process(blocks, data, tqdm_disable=False)
                
 block_perf = wep.evaluate(candidate_pairs_blocks)

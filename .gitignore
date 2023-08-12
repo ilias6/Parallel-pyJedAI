@@ -198,9 +198,11 @@ results_cpu/D10_WB.csv
 results_cpu.tar.gz
 results.tar.gz
 data/
+script-results/
 dev-only/
 *.pyc
 src/pyjedai/__pycache__/*
 build/*
 src/pyjedai.egg-info/*
 pypi/*
+src/*.out

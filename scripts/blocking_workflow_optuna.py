@@ -36,7 +36,7 @@ engine = [
 
 
 bf_ratio = {1:0.9, 2:0.075, 7:0.6}
-weighting_schemes = {1:'JS',2:'CBS',7:'ARCS'}
+weighting_schemes = {1:'JS',2:'CBS',7:'CN-CBS'}
 
 datasets_wanted = [1, 2, 7]
 for i in datasets_wanted:
@@ -78,11 +78,8 @@ for i in datasets_wanted:
             'cosine', 'dice', 'generalized_jaccard', 'jaccard', 'overlap_coefficient'
         ]
 
-        bag_metrics = [
-            'tf-idf'
-        ]
-
-        available_metrics = set_metrics + bag_metrics
+        available_metrics = set_metrics
+        available_vectorizers = ['tfidf']
 
 
         '''
@@ -102,6 +99,7 @@ for i in datasets_wanted:
 
                 EM = EntityMatching(
                     metric=trial.suggest_categorical('metric', available_metrics),
+                    vectorizer=trial.suggest_categorical('vectorizer', available_vectorizers),
                     similarity_threshold=0.0
                 )
                 pairs_graph = EM.predict(candidate_pairs_blocks, data, tqdm_disable=False)
