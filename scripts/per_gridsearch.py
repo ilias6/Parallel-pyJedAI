@@ -204,7 +204,7 @@ if __name__ == "__main__":
         if(STORE_RESULTS_AS_DF):
             workflows_to_dataframe(workflows=results,
                                 store_path=DF_STORE_PATH)
-            os.remove(JSON_STORE_PATH)
+            # os.remove(JSON_STORE_PATH)
         else: 
             with open(JSON_STORE_PATH, 'w', encoding="utf-8") as file:
                 json.dump(results, file, indent=4)

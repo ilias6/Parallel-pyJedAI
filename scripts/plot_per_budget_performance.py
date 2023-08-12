@@ -5,16 +5,20 @@ def valid_file(file : str):
     return ('experiments' in file and '.csv' in file)
 
 def get_attributes(file : str):
-    if 'pesm' in file or 'gt' in file:
+    if 'pesm' in file or 'gt' in file or 'test' in file:
         return ["weighting_scheme", "algorithm"]
     elif 'gsn' in file or 'lsn' in file:
         return ["weighting_scheme", "window_size", "algorithm"]
+    elif 'nn' in file:
+        return ["number_of_nearest_neighbors", "language_model", "similarity_function"]
+    elif 'join' in file:
+        return ["number_of_nearest_neighbors", "similarity_function", "tokenizer", "weighting_scheme", "qgram"]
     else:
         return ["indexing"]
     
 def get_method_csv_files_for_directory(method : str, directory_path: str) -> list:
     file_names = os.listdir(directory_path)
-    return [(directory_path + file_name) for file_name in file_names if (valid_file(file_name) and method in file_name)]
+    return sorted([(directory_path + file_name) for file_name in file_names if (valid_file(file_name) and method in file_name)])
 
 # path where the experiment results are stored
 EXPERIMENTS_PATH = "/home/shared/jakub_gpapad/"

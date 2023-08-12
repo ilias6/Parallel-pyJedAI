@@ -340,7 +340,7 @@ def plot_attributes_performance_for_budget(method_name : str,
     
     if(dfs is None and load_paths is None):
         raise ValueError("No dataframes or csv files given - Cannot calculate and plot average combinations rankings.")
-        
+            
     total_datasets : int = len(dfs) if dfs is not None else len(load_paths)
     attributes_combinations : dict = {}  
     budget_dataset_best_feature_value : dict = {}
@@ -370,8 +370,7 @@ def plot_attributes_performance_for_budget(method_name : str,
                     
                 if current_budget not in attributes_combinations[attributes_combination]:
                     attributes_combinations[attributes_combination][current_budget] = {}
-                    
-                current_budget_attributes_combination_feature_value = current_budget_attributes_combination[feature].mean()           
+                current_budget_attributes_combination_feature_value = current_budget_attributes_combination[feature].mean()          
                 attributes_combinations[attributes_combination][current_budget][current_dataset_name] = current_budget_attributes_combination_feature_value
                 
                 if current_budget not in budget_dataset_best_feature_value:

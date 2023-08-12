@@ -26,18 +26,18 @@ current_file = 0
 for valid_file in valid_files:
     load_path = EXPERIMENTS_PATH + valid_file
     attributes = get_attributes(valid_file)
-    file_info = valid_file.replace('experiments', '').('vector', '').replace('.csv', '').split('_')
+    file_info = valid_file.replace('experiments', '').replace('vector', '').replace('.csv', '').split('_')
     method_name = file_info[0]
     dataset_name = file_info[-1]
     
     for feature in features:
         current_file += 1
-        print(f"{current_file}/{total_files} : Name[{valid_file}] Method[{method_name}] Dataset[{dataset_name}] Feature[{feature}]")
-        # plot_feature_progress_per_attribute_group(
-        #     load_path=load_path,
-        #     method_name=method_name,
-        #     dataset_name=dataset_name,
-        #     feature=feature,
-        #     attributes = attributes
-        # )
+        print(f"{current_file}/{total_files} : Name[{valid_file}] Method[{method_name}] Dataset[{dataset_name}] Feature[{feature}] Attributes{attributes}")
+        plot_feature_progress_per_attribute_group(
+            load_path=load_path,
+            method_name=method_name,
+            dataset_name=dataset_name,
+            feature=feature,
+            attributes = attributes
+        )
         
