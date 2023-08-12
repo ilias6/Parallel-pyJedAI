@@ -821,8 +821,12 @@ class ProgressiveSortedNeighborhood(AbstractMetablocking):
             return self._counters[neighbor_id] / denominator
         elif ws == 'ACF' or ws == 'ID':
             return self._counters[neighbor_id]
+        elif ws == 'COSINE':
+            return self._counters[neighbor_id] / float(sqrt(len(self._position_index.get_positions(entity_id)) * len(self._position_index.get_positions(neighbor_id))))
+        elif ws == 'DICE':
+            return 2 * self._counters[neighbor_id] / float(len(self._position_index.get_positions(entity_id)) + len(self._position_index.get_positions(neighbor_id)))
         else:
-            raise ValueError("This weighting scheme does not exist")
+            raise ValueError("This weighting scheme does not exist")    
         
     def valid_entity_neighbor_index(self, entity: int, neighbor_index: int) -> bool:
         """Verifies if the neighbor identifier at the specified index is valid for candidate (the pair hasn't been considered previously)

@@ -430,9 +430,6 @@ def plot_attributes_performance_for_budget(method_name : str,
     budget_dataframe['AA_BS'] = budget_dataframe[average_budget_performance_columns].mean(axis=1)
     budget_dataframe = budget_dataframe.sort_values(by='AA_BS', ascending=True)
     
-    
-    
-    
     if(save):
         metric = "distance" if calculate_distance else "ranking"
         file_name = '_'.join([feature, metric, 'for', method_name, 'with', '_'.join(attributes)]) + '.csv'
