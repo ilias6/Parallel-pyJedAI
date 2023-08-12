@@ -517,7 +517,9 @@ class EntityMatching(AbstractEntityMatching):
             "Metric" : self.metric,
             "Attributes" : self.attributes,
             "Similarity threshold" : self.similarity_threshold,
-            "Tokenizer" : self.tokenizer
+            "Tokenizer" : self.tokenizer,
+            "Vectorizer" : self.vectorizer if self.vectorizer is not None else "None",
+            "Qgrams" : self.qgram
         }
 
 class VectorBasedMatching(AbstractEntityMatching):

@@ -163,7 +163,7 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
 
         self._si = SubsetIndexer(self.input_cleaned_blocks, self.data, self._applied_to_subset)
         self._d1_valid_indices: list[int] = self._si.d1_retained_ids
-        self._d2_valid_indices: list[int] = [x - self.data.dataset_limit for x in self._si.d2_retained_ids]   
+        self._d2_valid_indices: list[int] = [x - self.data.dataset_limit for x in self._si.d2_retained_ids]  if not data.is_dirty_er else None
 
         self._entities_d1 = data.dataset_1[attributes_1 if attributes_1 else data.attributes_1] \
                             .apply(" ".join, axis=1) \
@@ -377,19 +377,19 @@ class EmbeddingsNNBlockBuilding(PYJEDAIFeature):
 
         if self.similarity_distance == 'cosine':
             faiss.normalize_L2(self.vectors_1)
-            faiss.normalize_L2(self.vectors_2)
+            if not self.data.is_dirty_er: faiss.normalize_L2(self.vectors_2)
             
         index.train(self.vectors_1)  # train on the vectors of dataset 1
 
         if self.similarity_distance == 'cosine':
             faiss.normalize_L2(self.vectors_1)
-            faiss.normalize_L2(self.vectors_2)
+            if not self.data.is_dirty_er: faiss.normalize_L2(self.vectors_2)
 
         index.add(self.vectors_1)   # add the vectors and update the index
 
         if self.similarity_distance == 'cosine':
             faiss.normalize_L2(self.vectors_1)
-            faiss.normalize_L2(self.vectors_2)
+            if not self.data.is_dirty_er: faiss.normalize_L2(self.vectors_2)
         
         self.distances, self.neighbors = index.search(self.vectors_1 if self.data.is_dirty_er else self.vectors_2,
                                     self.top_k)
